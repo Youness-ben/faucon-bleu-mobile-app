@@ -1,0 +1,179 @@
+{
+  "common": {
+    "login": "Login",
+    "register": "Register",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "forgotPassword": "Forgot Password?",
+    "home": "Home",
+    "fleet": "Fleet",
+    "services": "Services",
+    "profile": "Profile",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete",
+    "add": "Add",
+    "submit": "Submit",
+    "back": "Back",
+    "close": "Close"
+  },
+  "auth": {
+    "login": "Login",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign In",
+    "rememberMe": "Remember Me",
+    "forgotPassword": "Forgot Password?",
+    "welcomeBack": "Welcome Back!",
+    "loginToContinue": "Login to continue",
+    "error": "Error",
+    "allFieldsRequired": "All fields are required"
+  },
+  "home": {
+    "welcome": "Welcome back!",
+    "quickService": "Quick Service",
+    "serviceHistory": "Service History",
+    "myVehicles": "My Vehicles",
+    "upcomingServices": "Upcoming Services",
+    "viewAllServices": "View All Services"
+  },
+  "fleet": {
+    "title": "My Fleet",
+    "addVehicle": "Add Vehicle",
+    "editVehicle": "Edit Vehicle",
+    "removeVehicle": "Remove Vehicle",
+    "vehicleName": "Vehicle Name",
+    "vehicleType": "Vehicle Type",
+    "licensePlate": "License Plate"
+  },
+"vehicleDetail": {
+    "details": "Vehicle Details",
+    "year": "Year",
+    "make": "Make",
+    "model": "Model",
+    "mileage": "Mileage",
+    "fuelType": "Fuel Type",
+    "transmission": "Transmission",
+    "vin": "VIN",
+    "orderService": "Order Service",
+    "serviceHistory": "Service History"
+  },
+  "services": {
+    "title": "Our Services",
+    "orderService": "Order Service",
+    "scheduleAppointment": "Schedule Appointment",
+    "trackOrder": "Track Order",
+    "serviceType": "Service Type",
+    "serviceDate": "Service Date",
+    "serviceTime": "Service Time",
+    "selectDate": "Select Date",
+    "selectTime": "Select Time",
+    "selectVehicle": "Select Vehicle",
+    "orderDetails": "Order Details",
+    "confirmOrder": "Confirm Order",
+    "maintenance": "Maintenance",
+    "repair": "Repair",
+    "comfort": "Comfort",
+    "diagnostics": "Diagnostics"
+  },
+"serviceHistory": {
+    "title": "Service History",
+    "filterBy": "Filter by",
+    "sortBy": "Sort by",
+    "all": "All",
+    "sortByDate": "Date",
+    "sortByCost": "Cost",
+    "export": "Export History"
+  },
+  "serviceStatus": {
+    "completed": "Completed",
+    "scheduled": "Scheduled",
+    "in-progress": "In Progress",
+    "cancelled": "Cancelled"
+  },
+  "addVehicle": {
+    "title": "Add Vehicle",
+    "vehicleName": "Vehicle Name",
+    "enterVehicleName": "Enter vehicle name",
+    "vehicleType": "Vehicle Type",
+    "selectType": "Select vehicle type",
+    "car": "Car",
+    "truck": "Truck",
+    "motorcycle": "Motorcycle",
+    "licensePlate": "License Plate",
+    "enterLicensePlate": "Enter license plate",
+    "addVehicle": "Add Vehicle",
+    "error": "Error",
+    "fillAllFields": "Please fill all fields",
+    "success": "Success",
+    "vehicleAdded": "Vehicle added successfully"
+  },
+  "settings": {
+    "title": "Settings",
+    "appearance": "Appearance",
+    "darkMode": "Dark Mode",
+    "notifications": "Notifications",
+    "pushNotifications": "Push Notifications",
+    "emailNotifications": "Email Notifications",
+    "language": "Language",
+    "about": "About",
+    "version": "Version",
+    "termsOfService": "Terms of Service",
+    "privacyPolicy": "Privacy Policy"
+  },
+ "profile": {
+    "editProfile": "Edit Profile",
+    "invoices": "Invoices",
+    "notifications": "Notifications",
+    "language": "Language",
+    "support": "Support",
+    "settings": "Settings",
+    "selectLanguage": "Select language",
+    "logout": "Logout"
+  },
+  "editProfile": {
+    "name": "Name",
+    "email": "Email",
+    "phone": "Phone",
+    "changePhoto": "Change Photo",
+    "save": "Save Changes",
+    "namePlaceholder": "Enter your name",
+    "emailPlaceholder": "Enter your email",
+    "phonePlaceholder": "Enter your phone number"
+  },
+  "invoices": {
+    "title": "Invoices",
+    "status": {
+      "paid": "Paid",
+      "pending": "Pending",
+      "overdue": "Overdue"
+    }
+  },
+  "navigation": {
+    "home": "Home",
+    "fleet": "Fleet",
+    "services": "Services",
+    "profile": "Profile",
+    "editProfile": "Edit Profile",
+    "invoices": "Invoices",
+    "support": "Support",
+    "settings": "Settings",
+    "addVehicle": "Add Vehicle",
+    "vehicleDetail": "Vehicle Details",
+    "orderService": "Order Service",
+    "serviceHistory": "Service History"
+  },
+  "support": {
+    "title": "Customer Support",
+    "subtitle": "We're here to help. Contact us through any of the following methods.",
+    "phone": "Phone",
+    "email": "Email",
+    "whatsapp": "WhatsApp",
+    "address": "Office Address",
+    "officeAddress": "123 Fleet St, Casablanca, Morocco",
+    "faqTitle": "Frequently Asked Questions",
+    "viewFaq": "View FAQs"
+  }
+}

@@ -1,0 +1,179 @@
+{
+  "common": {
+    "login": "Iniciar sesión",
+    "register": "Registrarse",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "confirmPassword": "Confirmar contraseña",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "home": "Inicio",
+    "fleet": "Flota",
+    "services": "Servicios",
+    "profile": "Perfil",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "add": "Agregar",
+    "submit": "Enviar",
+    "back": "Regresar",
+    "close": "Cerrar"
+  },
+  "auth": {
+    "login": "Iniciar sesión",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "signIn": "Acceder",
+    "rememberMe": "Recuérdame",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "welcomeBack": "¡Bienvenido de nuevo!",
+    "loginToContinue": "Inicia sesión para continuar",
+    "error": "Error",
+    "allFieldsRequired": "Todos los campos son obligatorios"
+  },
+  "home": {
+    "welcome": "¡Bienvenido de nuevo!",
+    "quickService": "Servicio rápido",
+    "serviceHistory": "Historial de servicios",
+    "myVehicles": "Mis vehículos",
+    "upcomingServices": "Servicios próximos",
+    "viewAllServices": "Ver todos los servicios"
+  },
+  "fleet": {
+    "title": "Mi flota",
+    "addVehicle": "Agregar vehículo",
+    "editVehicle": "Editar vehículo",
+    "removeVehicle": "Eliminar vehículo",
+    "vehicleName": "Nombre del vehículo",
+    "vehicleType": "Tipo de vehículo",
+    "licensePlate": "Placa de matrícula"
+  },
+  "vehicleDetail": {
+    "details": "Detalles del vehículo",
+    "year": "Año",
+    "make": "Marca",
+    "model": "Modelo",
+    "mileage": "Kilometraje",
+    "fuelType": "Tipo de combustible",
+    "transmission": "Transmisión",
+    "vin": "VIN",
+    "orderService": "Solicitar servicio",
+    "serviceHistory": "Historial de servicios"
+  },
+  "services": {
+    "title": "Nuestros servicios",
+    "orderService": "Solicitar servicio",
+    "scheduleAppointment": "Programar cita",
+    "trackOrder": "Rastrear pedido",
+    "serviceType": "Tipo de servicio",
+    "serviceDate": "Fecha del servicio",
+    "serviceTime": "Hora del servicio",
+    "selectDate": "Seleccionar fecha",
+    "selectTime": "Seleccionar hora",
+    "selectVehicle": "Seleccionar vehículo",
+    "orderDetails": "Detalles del pedido",
+    "confirmOrder": "Confirmar pedido",
+    "maintenance": "Mantenimiento",
+    "repair": "Reparación",
+    "comfort": "Confort",
+    "diagnostics": "Diagnósticos"
+  },
+  "serviceHistory": {
+    "title": "Historial de servicios",
+    "filterBy": "Filtrar por",
+    "sortBy": "Ordenar por",
+    "all": "Todos",
+    "sortByDate": "Fecha",
+    "sortByCost": "Costo",
+    "export": "Exportar historial"
+  },
+  "serviceStatus": {
+    "completed": "Completado",
+    "scheduled": "Programado",
+    "in-progress": "En progreso",
+    "cancelled": "Cancelado"
+  },
+  "addVehicle": {
+    "title": "Agregar vehículo",
+    "vehicleName": "Nombre del vehículo",
+    "enterVehicleName": "Introduce el nombre del vehículo",
+    "vehicleType": "Tipo de vehículo",
+    "selectType": "Seleccionar tipo de vehículo",
+    "car": "Coche",
+    "truck": "Camión",
+    "motorcycle": "Motocicleta",
+    "licensePlate": "Placa de matrícula",
+    "enterLicensePlate": "Introduce la placa de matrícula",
+    "addVehicle": "Agregar vehículo",
+    "error": "Error",
+    "fillAllFields": "Por favor, completa todos los campos",
+    "success": "Éxito",
+    "vehicleAdded": "Vehículo agregado exitosamente"
+  },
+  "settings": {
+    "title": "Configuraciones",
+    "appearance": "Apariencia",
+    "darkMode": "Modo oscuro",
+    "notifications": "Notificaciones",
+    "pushNotifications": "Notificaciones push",
+    "emailNotifications": "Notificaciones por correo electrónico",
+    "language": "Idioma",
+    "about": "Acerca de",
+    "version": "Versión",
+    "termsOfService": "Términos de servicio",
+    "privacyPolicy": "Política de privacidad"
+  },
+  "profile": {
+    "editProfile": "Editar perfil",
+    "invoices": "Facturas",
+    "notifications": "Notificaciones",
+    "language": "Idioma",
+    "support": "Soporte",
+    "settings": "Configuraciones",
+    "selectLanguage": "Seleccionar idioma",
+    "logout": "Cerrar sesión"
+  },
+  "editProfile": {
+    "name": "Nombre",
+    "email": "Correo electrónico",
+    "phone": "Teléfono",
+    "changePhoto": "Cambiar foto",
+    "save": "Guardar cambios",
+    "namePlaceholder": "Introduce tu nombre",
+    "emailPlaceholder": "Introduce tu correo electrónico",
+    "phonePlaceholder": "Introduce tu número de teléfono"
+  },
+  "invoices": {
+    "title": "Facturas",
+    "status": {
+      "paid": "Pagada",
+      "pending": "Pendiente",
+      "overdue": "Vencida"
+    }
+  },
+  "navigation": {
+    "home": "Inicio",
+    "fleet": "Flota",
+    "services": "Servicios",
+    "profile": "Perfil",
+    "editProfile": "Editar perfil",
+    "invoices": "Facturas",
+    "support": "Soporte",
+    "settings": "Configuraciones",
+    "addVehicle": "Agregar vehículo",
+    "vehicleDetail": "Detalles del vehículo",
+    "orderService": "Solicitar servicio",
+    "serviceHistory": "Historial de servicios"
+  },
+  "support": {
+    "title": "Atención al cliente",
+    "subtitle": "Estamos aquí para ayudar. Contáctanos a través de cualquiera de los siguientes métodos.",
+    "phone": "Teléfono",
+    "email": "Correo electrónico",
+    "whatsapp": "WhatsApp",
+    "address": "Dirección de la oficina",
+    "officeAddress": "123 Calle de la Flota, Casablanca, Marruecos",
+    "faqTitle": "Preguntas frecuentes",
+    "viewFaq": "Ver preguntas frecuentes"
+  }
+}

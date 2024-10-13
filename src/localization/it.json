@@ -1,0 +1,179 @@
+{
+  "common": {
+    "login": "Accedi",
+    "register": "Registrati",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Conferma Password",
+    "forgotPassword": "Hai dimenticato la password?",
+    "home": "Home",
+    "fleet": "Flotta",
+    "services": "Servizi",
+    "profile": "Profilo",
+    "save": "Salva",
+    "cancel": "Annulla",
+    "edit": "Modifica",
+    "delete": "Elimina",
+    "add": "Aggiungi",
+    "submit": "Invia",
+    "back": "Indietro",
+    "close": "Chiudi"
+  },
+  "auth": {
+    "login": "Accedi",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Accedi",
+    "rememberMe": "Ricordami",
+    "forgotPassword": "Hai dimenticato la password?",
+    "welcomeBack": "Bentornato!",
+    "loginToContinue": "Accedi per continuare",
+    "error": "Errore",
+    "allFieldsRequired": "Tutti i campi sono obbligatori"
+  },
+  "home": {
+    "welcome": "Bentornato!",
+    "quickService": "Servizio veloce",
+    "serviceHistory": "Storico dei servizi",
+    "myVehicles": "I miei veicoli",
+    "upcomingServices": "Servizi in arrivo",
+    "viewAllServices": "Visualizza tutti i servizi"
+  },
+  "fleet": {
+    "title": "La mia flotta",
+    "addVehicle": "Aggiungi veicolo",
+    "editVehicle": "Modifica veicolo",
+    "removeVehicle": "Rimuovi veicolo",
+    "vehicleName": "Nome veicolo",
+    "vehicleType": "Tipo di veicolo",
+    "licensePlate": "Targa"
+  },
+  "vehicleDetail": {
+    "details": "Dettagli veicolo",
+    "year": "Anno",
+    "make": "Marca",
+    "model": "Modello",
+    "mileage": "Chilometraggio",
+    "fuelType": "Tipo di carburante",
+    "transmission": "Trasmissione",
+    "vin": "VIN",
+    "orderService": "Richiedi servizio",
+    "serviceHistory": "Storico dei servizi"
+  },
+  "services": {
+    "title": "I nostri servizi",
+    "orderService": "Richiedi servizio",
+    "scheduleAppointment": "Prenota appuntamento",
+    "trackOrder": "Traccia ordine",
+    "serviceType": "Tipo di servizio",
+    "serviceDate": "Data del servizio",
+    "serviceTime": "Ora del servizio",
+    "selectDate": "Seleziona data",
+    "selectTime": "Seleziona ora",
+    "selectVehicle": "Seleziona veicolo",
+    "orderDetails": "Dettagli ordine",
+    "confirmOrder": "Conferma ordine",
+    "maintenance": "Manutenzione",
+    "repair": "Riparazione",
+    "comfort": "Comfort",
+    "diagnostics": "Diagnostica"
+  },
+  "serviceHistory": {
+    "title": "Storico dei servizi",
+    "filterBy": "Filtra per",
+    "sortBy": "Ordina per",
+    "all": "Tutti",
+    "sortByDate": "Data",
+    "sortByCost": "Costo",
+    "export": "Esporta storico"
+  },
+  "serviceStatus": {
+    "completed": "Completato",
+    "scheduled": "Programmato",
+    "in-progress": "In corso",
+    "cancelled": "Annullato"
+  },
+  "addVehicle": {
+    "title": "Aggiungi veicolo",
+    "vehicleName": "Nome veicolo",
+    "enterVehicleName": "Inserisci il nome del veicolo",
+    "vehicleType": "Tipo di veicolo",
+    "selectType": "Seleziona tipo di veicolo",
+    "car": "Auto",
+    "truck": "Camion",
+    "motorcycle": "Motocicletta",
+    "licensePlate": "Targa",
+    "enterLicensePlate": "Inserisci la targa",
+    "addVehicle": "Aggiungi veicolo",
+    "error": "Errore",
+    "fillAllFields": "Si prega di compilare tutti i campi",
+    "success": "Successo",
+    "vehicleAdded": "Veicolo aggiunto con successo"
+  },
+  "settings": {
+    "title": "Impostazioni",
+    "appearance": "Aspetto",
+    "darkMode": "Modalità scura",
+    "notifications": "Notifiche",
+    "pushNotifications": "Notifiche push",
+    "emailNotifications": "Notifiche email",
+    "language": "Lingua",
+    "about": "Informazioni",
+    "version": "Versione",
+    "termsOfService": "Termini di servizio",
+    "privacyPolicy": "Informativa sulla privacy"
+  },
+  "profile": {
+    "editProfile": "Modifica profilo",
+    "invoices": "Fatture",
+    "notifications": "Notifiche",
+    "language": "Lingua",
+    "support": "Supporto",
+    "settings": "Impostazioni",
+    "selectLanguage": "Seleziona lingua",
+    "logout": "Disconnetti"
+  },
+  "editProfile": {
+    "name": "Nome",
+    "email": "Email",
+    "phone": "Telefono",
+    "changePhoto": "Cambia foto",
+    "save": "Salva modifiche",
+    "namePlaceholder": "Inserisci il tuo nome",
+    "emailPlaceholder": "Inserisci la tua email",
+    "phonePlaceholder": "Inserisci il tuo numero di telefono"
+  },
+  "invoices": {
+    "title": "Fatture",
+    "status": {
+      "paid": "Pagata",
+      "pending": "In attesa",
+      "overdue": "Scaduta"
+    }
+  },
+  "navigation": {
+    "home": "Home",
+    "fleet": "Flotta",
+    "services": "Servizi",
+    "profile": "Profilo",
+    "editProfile": "Modifica profilo",
+    "invoices": "Fatture",
+    "support": "Supporto",
+    "settings": "Impostazioni",
+    "addVehicle": "Aggiungi veicolo",
+    "vehicleDetail": "Dettagli veicolo",
+    "orderService": "Richiedi servizio",
+    "serviceHistory": "Storico dei servizi"
+  },
+  "support": {
+    "title": "Assistenza clienti",
+    "subtitle": "Siamo qui per aiutarti. Contattaci attraverso uno dei seguenti metodi.",
+    "phone": "Telefono",
+    "email": "Email",
+    "whatsapp": "WhatsApp",
+    "address": "Indirizzo dell'ufficio",
+    "officeAddress": "123 Via della Flotta, Casablanca, Marocco",
+    "faqTitle": "Domande frequenti",
+    "viewFaq": "Visualizza domande frequenti"
+  }
+}

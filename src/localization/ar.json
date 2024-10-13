@@ -1,0 +1,179 @@
+{
+  "common": {
+    "login": "تسجيل الدخول",
+    "register": "التسجيل",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "confirmPassword": "تأكيد كلمة المرور",
+    "forgotPassword": "نسيت كلمة المرور؟",
+    "home": "الرئيسية",
+    "fleet": "الأسطول",
+    "services": "الخدمات",
+    "profile": "الملف الشخصي",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "edit": "تعديل",
+    "delete": "حذف",
+    "add": "إضافة",
+    "submit": "إرسال",
+    "back": "عودة",
+    "close": "إغلاق"
+  },
+  "auth": {
+    "login": "تسجيل الدخول",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "signIn": "تسجيل الدخول",
+    "rememberMe": "تذكرني",
+    "forgotPassword": "نسيت كلمة المرور؟",
+    "welcomeBack": "مرحبًا بعودتك!",
+    "loginToContinue": "تسجيل الدخول للمتابعة",
+    "error": "خطأ",
+    "allFieldsRequired": "جميع الحقول مطلوبة"
+  },
+  "home": {
+    "welcome": "مرحبًا بعودتك!",
+    "quickService": "خدمة سريعة",
+    "serviceHistory": "سجل الخدمات",
+    "myVehicles": "مركباتي",
+    "upcomingServices": "الخدمات القادمة",
+    "viewAllServices": "عرض جميع الخدمات"
+  },
+  "fleet": {
+    "title": "أسطولي",
+    "addVehicle": "إضافة مركبة",
+    "editVehicle": "تعديل المركبة",
+    "removeVehicle": "حذف المركبة",
+    "vehicleName": "اسم المركبة",
+    "vehicleType": "نوع المركبة",
+    "licensePlate": "لوحة التسجيل"
+  },
+  "vehicleDetail": {
+    "details": "تفاصيل المركبة",
+    "year": "السنة",
+    "make": "المصنع",
+    "model": "الطراز",
+    "mileage": "عدد الأميال",
+    "fuelType": "نوع الوقود",
+    "transmission": "ناقل الحركة",
+    "vin": "رقم تعريف المركبة",
+    "orderService": "طلب خدمة",
+    "serviceHistory": "سجل الخدمات"
+  },
+  "services": {
+    "title": "خدماتنا",
+    "orderService": "طلب خدمة",
+    "scheduleAppointment": "جدولة موعد",
+    "trackOrder": "تتبع الطلب",
+    "serviceType": "نوع الخدمة",
+    "serviceDate": "تاريخ الخدمة",
+    "serviceTime": "وقت الخدمة",
+    "selectDate": "اختر التاريخ",
+    "selectTime": "اختر الوقت",
+    "selectVehicle": "اختر المركبة",
+    "orderDetails": "تفاصيل الطلب",
+    "confirmOrder": "تأكيد الطلب",
+    "maintenance": "صيانة",
+    "repair": "إصلاح",
+    "comfort": "راحة",
+    "diagnostics": "تشخيصات"
+  },
+  "serviceHistory": {
+    "title": "سجل الخدمات",
+    "filterBy": "تصفية حسب",
+    "sortBy": "ترتيب حسب",
+    "all": "الكل",
+    "sortByDate": "التاريخ",
+    "sortByCost": "التكلفة",
+    "export": "تصدير السجل"
+  },
+  "serviceStatus": {
+    "completed": "مكتمل",
+    "scheduled": "مجدد",
+    "in-progress": "قيد التنفيذ",
+    "cancelled": "ملغى"
+  },
+  "addVehicle": {
+    "title": "إضافة مركبة",
+    "vehicleName": "اسم المركبة",
+    "enterVehicleName": "أدخل اسم المركبة",
+    "vehicleType": "نوع المركبة",
+    "selectType": "اختر نوع المركبة",
+    "car": "سيارة",
+    "truck": "شاحنة",
+    "motorcycle": "دراجة نارية",
+    "licensePlate": "لوحة التسجيل",
+    "enterLicensePlate": "أدخل لوحة التسجيل",
+    "addVehicle": "إضافة مركبة",
+    "error": "خطأ",
+    "fillAllFields": "يرجى ملء جميع الحقول",
+    "success": "نجاح",
+    "vehicleAdded": "تمت إضافة المركبة بنجاح"
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "appearance": "المظهر",
+    "darkMode": "الوضع المظلم",
+    "notifications": "الإشعارات",
+    "pushNotifications": "إشعارات الدفع",
+    "emailNotifications": "إشعارات البريد الإلكتروني",
+    "language": "اللغة",
+    "about": "حول",
+    "version": "الإصدار",
+    "termsOfService": "شروط الخدمة",
+    "privacyPolicy": "سياسة الخصوصية"
+  },
+  "profile": {
+    "editProfile": "تعديل الملف الشخصي",
+    "invoices": "الفواتير",
+    "notifications": "الإشعارات",
+    "language": "اللغة",
+    "support": "الدعم",
+    "settings": "الإعدادات",
+    "selectLanguage": "اختر اللغة",
+    "logout": "تسجيل الخروج"
+  },
+  "editProfile": {
+    "name": "الاسم",
+    "email": "البريد الإلكتروني",
+    "phone": "الهاتف",
+    "changePhoto": "تغيير الصورة",
+    "save": "حفظ التغييرات",
+    "namePlaceholder": "أدخل اسمك",
+    "emailPlaceholder": "أدخل بريدك الإلكتروني",
+    "phonePlaceholder": "أدخل رقم هاتفك"
+  },
+  "invoices": {
+    "title": "الفواتير",
+    "status": {
+      "paid": "مدفوع",
+      "pending": "معلق",
+      "overdue": "متأخر"
+    }
+  },
+  "navigation": {
+    "home": "الرئيسية",
+    "fleet": "الأسطول",
+    "services": "الخدمات",
+    "profile": "الملف الشخصي",
+    "editProfile": "تعديل الملف الشخصي",
+    "invoices": "الفواتير",
+    "support": "الدعم",
+    "settings": "الإعدادات",
+    "addVehicle": "إضافة مركبة",
+    "vehicleDetail": "تفاصيل المركبة",
+    "orderService": "طلب خدمة",
+    "serviceHistory": "سجل الخدمات"
+  },
+  "support": {
+    "title": "دعم العملاء",
+    "subtitle": "نحن هنا للمساعدة. اتصل بنا عبر أي من الطرق التالية.",
+    "phone": "الهاتف",
+    "email": "البريد الإلكتروني",
+    "whatsapp": "واتساب",
+    "address": "عنوان المكتب",
+    "officeAddress": "123 شارع الأسطول، الدار البيضاء، المغرب",
+    "faqTitle": "الأسئلة الشائعة",
+    "viewFaq": "عرض الأسئلة الشائعة"
+  }
+}
