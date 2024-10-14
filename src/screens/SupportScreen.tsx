@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: theme.spacing.xl,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: theme.colors.secondary,
   },
   title: {
     fontSize: theme.typography.sizes.xl,
@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: theme.spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: theme.colors.secondary,
   },
   iconContainer: {
     width: 40,

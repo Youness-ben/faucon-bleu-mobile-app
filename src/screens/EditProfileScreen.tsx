@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.md,
     color: theme.colors.text,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: theme.colors.secondary,
     paddingVertical: theme.spacing.sm,
   },
   saveButton: {

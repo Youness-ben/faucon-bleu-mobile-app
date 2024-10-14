@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -19,23 +18,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
 
 type RootStackParamList = {
-  Home: undefined;
-  ConductorLogin: undefined;
+  ConductorHome: undefined;
 };
 
-type LoginScreenNavigationProp = StackNavigationProp<RootStackParamList>;
+type ConductorLoginScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
-const LoginScreen: React.FC = () => {
+const ConductorLoginScreen: React.FC = () => {
   const { t } = useTranslation();
-  const navigation = useNavigation<LoginScreenNavigationProp>();
-  const [email, setEmail] = useState('');
+  const navigation = useNavigation<ConductorLoginScreenNavigationProp>();
+  const [plateNumber, setPlateNumber] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!email || !password) {
+    if (!plateNumber || !password) {
       Alert.alert(t('auth.error'), t('auth.allFieldsRequired'));
       return;
     }
@@ -45,16 +42,11 @@ const LoginScreen: React.FC = () => {
     setTimeout(() => {
       setIsLoading(false);
       // Here you would typically check the response and navigate on success
-      navigation.navigate('Home');
+      navigation.navigate('ConductorHome');
     }, 2000);
   };
 
   const toggleShowPassword = () => setShowPassword(!showPassword);
-  const toggleRememberMe = () => setRememberMe(!rememberMe);
-
-  const navigateToConductorLogin = () => {
-    navigation.navigate('ConductorLogin');
-  };
 
   return (
     <KeyboardAvoidingView
@@ -62,25 +54,17 @@ const LoginScreen: React.FC = () => {
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.logoContainer}>
-          <Image
-            source={require('../../assets/logo.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-        </View>
-        <Text style={styles.title}>{t('auth.welcomeBack')}</Text>
-        <Text style={styles.subtitle}>{t('auth.loginToContinue')}</Text>
+        <Text style={styles.title}>{t('auth.conductorLogin')}</Text>
+        <Text style={styles.subtitle}>{t('auth.enterVehicleDetails')}</Text>
         
         <View style={styles.inputContainer}>
-          <Ionicons name="mail-outline" size={24} color={theme.colors.textSecondary} style={styles.inputIcon} />
+          <Ionicons name="car-outline" size={24} color={theme.colors.textSecondary} style={styles.inputIcon} />
           <TextInput
             style={styles.input}
-            placeholder={t('auth.email')}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
+            placeholder={t('auth.plateNumber')}
+            value={plateNumber}
+            onChangeText={setPlateNumber}
+            autoCapitalize="characters"
           />
         </View>
         
@@ -98,20 +82,6 @@ const LoginScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.optionsContainer}>
-          <TouchableOpacity style={styles.rememberMeContainer} onPress={toggleRememberMe}>
-            <Ionicons 
-              name={rememberMe ? "checkbox-outline" : "square-outline"} 
-              size={24} 
-              color={theme.colors.primary} 
-            />
-            <Text style={styles.rememberMeText}>{t('auth.rememberMe')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity>
-            <Text style={styles.forgotPasswordText}>{t('auth.forgotPassword')}</Text>
-          </TouchableOpacity>
-        </View>
-
         <TouchableOpacity 
           style={[styles.button, isLoading && styles.buttonDisabled]} 
           onPress={handleLogin}
@@ -122,13 +92,6 @@ const LoginScreen: React.FC = () => {
           ) : (
             <Text style={styles.buttonText}>{t('auth.signIn')}</Text>
           )}
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.conductorButton} 
-          onPress={navigateToConductorLogin}
-        >
-          <Text style={styles.conductorButtonText}>{t('auth.conductorLogin')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -144,14 +107,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     padding: theme.spacing.lg,
-  },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: theme.spacing.xl,
-  },
-  logo: {
-    width: 120,
-    height: 120,
   },
   title: {
     fontSize: theme.typography.sizes.xl,
@@ -185,25 +140,6 @@ const styles = StyleSheet.create({
   eyeIcon: {
     padding: theme.spacing.sm,
   },
-  optionsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: theme.spacing.lg,
-  },
-  rememberMeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  rememberMeText: {
-    marginLeft: theme.spacing.xs,
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.textSecondary,
-  },
-  forgotPasswordText: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.primary,
-  },
   button: {
     backgroundColor: theme.colors.primary,
     borderRadius: theme.roundness,
@@ -218,18 +154,6 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.fontWeights.bold,
   },
-  conductorButton: {
-    marginTop: theme.spacing.md,
-    backgroundColor: theme.colors.secondary,
-    borderRadius: theme.roundness,
-    padding: theme.spacing.md,
-    alignItems: 'center',
-  },
-  conductorButtonText: {
-    color: theme.colors.buttonText,
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.fontWeights.bold,
-  },
 });
 
-export default LoginScreen;
+export default ConductorLoginScreen;

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
+import { useNavigation } from '@react-navigation/native';
 
 interface ServiceRecord {
   id: string;
@@ -26,8 +27,11 @@ const dummyServiceRecords: ServiceRecord[] = [
 
 const ServiceHistoryScreen: React.FC = () => {
   const { t } = useTranslation();
+  const navigation = useNavigation();
   const [filter, setFilter] = useState('all');
   const [sortBy, setSortBy] = useState('date');
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [showSortModal, setShowSortModal] = useState(false);
 
   const filteredAndSortedRecords = dummyServiceRecords
     .filter(record => filter === 'all' || record.status === filter)
@@ -62,17 +66,78 @@ const ServiceHistoryScreen: React.FC = () => {
   };
 
   const renderServiceItem = ({ item }: { item: ServiceRecord }) => (
-    <View style={styles.serviceItem}>
+    <TouchableOpacity
+      style={styles.serviceItem}
+      onPress={() => navigation.navigate('TicketScreen', { serviceId: item.id })}
+    >
       <Text style={styles.serviceType}>{item.serviceType}</Text>
       <Text style={styles.vehicleName}>{item.vehicleName}</Text>
       <Text style={styles.serviceDate}>{formatDate(item.date)}</Text>
       <View style={styles.serviceDetails}>
         <Text style={[styles.serviceStatus, { color: getStatusColor(item.status) }]}>
-          {t(`serviceStatus.${item.status}`)}
+          {t(`serviceStatusnm,m,mm,${item.status}`)}
         </Text>
         <Text style={styles.serviceCost}>${item.cost.toFixed(2)}</Text>
       </View>
-    </View>
+    </TouchableOpacity>
+  );
+
+  const FilterModal = () => (
+    <Modal
+      visible={showFilterModal}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={() => setShowFilterModal(false)}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>{t('serviceHistory.filterBy')}</Text>
+          {['all', 'completed', 'scheduled', 'in-progress', 'cancelled'].map((status) => (
+            <TouchableOpacity
+              key={status}
+              style={[styles.modalOption, filter === status && styles.selectedOption]}
+              onPress={() => {
+                setFilter(status);
+                setShowFilterModal(false);
+              }}
+            >
+              <Text style={[styles.modalOptionText, filter === status && styles.selectedOptionText]}>
+                {t(`serviceStatus.${status}`)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const SortModal = () => (
+    <Modal
+      visible={showSortModal}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={() => setShowSortModal(false)}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>{t('serviceHistory.sortBy')}</Text>
+          {['date', 'cost'].map((sort) => (
+            <TouchableOpacity
+              key={sort}
+              style={[styles.modalOption, sortBy === sort && styles.selectedOption]}
+              onPress={() => {
+                setSortBy(sort);
+                setShowSortModal(false);
+              }}
+            >
+              <Text style={[styles.modalOptionText, sortBy === sort && styles.selectedOptionText]}>
+                {t(`serviceHistory.sortBy${sort.charAt(0).toUpperCase() + sort.slice(1)}`)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    </Modal>
   );
 
   return (
@@ -82,10 +147,7 @@ const ServiceHistoryScreen: React.FC = () => {
       <View style={styles.filtersContainer}>
         <TouchableOpacity
           style={styles.filterButton}
-          onPress={() => {
-            // Open a modal or dropdown for filter selection
-            console.log('Open filter selection');
-          }}
+          onPress={() => setShowFilterModal(true)}
         >
           <Text style={styles.filterButtonText}>{t('serviceHistory.filterBy')}: {t(`serviceStatus.${filter}`)}</Text>
           <Ionicons name="chevron-down" size={20} color={theme.colors.primary} />
@@ -93,10 +155,7 @@ const ServiceHistoryScreen: React.FC = () => {
 
         <TouchableOpacity
           style={styles.filterButton}
-          onPress={() => {
-            // Open a modal or dropdown for sort selection
-            console.log('Open sort selection');
-          }}
+          onPress={() => setShowSortModal(true)}
         >
           <Text style={styles.filterButtonText}>{t('serviceHistory.sortBy')}: {t(`serviceHistory.sortBy${sortBy.charAt(0).toUpperCase() + sortBy.slice(1)}`)}</Text>
           <Ionicons name="chevron-down" size={20} color={theme.colors.primary} />
@@ -117,6 +176,9 @@ const ServiceHistoryScreen: React.FC = () => {
         <Ionicons name="download-outline" size={20} color="white" style={styles.buttonIcon} />
         <Text style={styles.exportButtonText}>{t('serviceHistory.export')}</Text>
       </TouchableOpacity>
+
+      <FilterModal />
+      <SortModal />
     </View>
   );
 };
@@ -205,6 +267,39 @@ const styles = StyleSheet.create({
   },
   buttonIcon: {
     marginRight: theme.spacing.sm,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: theme.colors.surface,
+    borderTopLeftRadius: theme.roundness,
+    borderTopRightRadius: theme.roundness,
+    padding: theme.spacing.lg,
+  },
+  modalTitle: {
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.fontWeights.bold,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.md,
+  },
+  modalOption: {
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  selectedOption: {
+    backgroundColor: theme.colors.primaryLight,
+  },
+  modalOptionText: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text,
+  },
+  selectedOptionText: {
+    color: theme.colors.primary,
+    fontWeight: theme.typography.fontWeights.bold,
   },
 });
 

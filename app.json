@@ -12,20 +12,53 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to allow you to share images in the chat.",
+        "NSCameraUsageDescription": "This app needs access to your camera to allow you to take photos and share them in the chat.",
+        "NSMicrophoneUsageDescription": "This app needs access to your microphone to allow you to record audio messages in the chat.",
+        "NSLocationWhenInUseUsageDescription": "This app needs access to your location to allow you to share your current location in the chat."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "ma.fauconbleu.services"
+      "package": "ma.fauconbleu.services",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "RECORD_AUDIO",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you share them in the chat.",
+          "cameraPermission": "The app accesses your camera to let you take photos and share them in the chat."
+        }
+      ],
+      [
+        "expo-document-picker",
+        {
+          "iCloudContainerEnvironment": "Production"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location."
+        }
+      ]
     ],
     "extra": {
       "eas": {

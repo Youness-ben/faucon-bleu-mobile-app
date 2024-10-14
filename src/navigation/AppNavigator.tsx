@@ -19,6 +19,10 @@ import InvoicesScreen from '../screens/InvoicesScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import SupportScreen from '../screens/SupportScreen';
+import ChatScreen from '../screens/ChatScreen';
+import TicketScreen from '../screens/TicketScreen';
+import ConductorHomeScreen from '../screens/ConductorHomeScreen';
+import ConductorLoginScreen from '../screens/ConductorLoginScreen';
 
 type RootStackParamList = {
   Login: undefined;
@@ -90,6 +94,9 @@ const AppNavigator: React.FC = () => {
         <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Edit profile' }} />
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
         <Stack.Screen name="Support" component={SupportScreen} options={{ title: 'Support' }} />
+        <Stack.Screen name="TicketScreen" component={TicketScreen} options={{ title: 'Service Chat' }} />
+        <Stack.Screen name="ConductorHome" component={ConductorHomeScreen} options={{ title: 'Service Chat' }} />
+        <Stack.Screen name="ConductorLogin" component={ConductorLoginScreen} options={{ title: 'Service Chat' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

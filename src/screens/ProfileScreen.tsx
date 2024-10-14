@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Switch, ScrollView, Image, Modal } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Switch, ScrollView, Image, Modal, Animated, Easing } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../styles/theme';
 
 type RootStackParamList = {
@@ -15,11 +16,21 @@ type RootStackParamList = {
 
 type ProfileScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
-const ProfileScreen: React.FC = () => {
+export default function Component() {
   const { t, i18n } = useTranslation();
   const navigation = useNavigation<ProfileScreenNavigationProp>();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 1000,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   const toggleNotifications = () => setNotificationsEnabled(previousState => !previousState);
 
@@ -28,131 +39,110 @@ const ProfileScreen: React.FC = () => {
     setShowLanguageModal(false);
   };
 
-  return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Image
-          source={{ uri: 'https://api.dabablane.icamob.ma/faucon-demo/hydro.png' }}
-          style={styles.avatar}
-        />
-        <Text style={styles.name}>Youssef Tougani</Text>
-        <Text style={styles.email}>youssef.touga@hydromac.ma</Text>
+  const OptionItem = ({ icon, text, onPress, rightElement }: { icon: string; text: string; onPress?: () => void; rightElement?: React.ReactNode }) => (
+    <TouchableOpacity style={styles.option} onPress={onPress}>
+      <View style={styles.optionIconContainer}>
+        <Ionicons name={icon as any} size={24} color={theme.colors.surface} />
       </View>
+      <Text style={styles.optionText}>{text}</Text>
+      {rightElement || <Ionicons name="chevron-forward" size={24} color={theme.colors.textSecondary} />}
+    </TouchableOpacity>
+  );
 
-      <View style={styles.section}>
-        <TouchableOpacity
-          style={styles.option}
-          onPress={() => navigation.navigate('EditProfile')}
-        >
-          <Ionicons name="person-outline" size={24} color={theme.colors.primary} />
-          <Text style={styles.optionText}>{t('profile.editProfile')}</Text>
-          <Ionicons name="chevron-forward" size={24} color={theme.colors.textSecondary} />
-        </TouchableOpacity>
+  return (
+    <SafeAreaView style={styles.container}>
+      <ScrollView>
+        <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
+          <Image
+            source={{ uri: 'https://api.dabablane.icamob.ma/faucon-demo/hydro.png' }}
+            style={styles.avatar}
+          />
+          <Text style={styles.name}>Youssef Tougani</Text>
+          <Text style={styles.email}>youssef.touga@hydromac.ma</Text>
+        </Animated.View>
 
-        <TouchableOpacity
-          style={styles.option}
-          onPress={() => navigation.navigate('Invoices')}
-        >
-          <Ionicons name="document-text-outline" size={24} color={theme.colors.primary} />
-          <Text style={styles.optionText}>{t('profile.invoices')}</Text>
-          <Ionicons name="chevron-forward" size={24} color={theme.colors.textSecondary} />
-        </TouchableOpacity>
-
-        <View style={styles.option}>
-          <Ionicons name="notifications-outline" size={24} color={theme.colors.primary} />
-          <Text style={styles.optionText}>{t('profile.notifications')}</Text>
-          <Switch
-            trackColor={{ false: theme.colors.textSecondary, true: theme.colors.primary }}
-            thumbColor={notificationsEnabled ? theme.colors.background : theme.colors.textSecondary}
-            onValueChange={toggleNotifications}
-            value={notificationsEnabled}
+        <View style={styles.section}>
+          <OptionItem
+            icon="person-outline"
+            text={t('profile.editProfile')}
+            onPress={() => navigation.navigate('EditProfile')}
+          />
+          <OptionItem
+            icon="document-text-outline"
+            text={t('profile.invoices')}
+            onPress={() => navigation.navigate('Invoices')}
+          />
+          <OptionItem
+            icon="notifications-outline"
+            text={t('profile.notifications')}
+            rightElement={
+              <Switch
+                trackColor={{ false: theme.colors.disabled, true: theme.colors.primary }}
+                thumbColor={notificationsEnabled ? theme.colors.surface : theme.colors.secondary}
+                onValueChange={toggleNotifications}
+                value={notificationsEnabled}
+              />
+            }
+          />
+          <OptionItem
+            icon="language-outline"
+            text={t('profile.language')}
+            onPress={() => setShowLanguageModal(true)}
+            rightElement={
+              <Text style={styles.languageValue}>
+                {i18n.language === 'en' ? 'English' : i18n.language === 'fr' ? 'Français' : i18n.language === 'es' ? 'Español' : i18n.language === 'it' ? 'Italiano' : 'العربية'}
+              </Text>
+            }
+          />
+          <OptionItem
+            icon="help-circle-outline"
+            text={t('profile.support')}
+            onPress={() => navigation.navigate('Support')}
+          />
+          <OptionItem
+            icon="settings-outline"
+            text={t('profile.settings')}
+            onPress={() => navigation.navigate('Settings')}
           />
         </View>
 
-        <TouchableOpacity
-          style={styles.option}
-          onPress={() => setShowLanguageModal(true)}
-        >
-          <Ionicons name="language-outline" size={24} color={theme.colors.primary} />
-          <Text style={styles.optionText}>{t('profile.language')}</Text>
-  
-          <Text style={styles.languageValue}> {i18n.language === 'en' ? 'English' :  i18n.language === 'fr' ? 'Français' :   i18n.language === 'es' ? 'Español' :  i18n.language === 'it' ? 'Italiano' : 'العربية'}</Text>
+        <TouchableOpacity style={styles.logoutButton}>
+          <Text style={styles.logoutButtonText}>{t('profile.logout')}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.option}
-          onPress={() => navigation.navigate('Support')}
+        <Modal
+          visible={showLanguageModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowLanguageModal(false)}
         >
-          <Ionicons name="help-circle-outline" size={24} color={theme.colors.primary} />
-          <Text style={styles.optionText}>{t('profile.support')}</Text>
-          <Ionicons name="chevron-forward" size={24} color={theme.colors.textSecondary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.option}
-          onPress={() => navigation.navigate('Settings')}
-        >
-          <Ionicons name="settings-outline" size={24} color={theme.colors.primary} />
-          <Text style={styles.optionText}>{t('profile.settings')}</Text>
-          <Ionicons name="chevron-forward" size={24} color={theme.colors.textSecondary} />
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity style={styles.logoutButton}>
-        <Text style={styles.logoutButtonText}>{t('profile.logout')}</Text>
-      </TouchableOpacity>
-
-      <Modal
-        visible={showLanguageModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowLanguageModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>{t('profile.selectLanguage')}</Text>
-            <TouchableOpacity
-              style={styles.languageOption}
-              onPress={() => changeLanguage('en')}
-            >
-              <Text style={styles.languageOptionText}>English</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.languageOption}
-              onPress={() => changeLanguage('ar')}
-            >
-              <Text style={styles.languageOptionText}>العربية</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.languageOption}
-              onPress={() => changeLanguage('fr')}
-            >
-              <Text style={styles.languageOptionText}>Français</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.languageOption}
-              onPress={() => changeLanguage('it')}
-            >
-              <Text style={styles.languageOptionText}>Italiano</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.languageOption}
-              onPress={() => changeLanguage('es')}
-            >
-              <Text style={styles.languageOptionText}>Español</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setShowLanguageModal(false)}
-            >
-              <Text style={styles.closeButtonText}>{t('common.close')}</Text>
-            </TouchableOpacity>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>{t('profile.selectLanguage')}</Text>
+              {['en', 'ar', 'fr', 'it', 'es'].map((lang) => (
+                <TouchableOpacity
+                  key={lang}
+                  style={styles.languageOption}
+                  onPress={() => changeLanguage(lang)}
+                >
+                  <Text style={styles.languageOptionText}>
+                    {lang === 'en' ? 'English' : lang === 'ar' ? 'العربية' : lang === 'fr' ? 'Français' : lang === 'it' ? 'Italiano' : 'Español'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowLanguageModal(false)}
+              >
+                <Text style={styles.closeButtonText}>{t('common.close')}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </Modal>
-    </ScrollView>
+        </Modal>
+      </ScrollView>
+    </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -161,28 +151,41 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    padding: theme.spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    backgroundColor: theme.colors.primary,
+    paddingVertical: theme.spacing.xl,
+    borderBottomLeftRadius: theme.roundness,
+    borderBottomRightRadius: theme.roundness,
   },
   avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 4,
+    borderColor: theme.colors.surface,
+    backgroundColor: theme.colors.surface,
     marginBottom: theme.spacing.md,
   },
   name: {
     fontSize: theme.typography.sizes.xl,
     fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.text,
+    color: theme.colors.surface,
     marginBottom: theme.spacing.xs,
   },
   email: {
     fontSize: theme.typography.sizes.md,
-    color: theme.colors.textSecondary,
+    color: theme.colors.surface,
+    opacity: 0.8,
   },
   section: {
     marginTop: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.roundness,
+    marginHorizontal: theme.spacing.md,
+    shadowColor: theme.colors.text,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: theme.elevation.medium,
   },
   option: {
     flexDirection: 'row',
@@ -190,11 +193,19 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.md,
     paddingHorizontal: theme.spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: theme.colors.secondary,
+  },
+  optionIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: theme.spacing.md,
   },
   optionText: {
     flex: 1,
-    marginLeft: theme.spacing.md,
     fontSize: theme.typography.sizes.md,
     color: theme.colors.text,
   },
@@ -211,18 +222,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoutButtonText: {
-    color: theme.colors.background,
+    color: theme.colors.surface,
     fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.fontWeights.bold,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: theme.colors.backdrop,
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.surface,
     borderRadius: theme.roundness,
     padding: theme.spacing.lg,
     width: '80%',
@@ -236,7 +247,7 @@ const styles = StyleSheet.create({
   languageOption: {
     paddingVertical: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: theme.colors.secondary,
   },
   languageOptionText: {
     fontSize: theme.typography.sizes.md,
@@ -252,5 +263,3 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeights.bold,
   },
 });
-
-export default ProfileScreen;
