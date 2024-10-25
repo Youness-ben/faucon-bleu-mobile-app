@@ -17,6 +17,8 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from '../api';
 
 type RootStackParamList = {
   Home: undefined;
@@ -41,12 +43,20 @@ const LoginScreen: React.FC = () => {
     }
 
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const response = await api.post('/api/login/client', { email, password });
+      const { token, user } = response.data;
+      
+      await AsyncStorage.setItem('userToken', token);
+      await AsyncStorage.setItem('userType', 'client');
+      navigation.navigate('Main');
+    } catch (error) {
+    console.log(error.toJSON());
+
+      Alert.alert(t('auth.error'), t('auth.invalidCredentials'));
+    } finally {
       setIsLoading(false);
-      // Here you would typically check the response and navigate on success
-      navigation.navigate('Home');
-    }, 2000);
+    }
   };
 
   const toggleShowPassword = () => setShowPassword(!showPassword);

@@ -15,6 +15,8 @@ import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from '../api';
 import { theme } from '../styles/theme';
 
 type RootStackParamList = {
@@ -38,12 +40,21 @@ const ConductorLoginScreen: React.FC = () => {
     }
 
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      // Here you would typically check the response and navigate on success
+    try {
+      const response = await api.post('/api/login/vehicle', { license_plate: plateNumber, password });
+      const { token, vehicle } = response.data;
+      
+      // Store the token and user type
+      await AsyncStorage.setItem('userToken', token);
+      await AsyncStorage.setItem('userType', 'vehicle');
+      
+      // Navigate to the conductor home screen
       navigation.navigate('ConductorHome');
-    }, 2000);
+    } catch (error) {
+      Alert.alert(t('auth.error'), t('auth.invalidCredentials'));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const toggleShowPassword = () => setShowPassword(!showPassword);
