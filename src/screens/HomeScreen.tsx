@@ -1,101 +1,156 @@
-import React, { useState, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Dimensions, ListRenderItem } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Dimensions, ListRenderItem, Animated } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
 import VehicleItem from '../components/VehicleItem';
-
+import api from '../api';
+import { STORAGE_URL } from '../../config';
 type RootStackParamList = {
   ServiceHistory: undefined;
-  VehicleDetail: { vehicleId: string };
+  VehicleDetail: { vehicleId: number };
   OrderService: { serviceType: string };
 };
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
 interface Service {
-  id: string;
-  type: string;
-  date: string;
+  id: number;
+  service_type: string;
+  scheduled_date: string;
   status: string;
 }
 
-interface AdBanner {
-  id: string;
-  imageUrl: string;
+interface Banner {
+  id: number;
+  image_path: string;
   title: string;
+  description: string;
 }
 
 interface Vehicle {
-  id: string;
-  name: string;
-  licensePlate: string;
-  lastService: string;
+  id: number;
+  brand_name: string;
+  model: string;
+  plate_number: string;
+  last_service_date: string;
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+const Placeholder: React.FC<{ style: any }> = ({ style }) => {
+  const opacity = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+  }, [opacity]);
+
+  return <Animated.View style={[style, { opacity, backgroundColor: theme.colors.secondary }]} />;
+};
+
+const ErrorView: React.FC<{ onRetry: () => void }> = ({ onRetry }) => {
+  const { t } = useTranslation();
+
+  return (
+    <View style={styles.errorContainer}>
+      <Image
+        source={{ uri: require('../../assets/error.svg') }}
+        style={styles.errorIllustration}
+      />
+      <Text style={styles.errorTitle}>{t('error.title')}</Text>
+      <Text style={styles.errorText}>{t('error.fetchFailed')}</Text>
+      <TouchableOpacity style={styles.retryButton} onPress={onRetry}>
+        <Ionicons name="refresh-outline" size={24} color="white" style={styles.retryIcon} />
+        <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
 
 const HomeScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const [activeSlide, setActiveSlide] = useState(0);
+  const [services, setServices] = useState<Service[]>([]);
+  const [banners, setBanners] = useState<Banner[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const storageUrl = process.env.REACT_APP_STORAGE_URL;
 
-  const dummyServices: Service[] = [
-    { id: '1', type: 'Oil Change', date: '2023-05-15', status: 'Completed' },
-    { id: '2', type: 'Tire Rotation', date: '2023-05-20', status: 'Scheduled' },
-    { id: '3', type: 'Brake Inspection', date: '2023-05-25', status: 'In Progress' },
-  ];
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [servicesResponse, bannersResponse, vehiclesResponse] = await Promise.all([
+        api.get('/client/services'),
+        api.get('/client/banners'),
+        api.get('/client/home-vehicles')
+      ]);
+      setServices(servicesResponse.data);
+      setBanners(bannersResponse.data);
+      setVehicles(vehiclesResponse.data);
+      console.log(`${STORAGE_URL}/${bannersResponse.data[0].image_path}`)
+      
+    } catch (err) {
+      console.log(err);
+      setError('Failed to fetch data');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
-  const dummyAdBanners: AdBanner[] = [
-    { id: '1', imageUrl: 'https://api.dabablane.icamob.ma/faucon-demo/banner1.jpeg', title: 'Summer Service Special' },
-    { id: '2', imageUrl: 'https://api.dabablane.icamob.ma/faucon-demo/banner2.jpeg', title: 'New Tire Promotion' },
-    { id: '3', imageUrl: 'https://api.dabablane.icamob.ma/faucon-demo/banner3.jpeg', title: 'Free Battery Check' },
-  ];
 
-  const dummyVehicles: Vehicle[] = [
-    { id: '1', name: 'Toyota Camry', licensePlate: 'ABC 123', lastService: '2023-04-10' },
-    { id: '2', name: 'Honda Civic', licensePlate: 'XYZ 789', lastService: '2023-03-22' },
-    { id: '3', name: 'Ford F-150', licensePlate: 'DEF 456', lastService: '2023-05-05' },
-  ];
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Completed':
+      case 'completed':
         return theme.colors.success;
-      case 'Scheduled':
+      case 'scheduled':
         return theme.colors.warning;
-      case 'In Progress':
+      case 'in_progress':
         return theme.colors.info;
       default:
         return theme.colors.text;
     }
   };
-
   const renderAdBanner = useCallback(() => (
     <View style={styles.carouselContainer}>
-      <FlatList
-        data={dummyAdBanners}
-        renderItem={({ item }) => (
-          <View style={styles.adBannerItem}>
-            <Image source={{ uri: item.imageUrl }} style={styles.adBannerImage} />
-          </View>
-        )}
-        keyExtractor={(item) => item.id}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={(event) => {
-          const slideSize = event.nativeEvent.layoutMeasurement.width;
-          const index = event.nativeEvent.contentOffset.x / slideSize;
-          const roundIndex = Math.round(index);
-          setActiveSlide(roundIndex);
-        }}
-        scrollEventThrottle={200}
-      />
+      {isLoading ? (
+        <Placeholder style={{ width: SCREEN_WIDTH, height: 200 }} />
+      ) : (
+        <FlatList
+          data={banners}
+          renderItem={({ item }) => (
+            <View style={styles.adBannerItem}>
+            <Image source={{ uri: `${STORAGE_URL}/${item.image_path}` }} style={styles.adBannerImage} />
+            </View>
+          )}
+          keyExtractor={(item) => item.id.toString()}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={(event) => {
+            const slideSize = event.nativeEvent.layoutMeasurement.width;
+            const index = event.nativeEvent.contentOffset.x / slideSize;
+            const roundIndex = Math.round(index);
+            setActiveSlide(roundIndex);
+          }}
+          scrollEventThrottle={200}
+        />
+      )}
       <View style={styles.pagination}>
-        {dummyAdBanners.map((_, index) => (
+        {banners.map((_, index) => (
           <View
             key={index}
             style={[
@@ -106,7 +161,7 @@ const HomeScreen: React.FC = () => {
         ))}
       </View>
     </View>
-  ), [activeSlide]);
+  ), [isLoading, banners, activeSlide]);
 
   const renderQuickActions = useCallback(() => (
     <View style={styles.quickActionsContainer}>
@@ -124,35 +179,46 @@ const HomeScreen: React.FC = () => {
   const renderVehicles = useCallback(() => (
     <View style={styles.sectionContainer}>
       <Text style={styles.sectionTitle}>{t('home.myVehicles')}</Text>
-      <FlatList
-        data={dummyVehicles}
-        renderItem={({ item }) => (
-          <VehicleItem
-            id={item.id}
-            name={item.name}
-            licensePlate={item.licensePlate}
-            lastService={item.lastService}
-          />
-        )}
-        keyExtractor={(item) => item.id}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.vehicleList}
-      />
+      {isLoading ? (
+        <View style={[styles.vehicleList, { flexDirection: 'row' }]}>
+          {[...Array(3)].map((_, index) => (
+            <Placeholder
+              key={index}
+              style={{ width: 150, height: 100, marginRight: 10, borderRadius: 8 }}
+            />
+          ))}
+        </View>
+      ) : (
+        <FlatList
+          data={vehicles}
+          renderItem={({ item }) => (
+            <VehicleItem
+              id={item.id}
+              name={`${item.brand_name} ${item.model}`}
+              licensePlate={item.plate_number}
+              lastService={item.last_service_date || t('home.no_service')}
+            />
+          )}
+          keyExtractor={(item) => item.id.toString()}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.vehicleList}
+        />
+      )}
     </View>
-  ), [t]);
+  ), [isLoading, vehicles, t]);
 
   const renderServiceItem: ListRenderItem<Service> = useCallback(({ item }) => (
     <TouchableOpacity 
       style={styles.serviceItem}
-      onPress={() => navigation.navigate('OrderService', { serviceType: item.type })}
+      onPress={() => navigation.navigate('OrderService', { serviceType: item.service_type })}
     >
       <View style={styles.serviceIcon}>
         <Ionicons name="construct-outline" size={24} color={theme.colors.primary} />
       </View>
       <View style={styles.serviceInfo}>
-        <Text style={styles.serviceType}>{item.type}</Text>
-        <Text style={styles.serviceDate}>{item.date}</Text>
+        <Text style={styles.serviceType}>{item.service_type}</Text>
+        <Text style={styles.serviceDate}>{item.scheduled_date}</Text>
       </View>
       <Text style={[styles.serviceStatus, { color: getStatusColor(item.status) }]}>{item.status}</Text>
     </TouchableOpacity>
@@ -161,20 +227,33 @@ const HomeScreen: React.FC = () => {
   const renderServices = useCallback(() => (
     <View style={styles.sectionContainer}>
       <Text style={styles.sectionTitle}>{t('home.upcomingServices')}</Text>
-      <FlatList
-        data={dummyServices}
-        renderItem={renderServiceItem}
-        keyExtractor={(item) => item.id}
-        scrollEnabled={false}
-      />
-      <TouchableOpacity
-        style={styles.viewAllButton}
-        onPress={() => navigation.navigate('ServiceHistory')}
-      >
-        <Text style={styles.viewAllButtonText}>{t('home.viewAllServices')}</Text>
-      </TouchableOpacity>
+      {isLoading ? (
+        <View>
+          {[...Array(3)].map((_, index) => (
+            <Placeholder
+              key={index}
+              style={{ height: 60, marginBottom: 10, borderRadius: 8 }}
+            />
+          ))}
+        </View>
+      ) : (
+        <>
+          <FlatList
+            data={services}
+            renderItem={renderServiceItem}
+            keyExtractor={(item) => item.id.toString()}
+            scrollEnabled={false}
+          />
+          <TouchableOpacity
+            style={styles.viewAllButton}
+            onPress={() => navigation.navigate('ServiceHistory')}
+          >
+            <Text style={styles.viewAllButtonText}>{t('home.viewAllServices')}</Text>
+          </TouchableOpacity>
+        </>
+      )}
     </View>
-  ), [t, navigation, renderServiceItem]);
+  ), [isLoading, services, t, navigation, renderServiceItem]);
 
   const renderItem: ListRenderItem<any> = useCallback(({ item }) => {
     switch (item.type) {
@@ -201,15 +280,22 @@ const HomeScreen: React.FC = () => {
     { id: 'services', type: 'services' },
   ];
 
+  if (error) {
+    return <ErrorView onRetry={fetchData} />;
+  }
+
   return (
     <FlatList
       data={data}
       renderItem={renderItem}
       keyExtractor={(item) => item.id}
       style={styles.container}
+      refreshing={isLoading}
+      onRefresh={fetchData}
     />
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
@@ -327,6 +413,71 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.fontWeights.bold,
   },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.lg,
+  },
+  errorText: {
+    fontSize: theme.typography.sizes.lg,
+    color: theme.colors.error,
+    textAlign: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  retryButton: {
+    backgroundColor: theme.colors.primary,
+    padding: theme.spacing.sm,
+    borderRadius: theme.roundness,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.fontWeights.bold,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.background,
+  },
+  errorIllustration: {
+    width: 200,
+    height: 200,
+    marginBottom: theme.spacing.lg,
+  },
+  errorTitle: {
+    fontSize: theme.typography.sizes.xl,
+    fontWeight: theme.typography.fontWeights.bold,
+    color: theme.colors.error,
+    marginBottom: theme.spacing.sm,
+    textAlign: 'center',
+  },
+  errorText: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: theme.spacing.lg,
+  },
+  retryButton: {
+    backgroundColor: theme.colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.roundness,
+  },
+  retryIcon: {
+    marginRight: theme.spacing.sm,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.fontWeights.bold,
+  },
 });
+
 
 export default HomeScreen;
