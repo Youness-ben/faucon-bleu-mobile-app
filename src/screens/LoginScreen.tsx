@@ -51,6 +51,7 @@ const LoginScreen: React.FC = () => {
       await AsyncStorage.setItem('userType', 'client');
       navigation.navigate('Main');
     } catch (error) {
+      console.log(error);
       Alert.alert(t('auth.error'), t('auth.invalidCredentials'));
     } finally {
       setIsLoading(false);

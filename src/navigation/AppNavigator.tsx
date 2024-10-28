@@ -83,13 +83,13 @@ const MainTabs: React.FC = () => {
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor:  theme.colors.textSecondary,
+        tabBarStyle: {
+          display: 'flex',
+        }
       })}
-      //@ts-ignore
 
-      tabBarOptions={{
-        activeTintColor: theme.colors.primary,
-        inactiveTintColor: theme.colors.textSecondary,
-      }}
     >
       <MainTab.Screen name="Home" component={HomeScreen} options={{ title: t('navigation.home') }} />
       <MainTab.Screen name="Fleet" component={FleetScreen} options={{ title: t('navigation.fleet') }} />

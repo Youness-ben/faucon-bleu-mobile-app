@@ -1,67 +1,224 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Animated, Dimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
+import api from '../api';
 
 type RootStackParamList = {
-  VehicleDetail: { vehicleId: string };
+  VehicleDetail: { vehicleId: number };
   AddVehicle: undefined;
 };
 
 type FleetScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
 interface Vehicle {
-  id: string;
-  name: string;
+  id: number;
   brand: string;
-  licensePlate: string;
-  logoUrl: string;
+  model: string;
+  license_plate: string;
+  logo_url: string;
 }
+
+interface PaginatedResponse {
+  data: Vehicle[];
+  current_page: number;
+  last_page: number;
+}
+
+const ITEMS_PER_PAGE = 10;
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+const SkeletonItem: React.FC = () => {
+  const opacity = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+  }, [opacity]);
+
+  return (
+    <Animated.View style={[styles.vehicleItem, { opacity }]}>
+      <View style={[styles.vehicleLogo, styles.skeleton]} />
+      <View style={styles.vehicleInfo}>
+        <View style={[styles.skeletonText, { width: '70%' }]} />
+        <View style={[styles.skeletonText, { width: '50%', marginTop: 8 }]} />
+      </View>
+    </Animated.View>
+  );
+};
+
+const EmptyState: React.FC<{ onAddVehicle: () => void }> = ({ onAddVehicle }) => {
+  const { t } = useTranslation();
+
+  return (
+    <View style={styles.emptyStateContainer}>
+      <View style={styles.emptyStateIconContainer}>
+        <Ionicons name="car-sport-outline" size={80} color={theme.colors.primary} />
+      </View>
+      <Text style={styles.emptyStateTitle}>{t('fleet.emptyStateTitle')}</Text>
+      <Text style={styles.emptyStateDescription}>{t('fleet.emptyStateDescription')}</Text>
+      <TouchableOpacity style={styles.emptyStateButton} onPress={onAddVehicle}>
+        <Ionicons name="add-circle-outline" size={24} color="white" style={styles.emptyStateButtonIcon} />
+        <Text style={styles.emptyStateButtonText}>{t('fleet.addFirstVehicle')}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
 
 const FleetScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<FleetScreenNavigationProp>();
 
-  const [vehicles] = useState<Vehicle[]>([
-    { id: '1-', name: 'Renault R4', brand: 'Renault', licensePlate: '647586 A 20', logoUrl: 'https://api.dabablane.icamob.ma/faucon-demo/logo-renault.jpeg' },
-    { id: '2', name: 'Peugeot 207', brand: 'Peugeot', licensePlate: '83758 A 20', logoUrl: 'https://api.dabablane.icamob.ma/faucon-demo/logo-peugeot.jpeg' },
-    { id: '3', name: 'Ford Fiesta', brand: 'Ford', licensePlate: '9385 A 6', logoUrl: 'https://api.dabablane.icamob.ma/faucon-demo/logo-ford.jpeg' },
-    { id: '4', name: 'Golf 3', brand: 'Volkswagon', licensePlate: '3957 A 6', logoUrl: 'https://api.dabablane.icamob.ma/faucon-demo/logo-volkswagon.jpeg' },
-  ]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  const renderVehicleItem = ({ item }: { item: Vehicle }) => (
+  const fetchVehicles = useCallback(async (page: number, refresh: boolean = false) => {
+    if (refresh) {
+      setIsRefreshing(true);
+    } else if (page === 1) {
+      setIsLoading(true);
+    } else {
+      setIsLoadingMore(true);
+    }
+    setError(null);
+
+    try {
+      const response = await api.get<PaginatedResponse>(`/client/vehicles?page=${page}&per_page=${ITEMS_PER_PAGE}`);
+      const newVehicles = response.data.data;
+      setVehicles(prevVehicles => (refresh || page === 1 ? newVehicles : [...prevVehicles, ...newVehicles]));
+      setCurrentPage(response.data.current_page);
+      setLastPage(response.data.last_page);
+    } catch (err) {
+      console.error(err);
+      setError(t('fleet.fetchError'));
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+      setIsLoadingMore(false);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    fetchVehicles(1);
+  }, [fetchVehicles]);
+
+  const handleRefresh = useCallback(() => {
+    fetchVehicles(1, true);
+  }, [fetchVehicles]);
+
+  const handleLoadMore = useCallback(() => {
+    if (currentPage < lastPage && !isLoading && !isLoadingMore) {
+      fetchVehicles(currentPage + 1);
+    }
+  }, [currentPage, lastPage, isLoading, isLoadingMore, fetchVehicles]);
+
+  const handleAddVehicle = useCallback(() => {
+    navigation.navigate('AddVehicle');
+  }, [navigation]);
+
+  const renderVehicleItem = useCallback(({ item }: { item: Vehicle }) => (
     <TouchableOpacity
       style={styles.vehicleItem}
       onPress={() => navigation.navigate('VehicleDetail', { vehicleId: item.id })}
     >
-      <Image source={{ uri: item.logoUrl }} style={styles.vehicleLogo} />
+      <Image 
+        source={{ uri: item.logo_url }} 
+        style={styles.vehicleLogo} 
+        defaultSource={require('../../assets/logo-faucon.png')}
+      />
       <View style={styles.vehicleInfo}>
-        <Text style={styles.vehicleName}>{item.name}</Text>
-        <Text style={styles.vehicleLicensePlate}>{item.licensePlate}</Text>
+        <Text style={styles.vehicleName}>{`${item.brand} ${item.model}`}</Text>
+        <Text style={styles.vehicleLicensePlate}>{item.license_plate}</Text>
       </View>
       <Ionicons name="chevron-forward" size={24} color={theme.colors.primary} />
     </TouchableOpacity>
-  );
+  ), [navigation]);
+
+  const renderFooter = () => {
+    if (!isLoadingMore) return null;
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color={theme.colors.primary} />
+      </View>
+    );
+  };
+
+  const renderContent = () => {
+    if (isLoading && vehicles?.length === 0) {
+      return (
+        <FlatList
+          data={Array(ITEMS_PER_PAGE).fill(0)}
+          renderItem={() => <SkeletonItem />}
+          keyExtractor={(_, index) => `skeleton-${index}`}
+          contentContainerStyle={styles.listContent}
+        />
+      );
+    }
+
+    if (error && vehicles?.length === 0) {
+      return (
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => fetchVehicles(1, true)}>
+            <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (vehicles?.length === 0) {
+      return <EmptyState onAddVehicle={handleAddVehicle} />;
+    }
+
+    return (
+      <FlatList
+        data={vehicles}
+        renderItem={renderVehicleItem}
+        keyExtractor={(item) => item.id.toString()}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            colors={[theme.colors.primary]}
+          />
+        }
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.1}
+        ListFooterComponent={renderFooter}
+        initialNumToRender={5}
+        maxToRenderPerBatch={5}
+        windowSize={10}
+        updateCellsBatchingPeriod={50}
+      />
+    );
+  };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{t('fleet.title')}</Text>
-      <FlatList
-        data={vehicles}
-        renderItem={renderVehicleItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-      />
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => navigation.navigate('AddVehicle')}
-      >
-        <Ionicons name="add" size={24} color="white" />
-        <Text style={styles.addButtonText}>{t('fleet.addVehicle')}</Text>
-      </TouchableOpacity>
+      {renderContent()}
+      {vehicles?.length > 0 && (
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={handleAddVehicle}
+        >
+          <Ionicons name="add" size={24} color="white" />
+          <Text style={styles.addButtonText}>{t('fleet.addVehicle')}</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -70,6 +227,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: theme.spacing.md,
+    backgroundColor: theme.colors.background,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: theme.colors.background,
   },
   title: {
@@ -125,6 +288,79 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.lg,
     fontWeight: theme.typography.fontWeights.bold,
     marginLeft: theme.spacing.sm,
+  },
+  errorText: {
+    fontSize: theme.typography.sizes.lg,
+    color: theme.colors.error,
+    textAlign: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  retryButton: {
+    backgroundColor: theme.colors.primary,
+    padding: theme.spacing.sm,
+    borderRadius: theme.roundness,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.fontWeights.bold,
+  },
+  footerLoader: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing.md,
+  },
+  skeleton: {
+    backgroundColor: theme.colors.secondary,
+  },
+  skeletonText: {
+    height: 16,
+    backgroundColor: theme.colors.secondary,
+    borderRadius: 4,
+  },
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.lg,
+  },
+  emptyStateIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: theme.colors.secondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: theme.spacing.xl,
+  },
+  emptyStateTitle: {
+    fontSize: theme.typography.sizes.xl,
+    fontWeight: theme.typography.fontWeights.bold,
+    color: theme.colors.primary,
+    textAlign: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  emptyStateDescription: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: theme.spacing.xl,
+  },
+  emptyStateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.primary,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    borderRadius: theme.roundness,
+  },
+  emptyStateButtonIcon: {
+    marginRight: theme.spacing.sm,
+  },
+  emptyStateButtonText: {
+    color: 'white',
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.fontWeights.bold,
   },
 });
 

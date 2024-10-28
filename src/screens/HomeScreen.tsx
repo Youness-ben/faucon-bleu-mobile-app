@@ -97,7 +97,6 @@ const HomeScreen: React.FC = () => {
       setServices(servicesResponse.data);
       setBanners(bannersResponse.data);
       setVehicles(vehiclesResponse.data);
-      console.log(`${STORAGE_URL}/${bannersResponse.data[0].image_path}`)
       
     } catch (err) {
       console.log(err);
