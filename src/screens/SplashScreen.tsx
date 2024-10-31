@@ -13,7 +13,7 @@ export default function Component() {
         await SplashScreen.preventAutoHideAsync();
         const userToken = await AsyncStorage.getItem('userToken');
         const userType = await AsyncStorage.getItem('userType');
-
+        
         if (userToken) {
           if (userType === 'client') {
             navigation.replace('Main');

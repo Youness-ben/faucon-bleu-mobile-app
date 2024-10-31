@@ -60,10 +60,10 @@ const ErrorView: React.FC<{ onRetry: () => void }> = ({ onRetry }) => {
 
   return (
     <View style={styles.errorContainer}>
-      <Image
+     {/*  <Image
         source={{ uri: require('../../assets/error.svg') }}
         style={styles.errorIllustration}
-      />
+      /> */}
       <Text style={styles.errorTitle}>{t('error.title')}</Text>
       <Text style={styles.errorText}>{t('error.fetchFailed')}</Text>
       <TouchableOpacity style={styles.retryButton} onPress={onRetry}>
@@ -83,14 +83,13 @@ const HomeScreen: React.FC = () => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const storageUrl = process.env.REACT_APP_STORAGE_URL;
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
       const [servicesResponse, bannersResponse, vehiclesResponse] = await Promise.all([
-        api.get('/client/services'),
+        api.get('/client/coming-order-services'),
         api.get('/client/banners'),
         api.get('/client/home-vehicles')
       ]);
@@ -130,11 +129,14 @@ const HomeScreen: React.FC = () => {
       ) : (
         <FlatList
           data={banners}
-          renderItem={({ item }) => (
-            <View style={styles.adBannerItem}>
-            <Image source={{ uri: `${STORAGE_URL}/${item.image_path}` }} style={styles.adBannerImage} />
-            </View>
-          )}
+          renderItem={({ item }) => {
+            console.log(item);
+            return (
+              <View style={styles.adBannerItem}>
+              <Image source={{ uri: `${STORAGE_URL}/${item.image_path}` }} style={styles.adBannerImage} />
+              </View>
+            );
+          }}
           keyExtractor={(item) => item.id.toString()}
           horizontal
           pagingEnabled
