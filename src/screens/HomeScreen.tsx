@@ -8,6 +8,7 @@ import { theme } from '../styles/theme';
 import VehicleItem from '../components/VehicleItem';
 import api from '../api';
 import { STORAGE_URL } from '../../config';
+
 type RootStackParamList = {
   ServiceHistory: undefined;
   VehicleDetail: { vehicleId: number };
@@ -60,10 +61,6 @@ const ErrorView: React.FC<{ onRetry: () => void }> = ({ onRetry }) => {
 
   return (
     <View style={styles.errorContainer}>
-     {/*  <Image
-        source={{ uri: require('../../assets/error.svg') }}
-        style={styles.errorIllustration}
-      /> */}
       <Text style={styles.errorTitle}>{t('error.title')}</Text>
       <Text style={styles.errorText}>{t('error.fetchFailed')}</Text>
       <TouchableOpacity style={styles.retryButton} onPress={onRetry}>
@@ -73,6 +70,13 @@ const ErrorView: React.FC<{ onRetry: () => void }> = ({ onRetry }) => {
     </View>
   );
 };
+
+const EmptyState: React.FC<{ message: string; icon: string }> = ({ message, icon }) => (
+  <View style={styles.emptyStateContainer}>
+    <Ionicons name={icon} size={48} color={theme.colors.textSecondary} />
+    <Text style={styles.emptyStateText}>{message}</Text>
+  </View>
+);
 
 const HomeScreen: React.FC = () => {
   const { t } = useTranslation();
@@ -96,7 +100,6 @@ const HomeScreen: React.FC = () => {
       setServices(servicesResponse.data);
       setBanners(bannersResponse.data);
       setVehicles(vehiclesResponse.data);
-      
     } catch (err) {
       console.log(err);
       setError('Failed to fetch data');
@@ -104,7 +107,6 @@ const HomeScreen: React.FC = () => {
       setIsLoading(false);
     }
   }, []);
-
 
   useEffect(() => {
     fetchData();
@@ -122,6 +124,7 @@ const HomeScreen: React.FC = () => {
         return theme.colors.text;
     }
   };
+
   const renderAdBanner = useCallback(() => (
     <View style={styles.carouselContainer}>
       {isLoading ? (
@@ -129,14 +132,11 @@ const HomeScreen: React.FC = () => {
       ) : (
         <FlatList
           data={banners}
-          renderItem={({ item }) => {
-            console.log(item);
-            return (
-              <View style={styles.adBannerItem}>
+          renderItem={({ item }) => (
+            <View style={styles.adBannerItem}>
               <Image source={{ uri: `${STORAGE_URL}/${item.image_path}` }} style={styles.adBannerImage} />
-              </View>
-            );
-          }}
+            </View>
+          )}
           keyExtractor={(item) => item.id.toString()}
           horizontal
           pagingEnabled
@@ -189,6 +189,8 @@ const HomeScreen: React.FC = () => {
             />
           ))}
         </View>
+      ) : vehicles.length === 0 ? (
+        <EmptyState message={t('home.noVehicles')} icon="car-outline" />
       ) : (
         <FlatList
           data={vehicles}
@@ -237,6 +239,8 @@ const HomeScreen: React.FC = () => {
             />
           ))}
         </View>
+      ) : services.length === 0 ? (
+        <EmptyState message={t('home.noUpcomingServices')} icon="calendar-outline" />
       ) : (
         <>
           <FlatList
@@ -296,7 +300,6 @@ const HomeScreen: React.FC = () => {
     />
   );
 };
-
 
 const styles = StyleSheet.create({
   container: {
@@ -403,7 +406,7 @@ const styles = StyleSheet.create({
   },
   viewAllButton: {
     backgroundColor: theme.colors.primary,
-    padding: theme.spacing.sm,
+    padding:  theme.spacing.sm,
     borderRadius: theme.roundness,
     alignItems: 'center',
     marginHorizontal: theme.spacing.md,
@@ -419,34 +422,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: theme.spacing.lg,
-  },
-  errorText: {
-    fontSize: theme.typography.sizes.lg,
-    color: theme.colors.error,
-    textAlign: 'center',
-    marginBottom: theme.spacing.md,
-  },
-  retryButton: {
-    backgroundColor: theme.colors.primary,
-    padding: theme.spacing.sm,
-    borderRadius: theme.roundness,
-  },
-  retryButtonText: {
-    color: 'white',
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.fontWeights.bold,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: theme.spacing.lg,
     backgroundColor: theme.colors.background,
-  },
-  errorIllustration: {
-    width: 200,
-    height: 200,
-    marginBottom: theme.spacing.lg,
   },
   errorTitle: {
     fontSize: theme.typography.sizes.xl,
@@ -478,7 +454,20 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.fontWeights.bold,
   },
+  emptyStateContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.roundness,
+    marginHorizontal: theme.spacing.md,
+  },
+  emptyStateText: {
+    marginTop: theme.spacing.md,
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+  },
 });
-
 
 export default HomeScreen;

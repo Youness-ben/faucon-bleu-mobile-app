@@ -1,19 +1,35 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
+import api from '../api';
+import { STORAGE_URL } from '../../config';
 
 type RootStackParamList = {
-  VehicleDetail: { vehicleId: string };
-  OrderService: { vehicleId: string };
-  ServiceHistory: { vehicleId: string };
+  VehicleDetail: { vehicleId: number };
+  OrderService: { vehicleId: number };
+  ServiceHistory: { vehicleId: number };
 };
 
 type VehicleDetailScreenRouteProp = RouteProp<RootStackParamList, 'VehicleDetail'>;
 type VehicleDetailScreenNavigationProp = StackNavigationProp<RootStackParamList>;
+
+interface Vehicle {
+  id: number;
+  brand_name: string;
+  model: string;
+  plate_number: string;
+  year: number;
+  vin_number: string;
+  kilometers: number;
+  last_service_date: string;
+  fuel_type: string;
+  transmission: string;
+  logo_url: string;
+}
 
 const VehicleDetailScreen: React.FC = () => {
   const { t } = useTranslation();
@@ -21,55 +37,80 @@ const VehicleDetailScreen: React.FC = () => {
   const route = useRoute<VehicleDetailScreenRouteProp>();
   const { vehicleId } = route.params;
 
-  const vehicleData = {
-    id: vehicleId,
-    name: 'Peugeot 207 sportium',
-    licensePlate: '349458 A 20',
-    year: 2011,
-    make: 'Peugeut',
-    model: '207',
-    vin: '1HGBH41JXMN109186',
-    mileage: 35000,
-    lastService: '2023-04-15',
-    fuelType: 'Diesel',
-    transmission: 'Manual',
-    brandLogo: 'https://api.dabablane.icamob.ma/faucon-demo/logo-peugeot.jpeg', // Replace with actual logo URL
-  };
-
-
+  const [vehicle, setVehicle] = useState<Vehicle | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showFullVin, setShowFullVin] = useState(false);
 
+  const fetchVehicleDetails = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await api.get<Vehicle>(`/client/vehicles/${vehicleId}`);
+      setVehicle(response.data);
+    } catch (err) {
+      console.error('Error fetching vehicle details:', err);
+      setError(t('vehicleDetail.fetchError'));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [vehicleId, t]);
+
+  useEffect(() => {
+    fetchVehicleDetails();
+  }, [fetchVehicleDetails]);
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
+
+  if (error || !vehicle) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error || t('vehicleDetail.unknownError')}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchVehicleDetails}>
+          <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+  console.log(`${STORAGE_URL}/${vehicle.logo_url}`);
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <View style={styles.brandLogoContainer}>
           <Image
-            source={{ uri: vehicleData.brandLogo }}
+           source={{ uri: `${STORAGE_URL}/${vehicle.logo_url}` }} 
             style={styles.brandLogo}
+            defaultSource={require('../../assets/logo-faucon.png')}
           />
         </View>
         <View style={styles.headerTextContainer}>
-          <Text style={styles.vehicleName}>{vehicleData.name}</Text>
-          <Text style={styles.licensePlate}>{vehicleData.licensePlate}</Text>
+          <Text style={styles.vehicleName}>{`${vehicle.brand_name} ${vehicle.model}`}</Text>
+          <Text style={styles.licensePlate}>{vehicle.plate_number}</Text>
         </View>
       </View>
 
       <View style={styles.infoCard}>
         <Text style={styles.sectionTitle}>{t('vehicleDetail.details')}</Text>
         <View style={styles.detailsGrid}>
-          <DetailItem icon="calendar-outline" label={t('vehicleDetail.year')} value={vehicleData.year.toString()} />
-          <DetailItem icon="car-outline" label={t('vehicleDetail.make')} value={vehicleData.make} />
-          <DetailItem icon="options-outline" label={t('vehicleDetail.model')} value={vehicleData.model} />
-          <DetailItem icon="speedometer-outline" label={t('vehicleDetail.mileage')} value={`${vehicleData.mileage} mi`} />
-          <DetailItem icon="water-outline" label={t('vehicleDetail.fuelType')} value={vehicleData.fuelType} />
-          <DetailItem icon="cog-outline" label={t('vehicleDetail.transmission')} value={vehicleData.transmission} />
+          <DetailItem icon="calendar-outline" label={t('vehicleDetail.year')} value={vehicle.year.toString()} />
+          <DetailItem icon="car-outline" label={t('vehicleDetail.make')} value={vehicle.brand_name} />
+          <DetailItem icon="options-outline" label={t('vehicleDetail.model')} value={vehicle.model} />
+          <DetailItem icon="speedometer-outline" label={t('vehicleDetail.kilometers')} value={`${vehicle.kilometers} km`} />
+          <DetailItem icon="water-outline" label={t('vehicleDetail.fuelType')} value={vehicle.fuel_type} />
+          <DetailItem icon="cog-outline" label={t('vehicleDetail.transmission')} value={vehicle.transmission} />
         </View>
         <TouchableOpacity onPress={() => setShowFullVin(!showFullVin)} style={styles.vinContainer}>
           <Ionicons name="barcode-outline" size={24} color={theme.colors.primary} style={styles.vinIcon} />
           <View>
             <Text style={styles.detailLabel}>{t('vehicleDetail.vin')}</Text>
             <Text style={styles.detailValue}>
-              {showFullVin ? vehicleData.vin : vehicleData.vin.slice(0, 5) + '...'}
+              {showFullVin ? vehicle.vin_number : vehicle?.vin_number?.slice(0, 5) + '...'}
             </Text>
           </View>
           <Ionicons
@@ -83,14 +124,14 @@ const VehicleDetailScreen: React.FC = () => {
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={styles.button}
-          onPress={() => navigation.navigate('OrderService', { vehicleId: vehicleData.id })}
+          onPress={() => navigation.navigate('OrderService', { vehicleId: vehicle.id })}
         >
           <Ionicons name="construct-outline" size={24} color="white" />
           <Text style={styles.buttonText}>{t('vehicleDetail.orderService')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.button, styles.secondaryButton]}
-          onPress={() => navigation.navigate('ServiceHistory', { vehicleId: vehicleData.id })}
+          onPress={() => navigation.navigate('ServiceHistory', { vehicleId: vehicle.id })}
         >
           <Ionicons name="time-outline" size={24} color={theme.colors.primary} />
           <Text style={[styles.buttonText, styles.secondaryButtonText]}>
@@ -117,6 +158,35 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+    padding: theme.spacing.lg,
+  },
+  errorText: {
+    fontSize: theme.typography.sizes.lg,
+    color: theme.colors.error,
+    textAlign: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  retryButton: {
+    backgroundColor: theme.colors.primary,
+    padding: theme.spacing.sm,
+    borderRadius: theme.roundness,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.fontWeights.bold,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -136,7 +206,7 @@ const styles = StyleSheet.create({
   brandLogo: {
     width: '80%',
     height: '80%',
-    resizeMode: 'contain',
+    resizeMode: 'stretch'
   },
   headerTextContainer: {
     flex: 1,

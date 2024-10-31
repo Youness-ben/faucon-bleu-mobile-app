@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Animated, Dimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
@@ -6,6 +6,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
 import api from '../api';
+import { STORAGE_URL } from '../../config';
 
 type RootStackParamList = {
   VehicleDetail: { vehicleId: number };
@@ -16,9 +17,10 @@ type FleetScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
 interface Vehicle {
   id: number;
-  brand: string;
+  brand_name: string;
+  year: string;
   model: string;
-  license_plate: string;
+  plate_number: string;
   logo_url: string;
 }
 
@@ -34,7 +36,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SkeletonItem: React.FC = () => {
   const opacity = useRef(new Animated.Value(0.3)).current;
 
-  useEffect(() => {
+  const startAnimation = useCallback(() => {
     Animated.loop(
       Animated.sequence([
         Animated.timing(opacity, { toValue: 1, duration: 500, useNativeDriver: true }),
@@ -42,6 +44,10 @@ const SkeletonItem: React.FC = () => {
       ])
     ).start();
   }, [opacity]);
+
+  useEffect(() => {
+    startAnimation();
+  }, [startAnimation]);
 
   return (
     <Animated.View style={[styles.vehicleItem, { opacity }]}>
@@ -95,13 +101,19 @@ const FleetScreen: React.FC = () => {
     setError(null);
 
     try {
-      const response = await api.get<PaginatedResponse>(`/client/vehicles?page=${page}&per_page=${ITEMS_PER_PAGE}`);
-      const newVehicles = response.data.data;
-      setVehicles(prevVehicles => (refresh || page === 1 ? newVehicles : [...prevVehicles, ...newVehicles]));
-      setCurrentPage(response.data.current_page);
-      setLastPage(response.data.last_page);
+      const response = await api.get<PaginatedResponse>(`/client/vehicles/list?page=${page}&per_page=${ITEMS_PER_PAGE}`);
+      if (response && response.data && Array.isArray(response.data.data)) {
+        const newVehicles = response.data.data;
+
+        setVehicles(prevVehicles => (refresh || page === 1 ? newVehicles : [...prevVehicles, ...newVehicles]));
+        setCurrentPage(response.data.current_page);
+        setLastPage(response.data.last_page);
+      } else {
+        console.log(response.data);
+        throw new Error('Invalid response format');
+      }
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching vehicles:', err);
       setError(t('fleet.fetchError'));
     } finally {
       setIsLoading(false);
@@ -134,29 +146,30 @@ const FleetScreen: React.FC = () => {
       onPress={() => navigation.navigate('VehicleDetail', { vehicleId: item.id })}
     >
       <Image 
-        source={{ uri: item.logo_url }} 
+        source={{ uri: `${STORAGE_URL}/${item.logo_url}` }} 
         style={styles.vehicleLogo} 
         defaultSource={require('../../assets/logo-faucon.png')}
+        onError={(e) => console.log('Image loading error:', e.nativeEvent.error)}
       />
       <View style={styles.vehicleInfo}>
-        <Text style={styles.vehicleName}>{`${item.brand} ${item.model}`}</Text>
-        <Text style={styles.vehicleLicensePlate}>{item.license_plate}</Text>
+        <Text style={styles.vehicleName}>{`${item.brand_name} ${item.model}`}<Text style={{fontSize:12 , marginLeft:20}}>  {item.year}</Text></Text>
+        <Text style={styles.vehicleLicensePlate}>{item.plate_number}</Text>
       </View>
       <Ionicons name="chevron-forward" size={24} color={theme.colors.primary} />
     </TouchableOpacity>
   ), [navigation]);
 
-  const renderFooter = () => {
+  const renderFooter = useMemo(() => {
     if (!isLoadingMore) return null;
     return (
       <View style={styles.footerLoader}>
         <ActivityIndicator size="small" color={theme.colors.primary} />
       </View>
     );
-  };
+  }, [isLoadingMore]);
 
-  const renderContent = () => {
-    if (isLoading && vehicles?.length === 0) {
+  const renderContent = useMemo(() => {
+    if (isLoading && (!vehicles || vehicles.length === 0)) {
       return (
         <FlatList
           data={Array(ITEMS_PER_PAGE).fill(0)}
@@ -167,7 +180,7 @@ const FleetScreen: React.FC = () => {
       );
     }
 
-    if (error && vehicles?.length === 0) {
+    if (error) {
       return (
         <View style={styles.centerContainer}>
           <Text style={styles.errorText}>{error}</Text>
@@ -178,7 +191,7 @@ const FleetScreen: React.FC = () => {
       );
     }
 
-    if (vehicles?.length === 0) {
+    if (!vehicles || vehicles.length === 0) {
       return <EmptyState onAddVehicle={handleAddVehicle} />;
     }
 
@@ -204,13 +217,13 @@ const FleetScreen: React.FC = () => {
         updateCellsBatchingPeriod={50}
       />
     );
-  };
+  }, [isLoading, vehicles, error, isRefreshing, handleRefresh, handleLoadMore, renderVehicleItem, renderFooter, t, fetchVehicles, handleAddVehicle]);
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{t('fleet.title')}</Text>
-      {renderContent()}
-      {vehicles?.length > 0 && (
+      {renderContent}
+      {vehicles && vehicles.length > 0 && (
         <TouchableOpacity
           style={styles.addButton}
           onPress={handleAddVehicle}
