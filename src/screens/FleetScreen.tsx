@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Animated, Dimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
@@ -121,10 +121,12 @@ const FleetScreen: React.FC = () => {
       setIsLoadingMore(false);
     }
   }, [t]);
-
-  useEffect(() => {
-    fetchVehicles(1);
-  }, [fetchVehicles]);
+  
+  useFocusEffect(
+    useCallback(() => {
+      fetchVehicles(1, true);
+    }, [fetchVehicles])
+  );
 
   const handleRefresh = useCallback(() => {
     fetchVehicles(1, true);

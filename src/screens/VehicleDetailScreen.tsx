@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, TextInput, Alert, Animated } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
 import { theme } from '../styles/theme';
 import api from '../api';
 import { STORAGE_URL } from '../../config';
@@ -12,6 +13,7 @@ type RootStackParamList = {
   VehicleDetail: { vehicleId: number };
   OrderService: { vehicleId: number };
   ServiceHistory: { vehicleId: number };
+  Fleet: undefined;
 };
 
 type VehicleDetailScreenRouteProp = RouteProp<RootStackParamList, 'VehicleDetail'>;
@@ -31,6 +33,49 @@ interface Vehicle {
   logo_url: string;
 }
 
+interface ToastProps {
+  visible: boolean;
+  message: string;
+  type: 'success' | 'error';
+}
+
+const fuelTypes = ['gasoline', 'diesel', 'electric', 'hybrid'];
+const transmissionTypes = ['manual', 'automatic'];
+
+const Toast: React.FC<ToastProps> = ({ visible, message, type }) => {
+  const [fadeAnim] = useState(new Animated.Value(0));
+
+  useEffect(() => {
+    if (visible) {
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [visible, fadeAnim]);
+
+  if (!visible) return null;
+
+  return (
+    <Animated.View
+      style={[
+        styles.toast,
+        { opacity: fadeAnim },
+        type === 'success' ? styles.successToast : styles.errorToast,
+      ]}
+    >
+      <Text style={styles.toastText}>{message}</Text>
+    </Animated.View>
+  );
+};
+
 const VehicleDetailScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<VehicleDetailScreenNavigationProp>();
@@ -41,6 +86,15 @@ const VehicleDetailScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showFullVin, setShowFullVin] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedVehicle, setEditedVehicle] = useState<Vehicle | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [toast, setToast] = useState<ToastProps>({ visible: false, message: '', type: 'success' });
+
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ visible: true, message, type });
+    setTimeout(() => setToast({ visible: false, message: '', type: 'success' }), 3000);
+  };
 
   const fetchVehicleDetails = useCallback(async () => {
     setIsLoading(true);
@@ -48,6 +102,7 @@ const VehicleDetailScreen: React.FC = () => {
     try {
       const response = await api.get<Vehicle>(`/client/vehicles/${vehicleId}`);
       setVehicle(response.data);
+      setEditedVehicle(response.data);
     } catch (err) {
       console.error('Error fetching vehicle details:', err);
       setError(t('vehicleDetail.fetchError'));
@@ -59,6 +114,78 @@ const VehicleDetailScreen: React.FC = () => {
   useEffect(() => {
     fetchVehicleDetails();
   }, [fetchVehicleDetails]);
+
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleSave = async () => {
+    if (!editedVehicle) return;
+
+    setIsLoading(true);
+    try {
+      const response = await api.put(`/client/vehicles/${vehicleId}`, editedVehicle);
+      if (response.status === 200) {
+        setVehicle(response.data);
+        setIsEditing(false);
+        showToast(t('vehicleDetail.updateSuccess'), 'success');
+      }
+    } catch (err) {
+      console.error('Error updating vehicle:', err);
+      showToast(t('vehicleDetail.updateFailed'), 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDelete = () => {
+    Alert.alert(
+      t('vehicleDetail.deleteConfirmTitle'),
+      t('vehicleDetail.deleteConfirmMessage'),
+      [
+        {
+          text: t('common.cancel'),
+          style: 'cancel'
+        },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            setIsLoading(true);
+            try {
+              await api.delete(`/client/vehicles/${vehicleId}`);
+              navigation.navigate('Fleet');
+              showToast(t('vehicleDetail.deleteSuccess'), 'success');
+            } catch (err) {
+              console.error('Error deleting vehicle:', err);
+              showToast(t('vehicleDetail.deleteFailed'), 'error');
+            } finally {
+              setIsLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleResetPassword = async () => {
+    if (!newPassword) {
+      showToast(t('vehicleDetail.enterNewPassword'), 'error');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await api.post(`/client/vehicles/${vehicleId}/reset-password`, { new_password: newPassword });
+      showToast(t('vehicleDetail.passwordResetSuccess'), 'success');
+      setNewPassword('');
+    } catch (err) {
+      console.error('Error resetting password:', err);
+      showToast(t('vehicleDetail.passwordResetFailed'), 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -78,68 +205,142 @@ const VehicleDetailScreen: React.FC = () => {
       </View>
     );
   }
-  console.log(`${STORAGE_URL}/${vehicle.logo_url}`);
+
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.brandLogoContainer}>
-          <Image
-           source={{ uri: `${STORAGE_URL}/${vehicle.logo_url}` }} 
-            style={styles.brandLogo}
-            defaultSource={require('../../assets/logo-faucon.png')}
-          />
-        </View>
-        <View style={styles.headerTextContainer}>
-          <Text style={styles.vehicleName}>{`${vehicle.brand_name} ${vehicle.model}`}</Text>
-          <Text style={styles.licensePlate}>{vehicle.plate_number}</Text>
-        </View>
-      </View>
-
-      <View style={styles.infoCard}>
-        <Text style={styles.sectionTitle}>{t('vehicleDetail.details')}</Text>
-        <View style={styles.detailsGrid}>
-          <DetailItem icon="calendar-outline" label={t('vehicleDetail.year')} value={vehicle.year.toString()} />
-          <DetailItem icon="car-outline" label={t('vehicleDetail.make')} value={vehicle.brand_name} />
-          <DetailItem icon="options-outline" label={t('vehicleDetail.model')} value={vehicle.model} />
-          <DetailItem icon="speedometer-outline" label={t('vehicleDetail.kilometers')} value={`${vehicle.kilometers} km`} />
-          <DetailItem icon="water-outline" label={t('vehicleDetail.fuelType')} value={vehicle.fuel_type} />
-          <DetailItem icon="cog-outline" label={t('vehicleDetail.transmission')} value={vehicle.transmission} />
-        </View>
-        <TouchableOpacity onPress={() => setShowFullVin(!showFullVin)} style={styles.vinContainer}>
-          <Ionicons name="barcode-outline" size={24} color={theme.colors.primary} style={styles.vinIcon} />
-          <View>
-            <Text style={styles.detailLabel}>{t('vehicleDetail.vin')}</Text>
-            <Text style={styles.detailValue}>
-              {showFullVin ? vehicle.vin_number : vehicle?.vin_number?.slice(0, 5) + '...'}
-            </Text>
+    <View style={styles.container}>
+      <ScrollView>
+        <View style={styles.header}>
+          <View style={styles.brandLogoContainer}>
+            <Image
+              source={{ uri: `${STORAGE_URL}/${vehicle.logo_url}` }}
+              style={styles.brandLogo}
+              defaultSource={require('../../assets/logo-faucon.png')}
+            />
           </View>
-          <Ionicons
-            name={showFullVin ? 'eye-off-outline' : 'eye-outline'}
-            size={24}
-            color={theme.colors.primary}
-          />
-        </TouchableOpacity>
-      </View>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.vehicleName}>{`${vehicle.brand_name} ${vehicle.model}`}</Text>
+            <Text style={styles.licensePlate}>{vehicle.plate_number}</Text>
+          </View>
+        </View>
+        <View style={styles.infoCard}>
+          <Text style={styles.sectionTitle}>{t('vehicleDetail.details')}</Text>
+          <View style={styles.detailsGrid}>
+            <DetailItem icon="calendar-outline" label={t('vehicleDetail.year')} value={vehicle.year.toString()} />
+            <DetailItem icon="car-outline" label={t('vehicleDetail.make')} value={vehicle.brand_name} />
+            <DetailItem icon="options-outline" label={t('vehicleDetail.model')} value={vehicle.model} />
+            {isEditing ? (
+              <EditableDetailItem
+                label={t('vehicleDetail.kilometers')}
+                value={editedVehicle?.kilometers.toString() || ''}
+                onChangeText={(text) => setEditedVehicle(prev => prev ? {...prev, kilometers: parseInt(text)} : null)}
+                keyboardType="numeric"
+              />
+            ) : (
+              <DetailItem icon="speedometer-outline" label={t('vehicleDetail.kilometers')} value={`${vehicle.kilometers} km`} />
+            )}
+            {isEditing ? (
+              <View style={styles.pickerContainer}>
+                <Text style={styles.detailLabel}>{t('vehicleDetail.fuelType')}</Text>
+                <Picker
+                  selectedValue={editedVehicle?.fuel_type}
+                  onValueChange={(itemValue) => setEditedVehicle(prev => prev ? {...prev, fuel_type: itemValue} : null)}
+                  style={styles.picker}
+                >
+                  {fuelTypes.map((type) => (
+                    <Picker.Item key={type} label={t(`vehicleDetail.fuelTypes.${type}`)} value={type} />
+                  ))}
+                </Picker>
+              </View>
+            ) : (
+              <DetailItem icon="water-outline" label={t('vehicleDetail.fuelType')} value={t(`vehicleDetail.fuelTypes.${vehicle.fuel_type}`)} />
+            )}
+            {isEditing ? (
+              <View style={styles.pickerContainer}>
+                <Text style={styles.detailLabel}>{t('vehicleDetail.transmission')}</Text>
+                <Picker
+                  selectedValue={editedVehicle?.transmission}
+                  onValueChange={(itemValue) => setEditedVehicle(prev => prev ? {...prev, transmission: itemValue} : null)}
+                  style={styles.picker}
+                >
+                  {transmissionTypes.map((type) => (
+                    <Picker.Item key={type} label={t(`vehicleDetail.transmissionTypes.${type}`)} value={type} />
+                  ))}
+                </Picker>
+              </View>
+            ) : (
+              <DetailItem icon="cog-outline" label={t('vehicleDetail.transmission')} value={t(`vehicleDetail.transmissionTypes.${vehicle.transmission}`)} />
+            )}
+          </View>
+          <TouchableOpacity onPress={() => setShowFullVin(!showFullVin)} style={styles.vinContainer}>
+            <Ionicons name="barcode-outline" size={24} color={theme.colors.primary} style={styles.vinIcon} />
+            <View>
+              <Text style={styles.detailLabel}>{t('vehicleDetail.vin')}</Text>
+              <Text style={styles.detailValue}>
+                {showFullVin ? vehicle.vin_number : vehicle?.vin_number?.slice(0, 5) + '...'}
+              </Text>
+            </View>
+            <Ionicons
+              name={showFullVin ? 'eye-off-outline' : 'eye-outline'}
+              size={24}
+              color={theme.colors.primary}
+            />
+          </TouchableOpacity>
+        </View>
 
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => navigation.navigate('OrderService', { vehicleId: vehicle.id })}
-        >
-          <Ionicons name="construct-outline" size={24} color="white" />
-          <Text style={styles.buttonText}>{t('vehicleDetail.orderService')}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.button, styles.secondaryButton]}
-          onPress={() => navigation.navigate('ServiceHistory', { vehicleId: vehicle.id })}
-        >
-          <Ionicons name="time-outline" size={24} color={theme.colors.primary} />
-          <Text style={[styles.buttonText, styles.secondaryButtonText]}>
-            {t('vehicleDetail.serviceHistory')}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+        <View style={styles.buttonContainer}>
+          {isEditing ? (
+            <TouchableOpacity style={styles.button} onPress={handleSave}>
+              <Ionicons name="save-outline" size={24} color="white" />
+              <Text style={styles.buttonText}>{t('vehicleDetail.save')}</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.button} onPress={handleEdit}>
+              <Ionicons name="create-outline" size={24} color="white" />
+              <Text style={styles.buttonText}>{t('vehicleDetail.edit')}</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={[styles.button, styles.deleteButton]} onPress={handleDelete}>
+            <Ionicons name="trash-outline" size={24} color="white" />
+            <Text style={styles.buttonText}>{t('vehicleDetail.delete')}</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.passwordResetContainer}>
+          <Text style={styles.sectionTitle}>{t('vehicleDetail.resetConductorPassword')}</Text>
+          <TextInput
+            style={styles.input}
+            value={newPassword}
+            onChangeText={setNewPassword}
+            placeholder={t('vehicleDetail.enterNewPassword')}
+            secureTextEntry
+          />
+          <TouchableOpacity style={styles.button} onPress={handleResetPassword}>
+            <Ionicons name="key-outline" size={24} color="white" />
+            <Text style={styles.buttonText}>{t('vehicleDetail.resetPassword')}</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => navigation.navigate('OrderService', { vehicleId: vehicle.id })}
+          >
+            <Ionicons name="construct-outline" size={24} color="white" />
+            <Text style={styles.buttonText}>{t('vehicleDetail.orderService')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.button, styles.secondaryButton]}
+            onPress={() => navigation.navigate('ServiceHistory', { vehicleId: vehicle.id })}
+          >
+            <Ionicons name="time-outline" size={24} color={theme.colors.primary} />
+            <Text style={[styles.buttonText, styles.secondaryButtonText]}>
+              {t('vehicleDetail.serviceHistory')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+      <Toast visible={toast.visible} message={toast.message} type={toast.type} />
+    </View>
   );
 };
 
@@ -147,8 +348,22 @@ const DetailItem: React.FC<{ icon: string; label: string; value: string }> = ({ 
   <View style={styles.detailItem}>
     <Ionicons name={icon} size={24} color={theme.colors.primary} style={styles.detailIcon} />
     <View>
-      <Text style={styles.detailLabel}>{label}</Text>
+      <Text  style={styles.detailLabel}>{label}</Text>
       <Text style={styles.detailValue}>{value}</Text>
+    </View>
+  </View>
+);
+
+const EditableDetailItem: React.FC<{ label: string; value: string; onChangeText: (text: string) => void; keyboardType?: 'default' | 'numeric' }> = ({ label, value, onChangeText, keyboardType = 'default' }) => (
+  <View style={styles.detailItem}>
+    <View>
+      <Text style={styles.detailLabel}>{label}</Text>
+      <TextInput
+        style={styles.editableDetailValue}
+        value={value}
+        onChangeText={onChangeText}
+        keyboardType={keyboardType}
+      />
     </View>
   </View>
 );
@@ -256,6 +471,13 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     fontWeight: theme.typography.fontWeights.medium,
   },
+  editableDetailValue: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text,
+    fontWeight: theme.typography.fontWeights.medium,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.primary,
+  },
   vinContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -296,6 +518,51 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: {
     color: theme.colors.primary,
+  },
+  deleteButton: {
+    backgroundColor: theme.colors.error,
+  },
+  passwordResetContainer: {
+    backgroundColor: 'white',
+    borderRadius: theme.roundness,
+    margin: theme.spacing.md,
+    padding: theme.spacing.lg,
+    ...theme.elevation.medium,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.roundness,
+    padding: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+  },
+  pickerContainer: {
+    width: '48%',
+    marginBottom: theme.spacing.md,
+  },
+  picker: {
+    height: 50,
+    width: '100%',
+  },
+  toast: {
+    position: 'absolute',
+    bottom: 50,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  successToast: {
+    backgroundColor: 'rgba(0, 128, 0, 0.7)',
+  },
+  errorToast: {
+    backgroundColor: 'rgba(255, 0, 0, 0.7)',
+  },
+  toastText: {
+    color: 'white',
+    fontSize: 16,
   },
 });
 
