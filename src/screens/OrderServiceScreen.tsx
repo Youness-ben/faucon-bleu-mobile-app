@@ -1,99 +1,188 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, FlatList } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { RouteProp, useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { theme } from '../styles/theme';
+import api from '../api';
 
 type RootStackParamList = {
-  OrderService: { serviceType: string };
+  OrderService: { serviceType: string; serviceId: number };
 };
 
 type OrderServiceScreenRouteProp = RouteProp<RootStackParamList, 'OrderService'>;
 type OrderServiceScreenNavigationProp = StackNavigationProp<RootStackParamList, 'OrderService'>;
 
 interface Vehicle {
-  id: string;
+  id: number;
+  brand_name: string;
+  model: string;
+  plate_number: string;
+}
+
+interface Service {
+  id: number;
   name: string;
-  licensePlate: string;
+  description: string;
+  estimated_duration: number;
+  base_price: number;
 }
 
 const OrderServiceScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<OrderServiceScreenNavigationProp>();
   const route = useRoute<OrderServiceScreenRouteProp>();
-  const { serviceType } = route.params;
+  const { serviceId } = route.params;
 
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedTime, setSelectedTime] = useState(new Date());
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [servicePrice, setServicePrice] = useState(null);
+  const [service, setService] = useState<Service | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showVehicleModal, setShowVehicleModal] = useState(false);
 
-  // Mock data - replace with actual data fetching in a real app
-  const vehicles: Vehicle[] = [
-    { id: '1', name: 'Toyota Camry', licensePlate: 'ABC 123' },
-    { id: '2', name: 'Honda Civic', licensePlate: 'XYZ 789' },
-    { id: '3', name: 'Ford F-150', licensePlate: 'DEF 456' },
-  ];
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [vehiclesResponse, serviceResponse] = await Promise.all([
+        api.get('/client/vehicles'),
+        api.get(`/client/services/${serviceId}`),
+      ]);
+      setVehicles(vehiclesResponse.data);
+      setService(serviceResponse.data);
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setError(t('services.fetchError'));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [serviceId, t]);
 
+   useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [fetchData])
+  );
+ 
   const handleDateChange = (event: any, selectedDate?: Date) => {
     const currentDate = selectedDate || new Date();
     setShowDatePicker(false);
     setSelectedDate(currentDate);
   };
 
-  const handleTimeChange = (event: any, selectedTime?: Date) => {
-    const currentTime = selectedTime || new Date();
-    setShowTimePicker(false);
-    setSelectedTime(currentTime);
+
+  const handleSubmit = async () => {
+    if (!selectedVehicle || !service) return;
+
+    const scheduledAt = new Date(
+      selectedDate.getFullYear(),
+      selectedDate.getMonth(),
+      selectedDate.getDate(),
+    );
+
+    const orderData = {
+      vehicle_id: selectedVehicle.id,
+      service_id: service.id,
+      scheduled_at: scheduledAt.toISOString(),
+    };
+
+    try {
+      const response = await api.post('/client/service-orders', orderData);
+      console.log('Order submitted:', response.data);
+      navigation.goBack();
+    } catch (error) {
+      console.error('Error submitting order:', error);
+      setError(t('services.submitError'));
+    }
   };
 
-  const handleSubmit = () => {
-    // Here you would typically send the order to your backend
-    console.log('Order submitted:', {
-      serviceType,
-      vehicle: selectedVehicle,
-      date: selectedDate,
-      time: selectedTime,
-    });
-    // Navigate to a confirmation screen or back to the services list
-    navigation.goBack();
-  };
+  const renderVehicleItem = ({ item }: { item: Vehicle }) => (
+    <TouchableOpacity
+      style={styles.vehicleItem}
+      onPress={async () => {
+        setSelectedVehicle(item);
+        //FETCH PRICE
+        try{
+        // setServicePrice(null);
+
+        const response = await api.post(`/client/vehicles/client-service-prices?`,{
+          vehicle : item.id ,
+          service : service?.id
+        });
+          if(response.data){
+            setServicePrice(response.data);
+          }else
+            setServicePrice(service?.base_price);
+
+        }catch(err){
+        console.log("-ses",err);
+
+        }
+        setShowVehicleModal(false);
+      }}
+    >
+      <Text style={styles.vehicleName}>{`${item.brand_name} ${item.model}`}</Text>
+      <Text style={styles.vehicleLicensePlate}>{item.plate_number}</Text>
+    </TouchableOpacity>
+  );
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
+
+  if (error || !service) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error || t('services.serviceNotFound')}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
+          <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.title}>{t('services.orderService')}</Text>
       
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('services.serviceType')}</Text>
-        <Text style={styles.serviceType}>{serviceType}</Text>
+        <Text style={styles.sectionTitle}>{t('services.serviceDetails')}</Text>
+        <Text style={styles.serviceType}>{service.name}</Text>
+        <Text style={styles.serviceDescription}>{service.description}</Text>
+        <Text style={styles.serviceDuration}>
+          {t('services.estimatedDuration', { duration: service.estimated_duration })}
+        </Text>
+        {servicePrice &&
+        <Text style={styles.servicePrice}>
+          {t('services.servicePrice')} {servicePrice} MAD
+        </Text>}
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{t('services.selectVehicle')}</Text>
-        {vehicles.map((vehicle) => (
-          <TouchableOpacity
-            key={vehicle.id}
-            style={[
-              styles.vehicleItem,
-              selectedVehicle?.id === vehicle.id && styles.selectedVehicle,
-            ]}
-            onPress={() => setSelectedVehicle(vehicle)}
-          >
-            <Ionicons
-              name={selectedVehicle?.id === vehicle.id ? 'checkbox' : 'square-outline'}
-              size={24}
-              color={theme.colors.primary}
-            />
-            <View style={styles.vehicleInfo}>
-              <Text style={styles.vehicleName}>{vehicle.name}</Text>
-              <Text style={styles.vehicleLicensePlate}>{vehicle.licensePlate}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+        <TouchableOpacity
+          style={styles.vehicleSelector}
+          onPress={() => setShowVehicleModal(true)}
+        >
+          <Text style={styles.vehicleSelectorText}>
+            {selectedVehicle
+              ? `${selectedVehicle.brand_name} ${selectedVehicle.model}`
+              : t('services.selectVehiclePrompt')}
+          </Text>
+          <Ionicons name="chevron-down" size={24} color={theme.colors.primary} />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.section}>
@@ -114,24 +203,7 @@ const OrderServiceScreen: React.FC = () => {
         )}
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('services.serviceTime')}</Text>
-        <TouchableOpacity style={styles.dateTimeButton}   onPress={() => setShowTimePicker(true)}>
-          <Text style={styles.dateTimeButtonText}>
-            {selectedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </Text>
-          <Ionicons name="time-outline" size={24} color={theme.colors.primary} />
-        </TouchableOpacity>
-        {showTimePicker && (
-          <DateTimePicker
-            value={selectedTime}
-            mode="time"
-            display="default"
-            onChange={handleTimeChange}
-          />
-        )}
-      </View>
-
+  
       <TouchableOpacity
         style={[
           styles.submitButton,
@@ -142,6 +214,31 @@ const OrderServiceScreen: React.FC = () => {
       >
         <Text style={styles.submitButtonText}>{t('services.confirmOrder')}</Text>
       </TouchableOpacity>
+
+      <Modal
+        visible={showVehicleModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowVehicleModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{t('services.selectVehicle')}</Text>
+            <FlatList
+              data={vehicles}
+              renderItem={renderVehicleItem}
+              keyExtractor={(item) => item.id.toString()}
+              style={styles.vehicleList}
+            />
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => setShowVehicleModal(false)}
+            >
+              <Text style={styles.modalCloseButtonText}>{t('common.close')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
@@ -150,6 +247,35 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+    padding: theme.spacing.lg,
+  },
+  errorText: {
+    fontSize: theme.typography.sizes.lg,
+    color: theme.colors.error,
+    textAlign: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  retryButton: {
+    backgroundColor: theme.colors.primary,
+    padding: theme.spacing.sm,
+    borderRadius: theme.roundness,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.fontWeights.bold,
   },
   title: {
     fontSize: theme.typography.sizes.xxl,
@@ -172,29 +298,36 @@ const styles = StyleSheet.create({
   },
   serviceType: {
     fontSize: theme.typography.sizes.md,
-    color: theme.colors.textSecondary,
-  },
-  vehicleItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: theme.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.secondary + '20',
-  },
-  selectedVehicle: {
-    backgroundColor: theme.colors.primary + '10',
-  },
-  vehicleInfo: {
-    marginLeft: theme.spacing.md,
-  },
-  vehicleName: {
-    fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.fontWeights.medium,
     color: theme.colors.text,
+    marginBottom: theme.spacing.xs,
   },
-  vehicleLicensePlate: {
-    fontSize: theme.typography.sizes.sm,
+  serviceDescription: {
+    fontSize: theme.typography.sizes.md,
     color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xs,
+  },
+  serviceDuration: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xs,
+  },
+  servicePrice: {
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.fontWeights.bold,
+    color: theme.colors.primary,
+  },
+  vehicleSelector: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: theme.colors.secondary + '20',
+    borderRadius: theme.roundness,
+    padding: theme.spacing.sm,
+  },
+  vehicleSelectorText: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text,
   },
   dateTimeButton: {
     flexDirection: 'row',
@@ -222,6 +355,51 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: theme.typography.sizes.lg,
     fontWeight: theme.typography.fontWeights.bold,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: theme.roundness,
+    padding: theme.spacing.lg,
+    width: '80%',
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: theme.typography.sizes.xl,
+    fontWeight: theme.typography.fontWeights.bold,
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.md,
+  },
+  vehicleList: {
+    maxHeight: 300,
+  },
+  vehicleItem: {
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.secondary + '20',
+  },
+  vehicleName: {
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.fontWeights.medium,
+    color: theme.colors.text,
+  },
+  vehicleLicensePlate: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.textSecondary,
+  },
+  modalCloseButton: {
+    marginTop: theme.spacing.md,
+    alignSelf: 'flex-end',
+  },
+  modalCloseButtonText: {
+    color: theme.colors.primary,
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.fontWeights.medium,
   },
 });
 

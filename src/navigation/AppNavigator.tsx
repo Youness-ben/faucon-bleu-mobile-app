@@ -32,7 +32,7 @@ type RootStackParamList = {
   ConductorLogin: undefined;
   Main: undefined;
   ConductorMain: undefined;
-  OrderService: { serviceType: string; vehicleId?: string };
+  OrderService: { Service?: any; vehicleId?: string };
   ServiceHistory: undefined;
   AddVehicle: undefined;
   VehicleDetail: { vehicleId: string };

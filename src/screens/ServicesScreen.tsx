@@ -1,112 +1,74 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, ScrollView } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, ScrollView,Image, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
+import api from '../api';
+import { STORAGE_URL } from '../../config';
 
 type RootStackParamList = {
-  OrderService: { serviceType: string };
+  OrderService: { serviceType: string; serviceId: number };
 };
 
 type ServicesScreenNavigationProp = StackNavigationProp<RootStackParamList, 'OrderService'>;
 
 interface Service {
-  id: string;
+  id: number;
   name: string;
   description: string;
   icon: keyof typeof Ionicons.glyphMap;
-  category: string;
-  longDescription: string;
+  category: string | null;
+  long_description: string;
+  price: number;
 }
 
 const ServicesScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<ServicesScreenNavigationProp>();
   const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [services, setServices] = useState<Service[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const services: Service[] = [
-    {
-      id: '1',
-      name: 'Oil Change',
-      description: 'Regular oil change service',
-      icon: 'water-outline',
-      category: 'Maintenance',
-      longDescription: 'Our oil change service includes draining old oil, replacing the oil filter, and refilling with high-quality motor oil suitable for your vehicle. This service helps maintain engine performance and longevity.'
-    },
-    {
-      id: '2',
-      name: 'Tire Rotation',
-      description: 'Rotate and balance tires',
-      icon: 'disc-outline',
-      category: 'Maintenance',
-      longDescription: 'Tire rotation involves moving tires from one position on the vehicle to another. This service ensures even wear, extends tire life, and maintains optimal vehicle handling and fuel efficiency.'
-    },
-    {
-      id: '3',
-      name: 'Brake Service',
-      description: 'Inspect and repair brakes',
-      icon: 'stop-circle-outline',
-      category: 'Repair',
-      longDescription: 'Our comprehensive brake service includes inspection of brake pads, rotors, calipers, and brake fluid. We\'ll replace worn components and ensure your braking system is functioning safely and efficiently.'
-    },
-    {
-      id: '4',
-      name: 'Battery Replacement',
-      description: 'Replace old or faulty battery',
-      icon: 'battery-charging-outline',
-      category: 'Repair',
-      longDescription: 'We\'ll test your current battery, and if necessary, replace it with a new, high-quality battery suitable for your vehicle. This service includes proper disposal of the old battery.'
-    },
-    {
-      id: '5',
-      name: 'Air Conditioning',
-      description: 'AC system check and repair',
-      icon: 'thermometer-outline',
-      category: 'Comfort',
-      longDescription: 'Our AC service includes a system performance check, refrigerant level check, and leak detection. We\'ll recharge the system if needed and repair any identified issues to ensure your AC runs efficiently.'
-    },
-    {
-      id: '6',
-      name: 'Wheel Alignment',
-      description: 'Adjust wheel angles',
-      icon: 'resize-outline',
-      category: 'Maintenance',
-      longDescription: 'Wheel alignment involves adjusting the angles of the wheels to the manufacturer\'s specifications. This service improves handling, reduces tire wear, and can improve fuel efficiency.'
-    },
-    {
-      id: '7',
-      name: 'Engine Diagnostics',
-      description: 'Diagnose engine issues',
-      icon: 'construct-outline',
-      category: 'Diagnostics',
-      longDescription: 'Using advanced diagnostic tools, we\'ll identify any issues with your engine\'s performance. This service helps catch potential problems early and ensures your engine runs at its best.'
-    },
-    {
-      id: '8',
-      name: 'Transmission Service',
-      description: 'Transmission fluid change',
-      icon: 'cog-outline',
-      category: 'Maintenance',
-      longDescription: 'Our transmission service includes draining old fluid, replacing the transmission filter if applicable, and refilling with new fluid. This service helps maintain smooth gear shifts and extends transmission life.'
-    },
-  ];
+  const fetchServices = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await api.get('/client/services');
+      setServices(response.data);
+    } catch (err) {
+      console.error('Error fetching services:', err);
+      setError(t('services.fetchError'));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [t]);
 
-  const categories = Array.from(new Set(services.map(service => service.category)));
+  useFocusEffect(
+    useCallback(() => {
+      fetchServices();
+    }, [fetchServices])
+  );
+
+  const categories = Array.from(new Set(services.map(service => service.category || t('services.uncategorized'))));
 
   const renderServiceItem = ({ item }: { item: Service }) => (
     <View style={styles.serviceItem}>
       <TouchableOpacity
         style={styles.serviceButton}
-        onPress={() => navigation.navigate('OrderService', { serviceType: item.name })}
+        onPress={() => navigation.navigate('OrderService', { serviceType: item.name, serviceId: item.id })}
       >
         <View style={styles.serviceIcon}>
-          <Ionicons name={item.icon} size={24} color={theme.colors.primary} />
+          <Image source={{ uri: `${STORAGE_URL}/${item.icon}` }} 
+          defaultSource={require('../../assets/logo.png')}
+          style={{width:24}} />
+
         </View>
         <View style={styles.serviceInfo}>
           <Text style={styles.serviceName}>{item.name}</Text>
-          <Text style={styles.serviceDescription}>{item.description}</Text>
+          <Text style={styles.servicePrice}>{t('services.price', { price: item.price })}</Text>
         </View>
         <Ionicons name="chevron-forward" size={24} color={theme.colors.primary} />
       </TouchableOpacity>
@@ -121,15 +83,36 @@ const ServicesScreen: React.FC = () => {
 
   const renderCategory = ({ item: category }: { item: string }) => (
     <View style={styles.categoryContainer}>
-      <Text style={styles.categoryTitle}>{t(`services.${category.toLowerCase()}`)}</Text>
+      <Text style={styles.categoryTitle}>
+        {category ? t(`services.categories.${category.toLowerCase()}`, category) : t('services.uncategorized')}
+      </Text>
       <FlatList
-        data={services.filter(service => service.category === category)}
+        data={services.filter(service => (service.category || t('services.uncategorized')) === category)}
         renderItem={renderServiceItem}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id.toString()}
         scrollEnabled={false}
       />
     </View>
   );
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchServices}>
+          <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -137,7 +120,7 @@ const ServicesScreen: React.FC = () => {
       <FlatList
         data={categories}
         renderItem={renderCategory}
-        keyExtractor={(item) => item}
+        keyExtractor={(item) => item || 'uncategorized'}
         contentContainerStyle={styles.listContent}
       />
       <Modal
@@ -150,7 +133,9 @@ const ServicesScreen: React.FC = () => {
           <View style={styles.modalContent}>
             <ScrollView>
               <Text style={styles.modalTitle}>{selectedService?.name}</Text>
-              <Text style={styles.modalDescription}>{selectedService?.longDescription}</Text>
+              <Text style={styles.modalDescription}>{selectedService?.description}</Text>
+              <Text style={styles.modalLongDescription}>{selectedService?.long_description}</Text>
+              <Text style={styles.modalPrice}>{t('services.price', { price: selectedService?.price })}</Text>
             </ScrollView>
             <TouchableOpacity
               style={styles.modalCloseButton}
@@ -169,6 +154,35 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+    padding: theme.spacing.lg,
+  },
+  errorText: {
+    fontSize: theme.typography.sizes.lg,
+    color: theme.colors.error,
+    textAlign: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  retryButton: {
+    backgroundColor: theme.colors.primary,
+    padding: theme.spacing.sm,
+    borderRadius: theme.roundness,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.fontWeights.bold,
   },
   title: {
     fontSize: theme.typography.sizes.xxl,
@@ -222,9 +236,11 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeights.medium,
     color: theme.colors.text,
   },
-  serviceDescription: {
+  servicePrice: {
     fontSize: theme.typography.sizes.sm,
-    color: theme.colors.textSecondary,
+    fontWeight: theme.typography.fontWeights.bold,
+    color: theme.colors.primary,
+    marginTop: theme.spacing.xs,
   },
   infoButton: {
     padding: theme.spacing.sm,
@@ -251,6 +267,17 @@ const styles = StyleSheet.create({
   modalDescription: {
     fontSize: theme.typography.sizes.md,
     color: theme.colors.text,
+    marginBottom: theme.spacing.md,
+  },
+  modalLongDescription: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.md,
+  },
+  modalPrice: {
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.fontWeights.bold,
+    color: theme.colors.primary,
     marginBottom: theme.spacing.lg,
   },
   modalCloseButton: {
