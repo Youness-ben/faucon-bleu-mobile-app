@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Dimensions, ListRenderItem, Animated } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Dimensions, ListRenderItem, Animated, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -8,6 +8,9 @@ import { theme } from '../styles/theme';
 import VehicleItem from '../components/VehicleItem';
 import api from '../api';
 import { STORAGE_URL } from '../../config';
+import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type RootStackParamList = {
   ServiceHistory: undefined;
@@ -62,7 +65,7 @@ const ErrorView: React.FC<{ onRetry: () => void }> = ({ onRetry }) => {
   return (
     <View style={styles.errorContainer}>
       <Text style={styles.errorTitle}>{t('error.title')}</Text>
-      <Text style={styles.errorText}>{t('error.fetchFailed')}</Text>
+      <Text  style={styles.errorText}>{t('error.fetchFailed')}</Text>
       <TouchableOpacity style={styles.retryButton} onPress={onRetry}>
         <Ionicons name="refresh-outline" size={24} color="white" style={styles.retryIcon} />
         <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
@@ -110,7 +113,45 @@ const HomeScreen: React.FC = () => {
 
   useEffect(() => {
     fetchData();
+    registerForPushNotificationsAsync();
   }, [fetchData]);
+
+  const registerForPushNotificationsAsync = async () => {
+    let token;
+    if (Constants.isDevice || true) {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      if (finalStatus !== 'granted') {
+        alert('Failed to get push token for push notification!');
+        return;
+      }
+      token = (await Notifications.getExpoPushTokenAsync()).data;
+    } else {
+      alert('Must use physical device for Push Notifications');
+    }
+
+    if (Platform.OS === 'android') {
+      Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF231F7C',
+      });
+    }
+
+    if (token) {
+      await AsyncStorage.setItem('expoPushToken', token);
+      try { 
+        await api.post('/client/update-push-token', { token });
+      } catch (error) {
+        console.error('Error sending push token to backend:', error);
+      }
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -168,7 +209,7 @@ const HomeScreen: React.FC = () => {
 
   const renderQuickActions = useCallback(() => (
     <View style={styles.quickActionsContainer}>
-      <TouchableOpacity style={styles.quickActionButton} onPress={() => navigation.navigate('OrderService', { serviceType: 'Quick Service' })}>
+      <TouchableOpacity style={styles.quickActionButton} onPress={() => navigation.navigate('Services')}>
         <Ionicons name="flash-outline" size={24} color={theme.colors.primary} />
         <Text style={styles.quickActionText}>{t('home.quickService')}</Text>
       </TouchableOpacity>
@@ -222,8 +263,8 @@ const HomeScreen: React.FC = () => {
         <Ionicons name="construct-outline" size={32} color={theme.colors.primary} />
       </View>
       <View style={styles.serviceInfo}>
-        <Text style={styles.serviceType}>{item.service.name}</Text>
-        <Text style={styles.serviceDate}>{item.scheduled_at}</Text>
+        <Text style={styles.serviceType}>{item.service_type}</Text>
+        <Text style={styles.serviceDate}>{item.scheduled_date}</Text>
       </View>
       <Text style={[styles.serviceStatus, { color: getStatusColor(item.status) }]}>{item.status}</Text>
     </TouchableOpacity>
@@ -408,7 +449,7 @@ const styles = StyleSheet.create({
   },
   viewAllButton: {
     backgroundColor: theme.colors.primary,
-    padding:  theme.spacing.sm,
+    padding: theme.spacing.sm,
     borderRadius: theme.roundness,
     alignItems: 'center',
     marginHorizontal: theme.spacing.md,
@@ -460,12 +501,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: theme.spacing.lg,
-    backgroundColor: theme.colors.background,
-    borderRadius: theme.roundness,
-    marginHorizontal: theme.spacing.md,
   },
   emptyStateText: {
-    marginTop: theme.spacing.md,
+    marginTop: theme.spacing.sm,
     fontSize: theme.typography.sizes.md,
     color: theme.colors.textSecondary,
     textAlign: 'center',

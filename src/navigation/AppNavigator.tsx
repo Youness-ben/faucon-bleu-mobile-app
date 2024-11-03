@@ -136,7 +136,6 @@ const ConductorTabs: React.FC = () => {
 
 const AppNavigator: React.FC = () => {
   return (
-    <NavigationContainer>
       <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
@@ -153,7 +152,6 @@ const AppNavigator: React.FC = () => {
         <Stack.Screen name="Support" component={SupportScreen} options={{ headerShown: true, title: 'Support' }} />
         <Stack.Screen name="TicketScreen" component={TicketScreen} options={{ headerShown: true, title: 'Service Chat' }} />
       </Stack.Navigator>
-    </NavigationContainer>
   );
 };
 

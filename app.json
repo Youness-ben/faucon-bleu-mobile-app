@@ -18,7 +18,8 @@
         "NSCameraUsageDescription": "This app needs access to your camera to allow you to take photos and share them in the chat.",
         "NSMicrophoneUsageDescription": "This app needs access to your microphone to allow you to record audio messages in the chat.",
         "NSLocationWhenInUseUsageDescription": "This app needs access to your location to allow you to share your current location in the chat."
-      }
+      },
+      "bundleIdentifier": "ma.fauconbleu.services"
     },
     "android": {
       "adaptiveIcon": {
@@ -33,7 +34,8 @@
         "RECORD_AUDIO",
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION"
-      ]
+      ],
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -58,6 +60,16 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#ffffff",
+          "sounds": [
+            "./assets/notification-sound.wav"
+          ]
+        }
       ]
     ],
     "extra": {
@@ -67,7 +79,6 @@
     },
     "owner": "y0uness"
   },
-  
   "build": {
     "preview": {
       "android": {

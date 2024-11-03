@@ -4,10 +4,12 @@ import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SplashScreen from 'expo-splash-screen';
 import api from '../api'; // Make sure to import your api instance
+import { useUser } from '../UserContext';
 
 export default function Component() {
   const navigation = useNavigation();
-
+  const { user, login } = useUser();
+  
   useEffect(() => {
     const checkLoginStatus = async () => {
       try {

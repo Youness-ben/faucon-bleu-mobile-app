@@ -11,6 +11,7 @@
   "dependencies": {
     "@react-native-async-storage/async-storage": "1.23.1",
     "@react-native-community/datetimepicker": "8.0.1",
+    "@react-native-firebase/app": "^21.3.0",
     "@react-native-picker/picker": "2.7.5",
     "@react-navigation/bottom-tabs": "^6.6.1",
     "@react-navigation/native": "^6.1.18",
@@ -24,6 +25,8 @@
     "expo-linear-gradient": "^13.0.2",
     "expo-localization": "~15.0.3",
     "expo-location": "^17.0.1",
+    "expo-notifications": "~0.28.19",
+    "expo-permissions": "^14.4.0",
     "expo-splash-screen": "^0.27.6",
     "expo-status-bar": "~1.12.1",
     "i18n-js": "^4.4.3",
@@ -39,7 +42,8 @@
     "react-native-shimmer-placeholder": "^2.0.9",
     "react-native-skeleton-placeholder": "^5.2.4",
     "react-native-svg": "15.2.0",
-    "react-native-toast-message": "^2.2.1"
+    "react-native-toast-message": "^2.2.1",
+    "expo-device": "~6.0.2"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

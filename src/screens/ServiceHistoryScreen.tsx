@@ -1,56 +1,130 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, ActivityIndicator, RefreshControl } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import api from '../api';
 
 interface ServiceRecord {
   id: string;
-  vehicleName: string;
-  serviceType: string;
-  date: string;
-  status: 'completed' | 'scheduled' | 'in-progress' | 'cancelled';
-  cost: number;
+  vehicle?: {
+    brand_name?: string;
+    model?: string;
+  };
+  service?: {
+    name?: string;
+  };
+  scheduled_at?: string;
+  status?: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  final_price?: number;
 }
 
-const dummyServiceRecords: ServiceRecord[] = [
-  { id: '1', vehicleName: 'Toyota Camry', serviceType: 'Oil Change', date: '2023-05-15', status: 'completed', cost: 50 },
-  { id: '2', vehicleName: 'Honda Civic', serviceType: 'Tire Rotation', date: '2023-05-20', status: 'scheduled', cost: 30 },
-  { id: '3', vehicleName: 'Ford F-150', serviceType: 'Brake Inspection', date: '2023-05-25', status: 'in-progress', cost: 75 },
-  { id: '4', vehicleName: 'Toyota Camry', serviceType: 'Air Filter Replacement', date: '2023-04-10', status: 'completed', cost: 25 },
-  { id: '5', vehicleName: 'Honda Civic', serviceType: 'Battery Replacement', date: '2023-03-22', status: 'completed', cost: 120 },
-  { id: '6', vehicleName: 'Ford F-150', serviceType: 'Transmission Fluid Change', date: '2023-06-05', status: 'scheduled', cost: 100 },
-  { id: '7', vehicleName: 'Toyota Camry', serviceType: 'Wheel Alignment', date: '2023-05-30', status: 'scheduled', cost: 80 },
-  { id: '8', vehicleName: 'Honda Civic', serviceType: 'Spark Plug Replacement', date: '2023-04-15', status: 'completed', cost: 60 },
-];
+interface PaginationInfo {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+}
 
 const ServiceHistoryScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const [filter, setFilter] = useState('all');
   const [sortBy, setSortBy] = useState('date');
+  const [sortOrder, setSortOrder] = useState('desc');
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showSortModal, setShowSortModal] = useState(false);
+  const [serviceRecords, setServiceRecords] = useState<ServiceRecord[]>([]);
+  const [paginationInfo, setPaginationInfo] = useState<PaginationInfo | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredAndSortedRecords = dummyServiceRecords
-    .filter(record => filter === 'all' || record.status === filter)
-    .sort((a, b) => {
-      if (sortBy === 'date') {
-        return new Date(b.date).getTime() - new Date(a.date).getTime();
-      } else if (sortBy === 'cost') {
-        return b.cost - a.cost;
+  const fetchServiceHistory = useCallback(async (page = 1, loadMore = false, refresh = false) => {
+    if (loadMore) {
+      setIsLoadingMore(true);
+    } else if (refresh) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
+    setError(null);
+    try {
+      const response = await api.get('/client/service-orders-history', {
+        params: {
+          page,
+          per_page: 10,
+          status: filter !== 'all' ? filter : undefined,
+          sort_by: sortBy,
+          sort_order: sortOrder,
+        },
+      });
+
+      let newRecords: ServiceRecord[] = [];
+      let newPaginationInfo: PaginationInfo | null = null;
+
+      if (Array.isArray(response.data)) {
+        newRecords = response.data;
+      } else if (typeof response.data === 'object' && Array.isArray(response.data.data)) {
+        newRecords = response.data.data;
+        newPaginationInfo = {
+          current_page: response.data.current_page || 1,
+          last_page: response.data.last_page || 1,
+          per_page: response.data.per_page || newRecords.length,
+          total: response.data.total || newRecords.length,
+        };
+      } else {
+        throw new Error('Unexpected response format');
       }
-      return 0;
-    });
 
-  const getStatusColor = (status: ServiceRecord['status']) => {
+      if (loadMore) {
+        setServiceRecords(prevRecords => [...prevRecords, ...newRecords]);
+      } else {
+        setServiceRecords(newRecords);
+      }
+
+      if (newPaginationInfo) {
+        setPaginationInfo(newPaginationInfo);
+      }
+    } catch (err) {
+      console.error('Error fetching service history:', err);
+      setError(t('serviceHistory.fetchError'));
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
+      setIsRefreshing(false);
+    }
+  }, [filter, sortBy, sortOrder, t]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchServiceHistory();
+    }, [fetchServiceHistory])
+  );
+
+  const handleLoadMore = () => {
+    if (paginationInfo && paginationInfo.current_page < paginationInfo.last_page && !isLoadingMore) {
+      fetchServiceHistory(paginationInfo.current_page + 1, true);
+    }
+  };
+
+  const handleRefresh = () => {
+    fetchServiceHistory(1, false, true);
+  };
+
+  const applyFilterAndSort = () => {
+    fetchServiceHistory();
+  };
+
+  const getStatusColor = (status?: ServiceRecord['status']) => {
     switch (status) {
       case 'completed':
         return theme.colors.success;
-      case 'scheduled':
+      case 'pending':
         return theme.colors.warning;
-      case 'in-progress':
+      case 'in_progress':
         return theme.colors.info;
       case 'cancelled':
         return theme.colors.error;
@@ -59,28 +133,34 @@ const ServiceHistoryScreen: React.FC = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
     const date = new Date(dateString);
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
   };
 
-  const renderServiceItem = ({ item }: { item: ServiceRecord }) => (
+  const renderServiceItem = ({ item }: { item: ServiceRecord }) => {
+    return (
     <TouchableOpacity
       style={styles.serviceItem}
       onPress={() => navigation.navigate('TicketScreen', { serviceId: item.id })}
     >
-      <Text style={styles.serviceType}>{item.serviceType}</Text>
-      <Text style={styles.vehicleName}>{item.vehicleName}</Text>
-      <Text style={styles.serviceDate}>{formatDate(item.date)}</Text>
+      <Text style={styles.serviceType}>{item.service?.name || t('serviceHistory.unknownService')}</Text>
+      <Text style={styles.vehicleName}>
+        {item.vehicle ? `${item.vehicle.brand_name || ''} ${item.vehicle.model || ''}`.trim() : t('serviceHistory.unknownVehicle')}
+      </Text>
+      <Text style={styles.serviceDate}>{formatDate(item.scheduled_at)}</Text>
       <View style={styles.serviceDetails}>
         <Text style={[styles.serviceStatus, { color: getStatusColor(item.status) }]}>
-          {t(`serviceStatusnm,m,mm,${item.status}`)}
+          {item.status ? t(`serviceStatus.${item.status}`) : t('serviceHistory.unknownStatus')}
         </Text>
-        <Text style={styles.serviceCost}>${item.cost.toFixed(2)}</Text>
+        <Text style={styles.serviceCost}>
+          {item.final_price !== undefined ? `${item.final_price} MAD` : t('serviceHistory.unknownCost')}
+        </Text>
       </View>
     </TouchableOpacity>
-  );
+  )};
 
   const FilterModal = () => (
     <Modal
@@ -92,20 +172,30 @@ const ServiceHistoryScreen: React.FC = () => {
       <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>{t('serviceHistory.filterBy')}</Text>
-          {['all', 'completed', 'scheduled', 'in-progress', 'cancelled'].map((status) => (
+          {['all', 'pending', 'in_progress', 'completed', 'cancelled'].map((status) => (
             <TouchableOpacity
               key={status}
               style={[styles.modalOption, filter === status && styles.selectedOption]}
               onPress={() => {
                 setFilter(status);
                 setShowFilterModal(false);
+                applyFilterAndSort();
               }}
             >
               <Text style={[styles.modalOptionText, filter === status && styles.selectedOptionText]}>
                 {t(`serviceStatus.${status}`)}
               </Text>
+              {filter === status && (
+                <Ionicons name="checkmark" size={24} color={theme.colors.primary} />
+              )}
             </TouchableOpacity>
           ))}
+          <TouchableOpacity
+            style={styles.closeModalButton}
+            onPress={() => setShowFilterModal(false)}
+          >
+            <Text style={styles.closeModalButtonText}>{t('common.close')}</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>
@@ -128,17 +218,68 @@ const ServiceHistoryScreen: React.FC = () => {
               onPress={() => {
                 setSortBy(sort);
                 setShowSortModal(false);
+                applyFilterAndSort();
               }}
             >
               <Text style={[styles.modalOptionText, sortBy === sort && styles.selectedOptionText]}>
                 {t(`serviceHistory.sortBy${sort.charAt(0).toUpperCase() + sort.slice(1)}`)}
               </Text>
+              {sortBy === sort && (
+                <Ionicons name="checkmark" size={24} color={theme.colors.primary} />
+              )}
             </TouchableOpacity>
           ))}
+          <View style={styles.sortOrderContainer}>
+            <TouchableOpacity
+              style={[styles.sortOrderButton, sortOrder === 'asc' && styles.selectedSortOrder]}
+              onPress={() => {
+                setSortOrder('asc');
+                setShowSortModal(false);
+                applyFilterAndSort();
+              }}
+            >
+              <Text style={styles.sortOrderText}>{t('serviceHistory.ascending')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.sortOrderButton, sortOrder === 'desc' && styles.selectedSortOrder]}
+              onPress={() => {
+                setSortOrder('desc');
+                setShowSortModal(false);
+                applyFilterAndSort();
+              }}
+            >
+              <Text style={styles.sortOrderText}>{t('serviceHistory.descending')}</Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity
+            style={styles.closeModalButton}
+            onPress={() => setShowSortModal(false)}
+          >
+            <Text style={styles.closeModalButtonText}>{t('common.close')}</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>
   );
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => fetchServiceHistory()}>
+          <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -162,12 +303,33 @@ const ServiceHistoryScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={filteredAndSortedRecords}
-        renderItem={renderServiceItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-      />
+      {serviceRecords.length > 0 ? (
+        <FlatList
+          data={serviceRecords}
+          renderItem={renderServiceItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.1}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              colors={[theme.colors.primary]}
+              tintColor={theme.colors.primary}
+            />
+          }
+          ListFooterComponent={() => (
+            isLoadingMore ? (
+              <ActivityIndicator size="small" color={theme.colors.primary} style={styles.loadingMore} />
+            ) : null
+          )}
+        />
+      ) : (
+        <View style={styles.emptyStateContainer}>
+          <Text style={styles.emptyStateText}>{t('serviceHistory.noRecords')}</Text>
+        </View>
+      )}
 
       <TouchableOpacity
         style={styles.exportButton}
@@ -189,6 +351,35 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
     padding: theme.spacing.md,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+    padding: theme.spacing.lg,
+  },
+  errorText: {
+    fontSize: theme.typography.sizes.lg,
+    color: theme.colors.error,
+    textAlign: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  retryButton: {
+    backgroundColor: theme.colors.primary,
+    padding: theme.spacing.sm,
+    borderRadius: theme.roundness,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.fontWeights.bold,
+  },
   title: {
     fontSize: theme.typography.sizes.xl,
     fontWeight: theme.typography.fontWeights.bold,
@@ -206,6 +397,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.secondary + '20',
     borderRadius: theme.roundness,
     padding: theme.spacing.sm,
+  
   },
   filterButtonText: {
     color: theme.colors.primary,
@@ -286,6 +478,9 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
   },
   modalOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingVertical: theme.spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
@@ -299,6 +494,52 @@ const styles = StyleSheet.create({
   },
   selectedOptionText: {
     color: theme.colors.primary,
+    fontWeight: theme.typography.fontWeights.bold,
+  },
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyStateText: {
+    fontSize: theme.typography.sizes.lg,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+  },
+  loadingMore: {
+    marginVertical: theme.spacing.md,
+  },
+  sortOrderContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: theme.spacing.md,
+  },
+  sortOrderButton: {
+    flex: 1,
+    padding: theme.spacing.sm,
+    borderRadius: theme.roundness,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: 'center',
+  },
+  selectedSortOrder: {
+    backgroundColor: theme.colors.primaryLight,
+    borderColor: theme.colors.primary,
+  },
+  sortOrderText: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text,
+  },
+  closeModalButton: {
+    marginTop: theme.spacing.md,
+    padding: theme.spacing.sm,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.roundness,
+    alignItems: 'center',
+  },
+  closeModalButtonText: {
+    color: 'white',
+    fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.fontWeights.bold,
   },
 });

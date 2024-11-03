@@ -5,6 +5,10 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
+import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from '../api';
 
 type RootStackParamList = {
   ServiceOrder: { vehicleId: string };
@@ -42,6 +46,11 @@ const ConductorHomeScreen: React.FC = () => {
   const [showFullVin, setShowFullVin] = useState(false);
 
   useEffect(() => {
+    fetchVehicleData();
+    registerForPushNotificationsAsync();
+  }, []);
+
+  const fetchVehicleData = async () => {
     // Fetch vehicle and available services data
     // This is a mock implementation. Replace with actual API calls.
     setVehicle({
@@ -64,7 +73,46 @@ const ConductorHomeScreen: React.FC = () => {
       { id: '2', name: 'Tire Rotation', description: 'Rotate tires for even wear' },
       { id: '3', name: 'Brake Inspection', description: 'Inspect and service brakes' },
     ]);
-  }, []);
+  };
+
+  const registerForPushNotificationsAsync = async () => {
+    let token;
+    if (Constants.isDevice) {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      if (finalStatus !== 'granted') {
+        alert('Failed to get push token for push notification!');
+        return;
+      }
+      token = (await Notifications.getExpoPushTokenAsync()).data;
+    } else {
+      alert('Must use physical device for Push Notifications');
+    }
+
+    if (Platform.OS === 'android') {
+      Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF231F7C',
+      });
+    }
+
+    if (token) {
+      // Store the token locally
+      await AsyncStorage.setItem('expoPushToken', token);
+      // Send the token to your backend
+      try {
+        await api.post('/api/update-push-token', { token });
+      } catch (error) {
+        console.error('Error sending push token to backend:', error);
+      }
+    }
+  };
 
   const handleServiceOrder = (serviceId: string) => {
     navigation.navigate('ServiceOrder', { vehicleId: vehicle?.id || '' });

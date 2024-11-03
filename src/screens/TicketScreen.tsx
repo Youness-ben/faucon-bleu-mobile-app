@@ -25,9 +25,10 @@ import * as FileSystem from 'expo-file-system';
 import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import api from '../api';
 
 type RootStackParamList = {
-  TicketScreen: { ticketId: string };
+  TicketScreen: { serviceId: string };
 };
 
 type TicketScreenRouteProp = RouteProp<RootStackParamList, 'TicketScreen'>;
@@ -35,7 +36,7 @@ type TicketScreenRouteProp = RouteProp<RootStackParamList, 'TicketScreen'>;
 interface Participant {
   id: string;
   name: string;
-  role: 'sales' | 'driver' | 'operator';
+  role: 'client' | 'vehicle' | 'agent';
 }
 
 interface Message {
@@ -55,7 +56,7 @@ interface Message {
 
 const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => {
   const { t } = useTranslation();
-  const { ticketId } = route.params;
+  const { serviceId  } = route.params;
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
@@ -68,65 +69,29 @@ const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => 
   const flatListRef = useRef<FlatList>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // Mock current user (in a real app, this would come from authentication)
-  const currentUser: Participant = {
-    id: '1',
-    name: 'John Doe',
-    role: 'sales',
-  };
-
   useEffect(() => {
     fetchMessages();
+    const interval = setInterval(fetchMessages, 5000); // Poll for new messages every 5 seconds
 
     return () => {
+      clearInterval(interval);
       if (sound) {
         sound.unloadAsync();
       }
     };
-  }, [ticketId]);
+  }, [serviceId]);
 
   const fetchMessages = async () => {
     setIsLoading(true);
-    // Simulating API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    const dummyMessages: Message[] = [
-      {
-        id: '1',
-        text: 'Ticket opened for order #12345',
-        sender: { id: 'system', name: 'System', role: 'operator' },
-        timestamp: new Date(Date.now() - 1000 * 60 * 30),
-        type: 'text',
-        status: 'read'
-      },
-      {
-        id: '2',
-        text: 'Customer reported an issue with the delivery.',
-        sender: { id: '2', name: 'Jane Smith', role: 'operator' },
-        timestamp: new Date(Date.now() - 1000 * 60 * 25),
-        type: 'text',
-        status: 'read'
-      },
-      {
-        id: '3',
-        text: 'I\'m on my way to the delivery address now.',
-        sender: { id: '3', name: 'Mike Johnson', role: 'driver' },
-        timestamp: new Date(Date.now() - 1000 * 60 * 20),
-        type: 'text',
-        status: 'read'
-      },
-      {
-        id: '4',
-        text: 'Audio message',
-        sender: { id: '2', name: 'Jane Smith', role: 'operator' },
-        timestamp: new Date(Date.now() - 1000 * 60 * 15),
-        type: 'audio',
-        content: 'https://example.com/audio.mp3',
-        status: 'read'
-      },
-    ];
-    setMessages(dummyMessages);
-    setIsLoading(false);
+    try {
+      const response = await api.get(`/client/service-orders/${serviceId}/chat`);
+      setMessages(response.data);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      Alert.alert('Error', 'Failed to fetch messages. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
 
     Animated.timing(fadeAnim, {
       toValue: 1,
@@ -137,13 +102,18 @@ const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => 
 
   const sendMessage = async (newMessage: Message) => {
     setMessages(prevMessages => [...prevMessages, newMessage]);
-    // Simulating API call to send message
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setMessages(prevMessages => 
-      prevMessages.map(msg => 
-        msg.id === newMessage.id ? { ...msg, status: 'sent' } : msg
-      )
-    );
+    try {
+      await api.post(`/client/service-orders/${serviceId}/chat`, newMessage);
+      setMessages(prevMessages => 
+        prevMessages.map(msg => 
+          msg.id === newMessage.id ? { ...msg, status: 'sent' } : msg
+        )
+      );
+    } catch (error) {
+      console.error('Error sending message:', error);
+      Alert.alert('Error', 'Failed to send message. Please try again.');
+      setMessages(prevMessages => prevMessages.filter(msg => msg.id !== newMessage.id));
+    }
   };
 
   const sendTextMessage = () => {
@@ -151,7 +121,7 @@ const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => 
       const newMessage: Message = {
         id: Date.now().toString(),
         text: inputText.trim(),
-        sender: currentUser,
+        sender: { id: 'currentUser', name: 'Current User', role: 'client' }, // Replace with actual user info
         timestamp: new Date(),
         type: 'text',
         status: 'sending',
@@ -172,17 +142,25 @@ const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => 
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
+        const formData = new FormData();
+        formData.append('image', {
+          uri: asset.uri,
+          type: 'image/jpeg',
+          name: asset.fileName || 'image.jpg',
+        });
+
+        const response = await api.post(`/client/service-orders/${serviceId}/chat`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+
         const newMessage: Message = {
-          id: Date.now().toString(),
-          text: 'Image',
-          sender: currentUser,
-          timestamp: new Date(),
-          type: 'image',
-          content: asset.uri,
-          status: 'sending',
-          fileName: asset.fileName || 'image.jpg',
+          ...response.data,
+          sender: { id: 'currentUser', name: 'Current User', role: 'client' }, // Replace with actual user info
+          status: 'sent',
         };
-        sendMessage(newMessage);
+        setMessages(prevMessages => [...prevMessages, newMessage]);
       }
     } catch (error) {
       console.error('Error picking image:', error);
@@ -198,17 +176,25 @@ const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => 
       });
 
       if (result.type === 'success') {
+        const formData = new FormData();
+        formData.append('file', {
+          uri: result.uri,
+          type: result.mimeType,
+          name: result.name,
+        });
+
+        const response = await api.post(`client/service-orders/${serviceId}/chat`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+
         const newMessage: Message = {
-          id: Date.now().toString(),
-          text: 'File',
-          sender: currentUser,
-          timestamp: new Date(),
-          type: 'file',
-          content: result.uri,
-          status: 'sending',
-          fileName: result.name,
+          ...response.data,
+          sender: { id: 'currentUser', name: 'Current User', role: 'client' }, // Replace with actual user info
+          status: 'sent',
         };
-        sendMessage(newMessage);
+        setMessages(prevMessages => [...prevMessages, newMessage]);
       }
     } catch (error) {
       console.error('Error picking document:', error);
@@ -242,17 +228,25 @@ const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => 
       const uri = recording.getURI();
       setRecording(null);
       if (uri) {
+        const formData = new FormData();
+        formData.append('audio', {
+          uri: uri,
+          type: 'audio/m4a',
+          name: 'audio_message.m4a',
+        });
+
+        const response = await api.post(`/client/service-orders/${serviceId}/chat`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+
         const newMessage: Message = {
-          id: Date.now().toString(),
-          text: 'Audio',
-          sender: currentUser,
-          timestamp: new Date(),
-          type: 'audio',
-          content: uri,
-          status: 'sending',
-          fileName: 'audio_message.m4a',
+          ...response.data,
+          sender: { id: 'currentUser', name: 'Current User', role: 'client' }, // Replace with actual user info
+          status: 'sent',
         };
-        sendMessage(newMessage);
+        setMessages(prevMessages => [...prevMessages, newMessage]);
       }
     } catch (error) {
       console.error('Error stopping recording:', error);
@@ -269,19 +263,18 @@ const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => 
       }
 
       let location = await Location.getCurrentPositionAsync({});
-      const newMessage: Message = {
-        id: Date.now().toString(),
-        text: 'Location',
-        sender: currentUser,
-        timestamp: new Date(),
+      const response = await api.post(`/client/service-orders/${serviceId}/chat`, {
         type: 'location',
-        status: 'sending',
-        location: {
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        },
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      });
+
+      const newMessage: Message = {
+        ...response.data,
+        sender: { id: 'currentUser', name: 'Current User', role: 'client' }, // Replace with actual user info
+        status: 'sent',
       };
-      sendMessage(newMessage);
+      setMessages(prevMessages => [...prevMessages, newMessage]);
     } catch (error) {
       console.error('Error sending location:', error);
       Alert.alert('Error', 'Failed to send location. Please try again.');
@@ -345,7 +338,7 @@ const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => 
   const renderMessage = ({ item }: { item: Message }) => (
     <Animated.View style={[
       styles.messageContainer,
-      item.sender.id === currentUser.id ? styles.currentUserMessage : styles.otherUserMessage,
+      item.sender.role === 'client' ? styles.currentUserMessage : styles.otherUserMessage,
       { opacity: fadeAnim }
     ]}>
       <Text style={styles.senderName}>{item.sender.name} ({item.sender.role})</Text>
@@ -391,12 +384,12 @@ const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => 
             <Text style={styles.locationMessageText}>Location shared</Text>
           </View>
           <Text style={styles.openMapText}>Tap to open in Maps</Text>
+        
         </TouchableOpacity>
       )}
       <View style={styles.messageFooter}>
-        <Text style={styles.timestamp}>{item.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-        
-        {item.sender.id === currentUser.id && (
+        <Text style={styles.timestamp}>{new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+        {item.sender.role === 'client' && (
           <Text style={styles.messageStatus}>
             {item.status === 'sending' ? t('ticket.sending') : ''}
           </Text>
@@ -421,9 +414,9 @@ const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => 
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
         <View style={styles.header}>
-          <Text style={styles.headerText}>Ticket #{ticketId}</Text>
+          <Text style={styles.headerText}>Order #{serviceId}</Text>
           <TouchableOpacity style={styles.closeButton}>
-            <Text style={styles.closeButtonText}>Close Ticket</Text>
+            <Text style={styles.closeButtonText}>Close Chat</Text>
           </TouchableOpacity>
         </View>
         <FlatList

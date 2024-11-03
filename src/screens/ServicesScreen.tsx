@@ -135,7 +135,6 @@ const ServicesScreen: React.FC = () => {
               <Text style={styles.modalTitle}>{selectedService?.name}</Text>
               <Text style={styles.modalDescription}>{selectedService?.description}</Text>
               <Text style={styles.modalLongDescription}>{selectedService?.long_description}</Text>
-              <Text style={styles.modalPrice}>{t('services.price', { price: selectedService?.price })}</Text>
             </ScrollView>
             <TouchableOpacity
               style={styles.modalCloseButton}

@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import { theme } from '../styles/theme';
+import { useUser } from '../UserContext';
 
 type RootStackParamList = {
   ConductorHome: undefined;
@@ -32,7 +33,8 @@ const ConductorLoginScreen: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
+  const { login } = useUser();
+  
   const handleLogin = async () => {
     if (!plateNumber || !password) {
       Alert.alert(t('auth.error'), t('auth.allFieldsRequired'));
@@ -42,13 +44,9 @@ const ConductorLoginScreen: React.FC = () => {
     setIsLoading(true);
     try {
       const response = await api.post('/api/login/vehicle', { license_plate: plateNumber, password });
-      const { token, vehicle } = response.data;
+      const { token } = response.data;
       
-      // Store the token and user type
-      await AsyncStorage.setItem('userToken', token);
-      await AsyncStorage.setItem('userType', 'vehicle');
-      
-      // Navigate to the conductor home screen
+      await login(token, 'vehicle');
       navigation.navigate('ConductorHome');
     } catch (error) {
       Alert.alert(t('auth.error'), t('auth.invalidCredentials'));
@@ -57,6 +55,7 @@ const ConductorLoginScreen: React.FC = () => {
     }
   };
 
+  
   const toggleShowPassword = () => setShowPassword(!showPassword);
 
   return (
