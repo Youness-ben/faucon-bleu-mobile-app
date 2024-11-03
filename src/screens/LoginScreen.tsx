@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
+import { useUser } from '../UserContext';
 
 type RootStackParamList = {
   Home: undefined;
@@ -35,7 +36,8 @@ const LoginScreen: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
+  const { login } = useUser();
+  
   const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert(t('auth.error'), t('auth.allFieldsRequired'));
@@ -49,6 +51,7 @@ const LoginScreen: React.FC = () => {
 
       await AsyncStorage.setItem('userToken', token);
       await AsyncStorage.setItem('userType', 'client');
+      await login(token,'client');
       navigation.navigate('Main');
     } catch (error) {
       console.log(error);

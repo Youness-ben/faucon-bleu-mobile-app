@@ -18,7 +18,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
-import { RouteProp } from '@react-navigation/native';
+import { RouteProp, useNavigation } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import * as Location from 'expo-location';
 import * as FileSystem from 'expo-file-system';
@@ -26,6 +26,8 @@ import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import api from '../api';
+import { useUser } from '../UserContext';
+import { useNotification } from '../NotificationContext';
 
 type RootStackParamList = {
   TicketScreen: { serviceId: string };
@@ -33,30 +35,21 @@ type RootStackParamList = {
 
 type TicketScreenRouteProp = RouteProp<RootStackParamList, 'TicketScreen'>;
 
-interface Participant {
-  id: string;
-  name: string;
-  role: 'client' | 'vehicle' | 'agent';
-}
-
 interface Message {
   id: string;
-  text: string;
-  sender: Participant;
-  timestamp: Date;
-  type: 'text' | 'image' | 'file' | 'audio' | 'location';
+  sender_id: string;
+  sender_type: string;
+  message_type: 'text' | 'image' | 'file' | 'audio' | 'location';
   content?: string;
-  status?: 'sending' | 'sent' | 'delivered' | 'read';
-  location?: {
-    latitude: number;
-    longitude: number;
-  };
-  fileName?: string;
+  file_path?: string;
+  latitude?: number;
+  longitude?: number;
+  created_at: string;
 }
 
 const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => {
   const { t } = useTranslation();
-  const { serviceId  } = route.params;
+  const { serviceId } = route.params;
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
@@ -68,13 +61,15 @@ const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => 
   const [isAudioLoading, setIsAudioLoading] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const { user } = useUser();
+  const navigation = useNavigation();
+  const { clearNewMessages } = useNotification();
 
   useEffect(() => {
     fetchMessages();
-    const interval = setInterval(fetchMessages, 5000); // Poll for new messages every 5 seconds
+    clearNewMessages(serviceId);
 
     return () => {
-      clearInterval(interval);
       if (sound) {
         sound.unloadAsync();
       }
@@ -84,7 +79,7 @@ const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => 
   const fetchMessages = async () => {
     setIsLoading(true);
     try {
-      const response = await api.get(`/client/service-orders/${serviceId}/chat`);
+      const response = await api.get(`client/service-orders/${serviceId}/chat`);
       setMessages(response.data);
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -100,33 +95,38 @@ const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => 
     }).start();
   };
 
-  const sendMessage = async (newMessage: Message) => {
-    setMessages(prevMessages => [...prevMessages, newMessage]);
+  const sendMessage = async (messageType: string, content?: string, file?: any, location?: { latitude: number; longitude: number }) => {
     try {
-      await api.post(`/client/service-orders/${serviceId}/chat`, newMessage);
-      setMessages(prevMessages => 
-        prevMessages.map(msg => 
-          msg.id === newMessage.id ? { ...msg, status: 'sent' } : msg
-        )
-      );
+      const formData = new FormData();
+      formData.append('message_type', messageType);
+
+      if (content) {
+        formData.append('content', content);
+      }
+
+      if (file) {
+        formData.append('file', file);
+      }
+
+      if (location) {
+        formData.append('latitude', location.latitude.toString());
+        formData.append('longitude', location.longitude.toString());
+      }
+
+      const response = await api.post(`client/service-orders/${serviceId}/chat`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      setMessages(prevMessages => [...prevMessages, response.data]);
     } catch (error) {
       console.error('Error sending message:', error);
       Alert.alert('Error', 'Failed to send message. Please try again.');
-      setMessages(prevMessages => prevMessages.filter(msg => msg.id !== newMessage.id));
     }
   };
 
   const sendTextMessage = () => {
     if (inputText.trim()) {
-      const newMessage: Message = {
-        id: Date.now().toString(),
-        text: inputText.trim(),
-        sender: { id: 'currentUser', name: 'Current User', role: 'client' }, // Replace with actual user info
-        timestamp: new Date(),
-        type: 'text',
-        status: 'sending',
-      };
-      sendMessage(newMessage);
+      sendMessage('text', inputText.trim());
       setInputText('');
     }
   };
@@ -142,25 +142,12 @@ const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => 
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        const formData = new FormData();
-        formData.append('image', {
+        const file = {
           uri: asset.uri,
           type: 'image/jpeg',
-          name: asset.fileName || 'image.jpg',
-        });
-
-        const response = await api.post(`/client/service-orders/${serviceId}/chat`, formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
-
-        const newMessage: Message = {
-          ...response.data,
-          sender: { id: 'currentUser', name: 'Current User', role: 'client' }, // Replace with actual user info
-          status: 'sent',
+          name: 'image.jpg',
         };
-        setMessages(prevMessages => [...prevMessages, newMessage]);
+        sendMessage('image', undefined, file);
       }
     } catch (error) {
       console.error('Error picking image:', error);
@@ -176,25 +163,12 @@ const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => 
       });
 
       if (result.type === 'success') {
-        const formData = new FormData();
-        formData.append('file', {
+        const file = {
           uri: result.uri,
           type: result.mimeType,
           name: result.name,
-        });
-
-        const response = await api.post(`client/service-orders/${serviceId}/chat`, formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
-
-        const newMessage: Message = {
-          ...response.data,
-          sender: { id: 'currentUser', name: 'Current User', role: 'client' }, // Replace with actual user info
-          status: 'sent',
         };
-        setMessages(prevMessages => [...prevMessages, newMessage]);
+        sendMessage('file', undefined, file);
       }
     } catch (error) {
       console.error('Error picking document:', error);
@@ -228,25 +202,12 @@ const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => 
       const uri = recording.getURI();
       setRecording(null);
       if (uri) {
-        const formData = new FormData();
-        formData.append('audio', {
+        const file = {
           uri: uri,
           type: 'audio/m4a',
           name: 'audio_message.m4a',
-        });
-
-        const response = await api.post(`/client/service-orders/${serviceId}/chat`, formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
-
-        const newMessage: Message = {
-          ...response.data,
-          sender: { id: 'currentUser', name: 'Current User', role: 'client' }, // Replace with actual user info
-          status: 'sent',
         };
-        setMessages(prevMessages => [...prevMessages, newMessage]);
+        sendMessage('audio', undefined, file);
       }
     } catch (error) {
       console.error('Error stopping recording:', error);
@@ -263,18 +224,10 @@ const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => 
       }
 
       let location = await Location.getCurrentPositionAsync({});
-      const response = await api.post(`/client/service-orders/${serviceId}/chat`, {
-        type: 'location',
+      sendMessage('location', undefined, undefined, {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
       });
-
-      const newMessage: Message = {
-        ...response.data,
-        sender: { id: 'currentUser', name: 'Current User', role: 'client' }, // Replace with actual user info
-        status: 'sent',
-      };
-      setMessages(prevMessages => [...prevMessages, newMessage]);
     } catch (error) {
       console.error('Error sending location:', error);
       Alert.alert('Error', 'Failed to send location. Please try again.');
@@ -338,28 +291,28 @@ const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => 
   const renderMessage = ({ item }: { item: Message }) => (
     <Animated.View style={[
       styles.messageContainer,
-      item.sender.role === 'client' ? styles.currentUserMessage : styles.otherUserMessage,
+      item.sender_type === 'App\\Models\\Client' ? styles.currentUserMessage : styles.otherUserMessage,
       { opacity: fadeAnim }
     ]}>
-      <Text style={styles.senderName}>{item.sender.name} ({item.sender.role})</Text>
-      {item.type === 'text' && <Text style={styles.messageText}>{item.text}</Text>}
-      {item.type === 'image' && (
-        <TouchableOpacity onPress={() => item.content && downloadFile(item.content, item.fileName || 'image.jpg')}>
-          <Image source={{ uri: item.content }} style={styles.imageMessage} />
+      <Text style={styles.senderName}>{item.sender_type === 'App\\Models\\Client' ? 'Client' : (item.sender_type === 'App\\Models\\Vehicle' ? 'Vehicle' : 'Agent')}</Text>
+      {item.message_type === 'text' && <Text style={styles.messageText}>{item.content}</Text>}
+      {item.message_type === 'image' && (
+        <TouchableOpacity onPress={() => item.file_path && downloadFile(item.file_path, 'image.jpg')}>
+          <Image source={{ uri: item.file_path }} style={styles.imageMessage} />
           <Text style={styles.downloadText}>Tap to download</Text>
         </TouchableOpacity>
       )}
-      {item.type === 'file' && (
-        <TouchableOpacity onPress={() => item.content && downloadFile(item.content, item.fileName || 'file')}>
+      {item.message_type === 'file' && (
+        <TouchableOpacity onPress={() => item.file_path && downloadFile(item.file_path, item.content || 'file')}>
           <View style={styles.fileMessage}>
             <Ionicons name="document-outline" size={24} color={theme.colors.primary} />
-            <Text style={styles.fileMessageText}>{item.fileName || 'File attached'}</Text>
+            <Text style={styles.fileMessageText}>{item.content || 'File attached'}</Text>
           </View>
           <Text style={styles.downloadText}>Tap to download</Text>
         </TouchableOpacity>
       )}
-      {item.type === 'audio' && (
-        <TouchableOpacity onPress={() => item.content && (isPlaying && currentlyPlayingId === item.id ? pauseAudio() : playAudio(item.content, item.id))}>
+      {item.message_type === 'audio' && (
+        <TouchableOpacity onPress={() => item.file_path && (isPlaying && currentlyPlayingId === item.id ? pauseAudio() : playAudio(item.file_path, item.id))}>
           <View style={styles.audioMessage}>
             {isAudioLoading === item.id ? (
               <ActivityIndicator size="small" color={theme.colors.primary} />
@@ -377,24 +330,16 @@ const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => 
           </View>
         </TouchableOpacity>
       )}
-      {item.type === 'location' && item.location && (
-        <TouchableOpacity onPress={() => openLocation(item.location!.latitude, item.location!.longitude)}>
+      {item.message_type === 'location' && item.latitude && item.longitude && (
+        <TouchableOpacity onPress={() => openLocation(item.latitude!, item.longitude!)}>
           <View style={styles.locationMessage}>
             <Ionicons name="location-outline" size={24} color={theme.colors.primary} />
             <Text style={styles.locationMessageText}>Location shared</Text>
           </View>
           <Text style={styles.openMapText}>Tap to open in Maps</Text>
-        
         </TouchableOpacity>
       )}
-      <View style={styles.messageFooter}>
-        <Text style={styles.timestamp}>{new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-        {item.sender.role === 'client' && (
-          <Text style={styles.messageStatus}>
-            {item.status === 'sending' ? t('ticket.sending') : ''}
-          </Text>
-        )}
-      </View>
+      <Text style={styles.timestamp}>{new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
     </Animated.View>
   );
 
@@ -415,9 +360,6 @@ const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => 
       >
         <View style={styles.header}>
           <Text style={styles.headerText}>Order #{serviceId}</Text>
-          <TouchableOpacity style={styles.closeButton}>
-            <Text style={styles.closeButtonText}>Close Chat</Text>
-          </TouchableOpacity>
         </View>
         <FlatList
           ref={flatListRef}
@@ -434,10 +376,11 @@ const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => 
                 <Ionicons name="image-outline" size={24} color={theme.colors.primary} />
               </TouchableOpacity>
               <TouchableOpacity onPress={pickDocument} style={styles.attachmentButton}>
-                <Ionicons name="document-outline" size={24} color={theme.colors.primary} />
+                <Ionicons  name="document-outline" size={24} color={theme.colors.primary} />
               </TouchableOpacity>
               <TouchableOpacity onPress={isRecording ? stopRecording : startRecording} style={styles.attachmentButton}>
                 <Ionicons name={isRecording ? "stop-circle-outline" : "mic-outline"} size={24} color={isRecording ? theme.colors.error : theme.colors.primary} />
+              
               </TouchableOpacity>
               <TouchableOpacity onPress={sendLocation} style={styles.attachmentButton}>
                 <Ionicons name="location-outline" size={24} color={theme.colors.primary} />
@@ -482,17 +425,6 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.lg,
     fontWeight: theme.typography.fontWeights.bold,
   },
-  closeButton: {
-    backgroundColor: theme.colors.surface,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.roundness,
-  },
-  closeButtonText: {
-    color: theme.colors.primary,
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: theme.typography.fontWeights.medium,
-  },
   messageList: {
     padding: theme.spacing.md,
   },
@@ -520,21 +452,11 @@ const styles = StyleSheet.create({
     color: theme.colors.surface,
     fontSize: theme.typography.sizes.md,
   },
-  messageFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: theme.spacing.xs,
-  },
   timestamp: {
     fontSize: theme.typography.sizes.xs,
     color: theme.colors.surface,
     opacity: 0.7,
-  },
-  messageStatus: {
-    fontSize: theme.typography.sizes.xs,
-    color: theme.colors.surface,
-    opacity: 0.7,
+    marginTop: theme.spacing.xs,
   },
   inputContainer: {
     padding: theme.spacing.sm,
@@ -548,7 +470,7 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-around',
     width: '100%',
   },
   input: {
@@ -567,7 +489,6 @@ const styles = StyleSheet.create({
   },
   attachmentButton: {
     padding: theme.spacing.sm,
-    marginHorizontal: theme.spacing.xs,
   },
   imageMessage: {
     width: 200,
@@ -599,11 +520,6 @@ const styles = StyleSheet.create({
     color: theme.colors.surface,
   },
   downloadText: {
-    fontSize: theme.typography.sizes.xs,
-    color: theme.colors.surface,
-    marginTop: theme.spacing.xs,
-  },
-  playText: {
     fontSize: theme.typography.sizes.xs,
     color: theme.colors.surface,
     marginTop: theme.spacing.xs,
