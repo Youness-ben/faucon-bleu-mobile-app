@@ -28,6 +28,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import api from '../api';
 import { useUser } from '../UserContext';
 import { useNotification } from '../NotificationContext';
+import { STORAGE_URL } from '../../config';
 
 type RootStackParamList = {
   TicketScreen: { serviceId: string };
@@ -37,8 +38,7 @@ type TicketScreenRouteProp = RouteProp<RootStackParamList, 'TicketScreen'>;
 
 interface Message {
   id: string;
-  sender_id: string;
-  sender_type: string;
+  sender_type: 'client' | 'vehicle' | 'agent';
   message_type: 'text' | 'image' | 'file' | 'audio' | 'location';
   content?: string;
   file_path?: string;
@@ -47,7 +47,7 @@ interface Message {
   created_at: string;
 }
 
-const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => {
+export default function Component({ route }: { route: TicketScreenRouteProp }) {
   const { t } = useTranslation();
   const { serviceId } = route.params;
   const [messages, setMessages] = useState<Message[]>([]);
@@ -79,7 +79,7 @@ const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => 
   const fetchMessages = async () => {
     setIsLoading(true);
     try {
-      const response = await api.get(`client/service-orders/${serviceId}/chat`);
+      const response = await api.get(`service-orders/${serviceId}/chat`);
       setMessages(response.data);
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -113,14 +113,13 @@ const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => 
         formData.append('longitude', location.longitude.toString());
       }
 
-      const response = await api.post(`client/service-orders/${serviceId}/chat`, formData, {
+      const response = await api.post(`service-orders/${serviceId}/chat`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-
+      console.log(response.data);
       setMessages(prevMessages => [...prevMessages, response.data]);
     } catch (error) {
       console.error('Error sending message:', error);
-      Alert.alert('Error', 'Failed to send message. Please try again.');
     }
   };
 
@@ -240,10 +239,26 @@ const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => 
   };
 
   const downloadFile = async (uri: string, fileName: string) => {
-    const fileUri = FileSystem.documentDirectory + fileName;
     try {
-      const { uri: downloadedUri } = await FileSystem.downloadAsync(uri, fileUri);
-      Alert.alert('Success', `File downloaded to ${downloadedUri}`);
+      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+      const downloadResumable = FileSystem.createDownloadResumable(
+        STORAGE_URL+uri,
+        fileUri,
+        {},
+        (downloadProgress) => {
+          const progress = downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite;
+          console.log(`Download progress: ${progress * 100}%`);
+        }
+      );
+
+      const { uri: downloadedUri } = await downloadResumable.downloadAsync();
+      
+      if (downloadedUri) {
+        console.log(`File downloaded to: ${downloadedUri}`);
+        Alert.alert('Success', `File downloaded successfully`);
+      } else {
+        throw new Error('Download failed');
+      }
     } catch (error) {
       console.error('Error downloading file:', error);
       Alert.alert('Error', 'Failed to download file. Please try again.');
@@ -291,10 +306,10 @@ const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => 
   const renderMessage = ({ item }: { item: Message }) => (
     <Animated.View style={[
       styles.messageContainer,
-      item.sender_type === 'App\\Models\\Client' ? styles.currentUserMessage : styles.otherUserMessage,
+      item.sender_type === user.type ? styles.currentUserMessage : styles.otherUserMessage,
       { opacity: fadeAnim }
     ]}>
-      <Text style={styles.senderName}>{item.sender_type === 'App\\Models\\Client' ? 'Client' : (item.sender_type === 'App\\Models\\Vehicle' ? 'Vehicle' : 'Agent')}</Text>
+      <Text style={styles.senderName}>{item.sender_type === 'client' ? 'Client' : (item.sender_type === 'vehicle' ? 'Vehicle' : 'Agent')}</Text>
       {item.message_type === 'text' && <Text style={styles.messageText}>{item.content}</Text>}
       {item.message_type === 'image' && (
         <TouchableOpacity onPress={() => item.file_path && downloadFile(item.file_path, 'image.jpg')}>
@@ -377,10 +392,10 @@ const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => 
               </TouchableOpacity>
               <TouchableOpacity onPress={pickDocument} style={styles.attachmentButton}>
                 <Ionicons  name="document-outline" size={24} color={theme.colors.primary} />
+              
               </TouchableOpacity>
               <TouchableOpacity onPress={isRecording ? stopRecording : startRecording} style={styles.attachmentButton}>
                 <Ionicons name={isRecording ? "stop-circle-outline" : "mic-outline"} size={24} color={isRecording ? theme.colors.error : theme.colors.primary} />
-              
               </TouchableOpacity>
               <TouchableOpacity onPress={sendLocation} style={styles.attachmentButton}>
                 <Ionicons name="location-outline" size={24} color={theme.colors.primary} />
@@ -403,7 +418,7 @@ const TicketScreen: React.FC<{ route: TicketScreenRouteProp }> = ({ route }) => 
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -535,5 +550,3 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
-
-export default TicketScreen;

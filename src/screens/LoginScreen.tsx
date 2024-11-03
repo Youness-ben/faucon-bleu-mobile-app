@@ -46,8 +46,10 @@ const LoginScreen: React.FC = () => {
 
     setIsLoading(true);
     try {
+      console.log("here");
       const response = await api.post('/login/client', { email, password });
       const { token, user } = response.data;
+      console.log("and there");
 
       await AsyncStorage.setItem('userToken', token);
       await AsyncStorage.setItem('userType', 'client');
