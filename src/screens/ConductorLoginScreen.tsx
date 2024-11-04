@@ -47,7 +47,7 @@ const ConductorLoginScreen: React.FC = () => {
       const { token } = response.data;
       
       await login(token, 'vehicle');
-      navigation.navigate('ConductorHome');
+      navigation.navigate('ConductorMain');
     } catch (error) {
       console.log(error);
       Alert.alert(t('auth.error'), t('auth.invalidCredentials'));

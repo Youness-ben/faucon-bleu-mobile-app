@@ -155,6 +155,7 @@ const AppNavigator: React.FC = () => {
         <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ headerShown: true, title: 'Edit Profile' }} />
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: true, title: 'Settings' }} />
         <Stack.Screen name="Support" component={SupportScreen} options={{ headerShown: true, title: 'Support' }} />
+        
         <Stack.Screen name="TicketScreen" component={TicketScreen} options={{ headerShown: true, title: 'Service Chat' }} />
         
       </Stack.Navigator>

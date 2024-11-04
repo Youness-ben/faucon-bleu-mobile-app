@@ -263,8 +263,8 @@ const HomeScreen: React.FC = () => {
         <Ionicons name="construct-outline" size={32} color={theme.colors.primary} />
       </View>
       <View style={styles.serviceInfo}>
-        <Text style={styles.serviceType}>{item.service_type}</Text>
-        <Text style={styles.serviceDate}>{item.scheduled_date}</Text>
+        <Text style={styles.serviceType}>{item.service.name}</Text>
+        <Text style={styles.serviceDate}>{item.scheduled_at}</Text>
       </View>
       <Text style={[styles.serviceStatus, { color: getStatusColor(item.status) }]}>{item.status}</Text>
     </TouchableOpacity>

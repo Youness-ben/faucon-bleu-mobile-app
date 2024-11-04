@@ -86,7 +86,7 @@ const ConductorServiceHistoryScreen: React.FC = () => {
       onPress={() => navigation.navigate('ServiceDetails', { serviceId: item.id })}
     >
       <View style={styles.serviceInfo}>
-        <Text style={styles.serviceName}>{item.service_name}</Text>
+        <Text style={styles.serviceName}>{item.service.name}</Text>
         <Text style={styles.serviceDate}>{new Date(item.completion_date).toLocaleDateString()}</Text>
       </View>
       <View style={styles.serviceStatus}>
