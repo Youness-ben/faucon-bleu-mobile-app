@@ -43,12 +43,13 @@ const ConductorLoginScreen: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const response = await api.post('/api/login/vehicle', { license_plate: plateNumber, password });
+      const response = await api.post('login/vehicle', { license_plate: plateNumber, password });
       const { token } = response.data;
       
       await login(token, 'vehicle');
       navigation.navigate('ConductorHome');
     } catch (error) {
+      console.log(error);
       Alert.alert(t('auth.error'), t('auth.invalidCredentials'));
     } finally {
       setIsLoading(false);
