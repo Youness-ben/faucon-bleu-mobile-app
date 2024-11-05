@@ -16,6 +16,9 @@
   },
   "common": {
     "login": "Login",
+    "you": "You",
+    "conductor": "Conductor",
+    "client": "Client",
     "email": "Email",
     "password": "Password",
     "retry": "Retry",

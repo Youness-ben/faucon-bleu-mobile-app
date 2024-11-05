@@ -32,8 +32,9 @@ import MapView, { Marker, PROVIDER_DEFAULT, UrlTile } from 'react-native-maps';
 import api from '../api';
 import { useUser } from '../UserContext';
 import { useNotification } from '../NotificationContext';
-import { STORAGE_URL } from '../../config';
+import { MAPBOX_TOKEN, STORAGE_URL } from '../../config';
 import { WebView } from 'react-native-webview';
+import Slider from '@react-native-community/slider';
 
 type RootStackParamList = {
   TicketScreen: { serviceId: string };
@@ -71,12 +72,15 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
   const { clearNewMessages } = useNotification();
 
   const [previewUri, setPreviewUri] = useState<string | null>(null);
-  const [previewType, setPreviewType] = useState<'image' | 'file' | 'video' | null>(null);
+  const [previewType, setPreviewType] = useState<'image' | 'file' | 'video' | 'audio' | null>(null);
   const [previewName, setPreviewName] = useState<string | null>(null);
   const [previewFile, setPreviewFile] = useState<{ uri: string; type: string } | null>(null);
 
   const [isMapVisible, setIsMapVisible] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const recordingInterval = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     fetchMessages();
@@ -85,6 +89,9 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
     return () => {
       if (sound) {
         sound.unloadAsync();
+      }
+      if (recordingInterval.current) {
+        clearInterval(recordingInterval.current);
       }
     };
   }, [serviceId]);
@@ -186,7 +193,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
     if (previewUri && previewType) {
       const file = {
         uri: previewUri,
-        type: previewType === 'image' ? 'image/jpeg' : (previewType === 'video' ? 'video/mp4' : 'application/octet-stream'),
+        type: previewType === 'image' ? 'image/jpeg' : (previewType === 'video' ? 'video/mp4' : (previewType === 'audio' ? 'audio/m4a' : 'application/octet-stream')),
         name: previewName || 'file',
       };
       sendMessage(previewType, undefined, file);
@@ -199,6 +206,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
     setPreviewType(null);
     setPreviewName(null);
     setPreviewFile(null);
+    setRecordingDuration(0);
   };
 
   const startRecording = async () => {
@@ -213,6 +221,11 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
       );
       setRecording(recording);
       setIsRecording(true);
+      setRecordingDuration(0);
+
+      recordingInterval.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
     } catch (err) {
       console.error('Failed to start recording', err);
       Alert.alert('Error', 'Failed to start recording. Please try again.');
@@ -224,15 +237,15 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
     try {
       setIsRecording(false);
       await recording.stopAndUnloadAsync();
+      if (recordingInterval.current) {
+        clearInterval(recordingInterval.current);
+      }
       const uri = recording.getURI();
       setRecording(null);
       if (uri) {
-        const file = {
-          uri: uri,
-          type: 'audio/m4a',
-          name: 'audio_message.m4a',
-        };
-        sendMessage('audio', undefined, file);
+        setPreviewUri(uri);
+        setPreviewType('audio');
+        setPreviewName('audio_message.m4a');
       }
     } catch (error) {
       console.error('Error stopping recording:', error);
@@ -328,7 +341,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
       item.sender_type === user.type ? styles.currentUserMessage : styles.otherUserMessage,
       { opacity: fadeAnim }
     ]}>
-      <Text style={styles.senderName}>{item.sender_type === 'client' ? 'Client' : (item.sender_type === 'vehicle' ? 'Vehicle' : 'Agent')}</Text>
+      <Text style={styles.senderName}>{item.sender_type === user.type ? '' : (item.sender_type === 'vehicle' ? t('common.conductor') : (item.sender_type === 'client' ? t('common.client') : 'Faucon Bleu'))}</Text>
       {item.message_type === 'text' && <Text style={styles.messageText}>{item.content}</Text>}
       {item.message_type === 'image' && (
         <TouchableOpacity onPress={() => setPreviewFile({ uri: `${STORAGE_URL}/${item.file_path}`, type: 'image' })}>
@@ -360,7 +373,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
           }}>
             <View style={styles.fileMessage}>
               <Ionicons name="document-outline" size={24} color={theme.colors.primary} />
-              <Text style={styles.fileMessageText}>{item.content || 'File attached'}</Text>
+              <Text  style={styles.fileMessageText}>{item.content || 'File attached'}</Text>
             </View>
             <Text style={styles.previewText}>
               {item.file_path?.split('.').pop()?.toLowerCase() in ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'] 
@@ -371,13 +384,13 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
         </View>
       )}
       {item.message_type === 'audio' && (
-        <TouchableOpacity onPress={() => item.file_path && (isPlaying && currentlyPlayingId === item.id ? pauseAudio() :     playAudio(`${STORAGE_URL}/${item.file_path}`, item.id))}>
+        <TouchableOpacity onPress={() => item.file_path && (isPlaying && currentlyPlayingId === item.id ? pauseAudio() : playAudio(`${STORAGE_URL}/${item.file_path}`, item.id))}>
           <View style={styles.audioMessage}>
             {isAudioLoading === item.id ? (
               <ActivityIndicator size="small" color={theme.colors.primary} />
             ) : (
               <Ionicons 
-                name={isPlaying && currentlyPlayingId === item.id ? "pause" : "play"} 
+                name={isPlaying && currentlyPlayingId === item.id ? "pause-outline" : "play-outline"} 
                 size={24} 
                 color={theme.colors.primary} 
               />
@@ -390,27 +403,13 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
         </TouchableOpacity>
       )}
       {item.message_type === 'location' && item.latitude && item.longitude && (
-        <View>
-          <MapView
-            provider={PROVIDER_DEFAULT}
+        <TouchableOpacity onPress={() => openLocation(item.latitude!, item.longitude!)}>
+          <Image
+            source={{ uri: `https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/pin-s+FF0000(${item.longitude},${item.latitude})/${item.longitude},${item.latitude},14,0/300x200?access_token=${MAPBOX_TOKEN}` }}
             style={styles.mapPreview}
-            initialRegion={{
-              latitude: item.latitude,
-              longitude: item.longitude,
-              latitudeDelta: 0.0922,
-              longitudeDelta: 0.0421,
-            }}
-          >
-            <UrlTile
-              urlTemplate="https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              maximumZ={19}
-            />
-            <Marker coordinate={{ latitude: item.latitude, longitude: item.longitude }} />
-          </MapView>
-          <TouchableOpacity onPress={() => openLocation(item.latitude!, item.longitude!)}>
-            <Text style={styles.openMapText}>Open in Maps</Text>
-          </TouchableOpacity>
-        </View>
+          />
+          <Text style={styles.openMapText}>Open in Maps</Text>
+        </TouchableOpacity>
       )}
       <Text style={styles.timestamp}>{new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
     </Animated.View>
@@ -442,6 +441,21 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
                 style={styles.previewVideo}
                 useNativeControls
               />
+            ) : previewType === 'audio' ? (
+              <View style={styles.audioPreview}>
+                <Slider
+                  style={{width: 200, height: 40}}
+                  minimumValue={0}
+                  maximumValue={recordingDuration}
+                  value={recordingDuration}
+                  minimumTrackTintColor={theme.colors.primary}
+                  maximumTrackTintColor="#000000"
+                />
+                <TouchableOpacity onPress={() => playAudio(previewUri, 'preview')}>
+                  <Ionicons name={isPlaying ? "pause" : "play"} size={48} color={theme.colors.primary} />
+                </TouchableOpacity>
+                <Text style={styles.audioPreviewText}>{formatDuration(recordingDuration)}</Text>
+              </View>
             ) : (
               <View style={styles.filePreview}>
                 <Ionicons name="document-outline" size={48} color={theme.colors.primary} />
@@ -548,6 +562,54 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
     );
   };
 
+  const formatDuration = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  const renderInputArea = () => {
+    if (isRecording) {
+      return (
+        <View style={styles.recordingContainer}>
+          <Slider
+            style={{width: Dimensions.get('window').width - 80, height: 40}}
+            minimumValue={0}
+            maximumValue={60} // Set maximum recording time to 60 seconds
+            value={recordingDuration}
+            minimumTrackTintColor={theme.colors.primary}
+            maximumTrackTintColor="#000000"
+          />
+          <Text style={styles.recordingDuration}>{formatDuration(recordingDuration)}</Text>
+          <TouchableOpacity onPress={stopRecording} style={styles.stopRecordingButton}>
+            <Ionicons name="stop" size={24} color={theme.colors.surface} />
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.inputRow}>
+        <TextInput
+          style={styles.input}
+          value={inputText}
+          onChangeText={setInputText}
+          placeholder={t('ticket.inputPlaceholder')}
+          placeholderTextColor={theme.colors.placeholder}
+        />
+        {inputText.trim() === '' ? (
+          <TouchableOpacity onPress={startRecording} style={styles.recordButton}>
+            <Ionicons name="mic" size={24} color={theme.colors.surface} />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity onPress={sendTextMessage} style={styles.sendButton}>
+            <Ionicons name="send" size={24} color={theme.colors.surface} />
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  };
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -583,26 +645,12 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
               <TouchableOpacity onPress={pickDocument} style={styles.attachmentButton}>
                 <Ionicons name="document-outline" size={24} color={theme.colors.primary} />
               </TouchableOpacity>
-              <TouchableOpacity onPress={isRecording ? stopRecording : startRecording} style={styles.attachmentButton}>
-                <Ionicons name={isRecording ? "stop-circle-outline" : "mic-outline"} size={24} color={isRecording ? theme.colors.error : theme.colors.primary} />
-              </TouchableOpacity>
               <TouchableOpacity onPress={openLocationPicker} style={styles.attachmentButton}>
                 <Ionicons name="location-outline" size={24} color={theme.colors.primary} />
               </TouchableOpacity>
             </View>
           </View>
-          <View style={styles.inputRow}>
-            <TextInput
-              style={styles.input}
-              value={inputText}
-              onChangeText={setInputText}
-              placeholder={t('ticket.inputPlaceholder')}
-              placeholderTextColor={theme.colors.placeholder}
-            />
-            <TouchableOpacity onPress={sendTextMessage} style={styles.sendButton}>
-              <Ionicons name="send" size={24} color={theme.colors.surface} />
-            </TouchableOpacity>
-          </View>
+          {renderInputArea()}
         </BlurView>
       </KeyboardAvoidingView>
       {renderPreview()}
@@ -692,6 +740,11 @@ const styles = StyleSheet.create({
   sendButton: {
     padding: theme.spacing.sm,
     backgroundColor: theme.colors.primary,
+    borderRadius: theme.roundness,
+  },
+  recordButton: {
+    padding: theme.spacing.sm,
+    backgroundColor: theme.colors.error,
     borderRadius: theme.roundness,
   },
   attachmentButton: {
@@ -837,5 +890,35 @@ const styles = StyleSheet.create({
     width: 200,
     height: 150,
     borderRadius: theme.roundness,
+  },
+  recordingContainer: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.sm,
+  },
+  recordingDuration: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text,
+    marginTop: theme.spacing.xs,
+  },
+  stopRecordingButton: {
+    backgroundColor: theme.colors.error,
+    padding: theme.spacing.sm,
+    borderRadius: theme.roundness,
+    marginTop: theme.spacing.sm,
+  },
+  audioPreview: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 200,
+    height: 200,
+    borderRadius: theme.roundness,
+    backgroundColor: theme.colors.background,
+  },
+  audioPreviewText: {
+    marginTop: theme.spacing.sm,
+    fontSize: theme.typography.sizes.lg,
+    color: theme.colors.text,
   },
 });
