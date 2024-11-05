@@ -82,6 +82,8 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
   const [recordingDuration, setRecordingDuration] = useState(0);
   const recordingInterval = useRef<NodeJS.Timeout | null>(null);
 
+  const [isFabOpen, setIsFabOpen] = useState(false);
+
   useEffect(() => {
     fetchMessages();
     clearNewMessages(serviceId);
@@ -169,6 +171,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
       console.error('Error picking image or video:', error);
       Alert.alert('Error', 'Failed to pick image or video. Please try again.');
     }
+    setIsFabOpen(false);
   };
 
   const pickDocument = async () => {
@@ -187,6 +190,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
       console.error('Error picking document:', error);
       Alert.alert('Error', 'Failed to pick document. Please try again.');
     }
+    setIsFabOpen(false);
   };
 
   const sendAttachment = () => {
@@ -230,6 +234,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
       console.error('Failed to start recording', err);
       Alert.alert('Error', 'Failed to start recording. Please try again.');
     }
+    setIsFabOpen(false);
   };
 
   const stopRecording = async () => {
@@ -255,6 +260,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
 
   const openLocationPicker = () => {
     setIsMapVisible(true);
+    setIsFabOpen(false);
   };
 
   const sendLocation = () => {
@@ -368,12 +374,13 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
             if (fileExtension && viewableExtensions.includes(fileExtension)) {
               setPreviewFile({ uri: `${STORAGE_URL}/${item.file_path}`, type: 'file' });
             } else {
+              
               item.file_path && downloadFile(item.file_path, item.content || 'file');
             }
           }}>
             <View style={styles.fileMessage}>
               <Ionicons name="document-outline" size={24} color={theme.colors.primary} />
-              <Text  style={styles.fileMessageText}>{item.content || 'File attached'}</Text>
+              <Text style={styles.fileMessageText}>{item.content || 'File attached'}</Text>
             </View>
             <Text style={styles.previewText}>
               {item.file_path?.split('.').pop()?.toLowerCase() in ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'] 
@@ -568,47 +575,67 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  const renderInputArea = () => {
-    if (isRecording) {
-      return (
-        <View style={styles.recordingContainer}>
-          <Slider
-            style={{width: Dimensions.get('window').width - 80, height: 40}}
-            minimumValue={0}
-            maximumValue={60} // Set maximum recording time to 60 seconds
-            value={recordingDuration}
-            minimumTrackTintColor={theme.colors.primary}
-            maximumTrackTintColor="#000000"
-          />
-          <Text style={styles.recordingDuration}>{formatDuration(recordingDuration)}</Text>
-          <TouchableOpacity onPress={stopRecording} style={styles.stopRecordingButton}>
-            <Ionicons name="stop" size={24} color={theme.colors.surface} />
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <View style={styles.headerContent}>
+        <View style={styles.headerAvatar} />
+        <View style={styles.headerInfo}>
+          <Text style={styles.headerTitle}>{t('service.name')}</Text>
+          <Text style={styles.headerSubtitle}>{t('service.carInfo')}</Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  const renderFloatingActionButton = () => (
+    <View style={styles.fabContainer}>
+      {isFabOpen && (
+        <View style={styles.fabMenu}>
+          <TouchableOpacity onPress={pickImage} style={styles.fabMenuItem}>
+            <Ionicons name="image-outline" size={24} color={theme.colors.surface} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={pickDocument} style={styles.fabMenuItem}>
+            <Ionicons name="document-outline" size={24} color={theme.colors.surface} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={openLocationPicker} style={styles.fabMenuItem}>
+            <Ionicons name="location-outline" size={24} color={theme.colors.surface} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={isRecording ? stopRecording : startRecording} style={styles.fabMenuItem}>
+            <Ionicons name={isRecording ? "stop" : "mic-outline"} size={24} color={theme.colors.surface} />
           </TouchableOpacity>
         </View>
-      );
-    }
+      )}
+      <TouchableOpacity
+        style={[styles.fab, isFabOpen && styles.fabOpen]}
+        onPress={() => setIsFabOpen(!isFabOpen)}
+      >
+        <Ionicons name={isFabOpen ? "close" : "add"} size={24} color={theme.colors.surface} />
+      </TouchableOpacity>
+    </View>
+  );
 
-    return (
-      <View style={styles.inputRow}>
-        <TextInput
-          style={styles.input}
-          value={inputText}
-          onChangeText={setInputText}
-          placeholder={t('ticket.inputPlaceholder')}
-          placeholderTextColor={theme.colors.placeholder}
+  const renderInputArea = () => (
+    <View style={styles.inputContainer}>
+      <TextInput
+        style={styles.input}
+        value={inputText}
+        onChangeText={setInputText}
+        placeholder={t('ticket.inputPlaceholder')}
+        placeholderTextColor={theme.colors.placeholder}
+      />
+      <TouchableOpacity 
+        onPress={sendTextMessage} 
+        style={styles.sendButton}
+        disabled={!inputText.trim()}
+      >
+        <Ionicons 
+          name="send" 
+          size={24} 
+          color={inputText.trim() ? theme.colors.surface : theme.colors.placeholder} 
         />
-        {inputText.trim() === '' ? (
-          <TouchableOpacity onPress={startRecording} style={styles.recordButton}>
-            <Ionicons name="mic" size={24} color={theme.colors.surface} />
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity onPress={sendTextMessage} style={styles.sendButton}>
-            <Ionicons name="send" size={24} color={theme.colors.surface} />
-          </TouchableOpacity>
-        )}
-      </View>
-    );
-  };
+      </TouchableOpacity>
+    </View>
+  );
 
   if (isLoading) {
     return (
@@ -625,9 +652,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
-        <View style={styles.header}>
-          <Text style={styles.headerText}>Order #{serviceId}</Text>
-        </View>
+        {renderHeader()}
         <FlatList
           ref={flatListRef}
           data={messages}
@@ -635,23 +660,10 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.messageList}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          scrollEnabled={!isFabOpen}
         />
-        <BlurView intensity={80} tint="light" style={styles.inputContainer}>
-          <View style={styles.inputRow}>
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity onPress={pickImage} style={styles.attachmentButton}>
-                <Ionicons name="image-outline" size={24} color={theme.colors.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={pickDocument} style={styles.attachmentButton}>
-                <Ionicons name="document-outline" size={24} color={theme.colors.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={openLocationPicker} style={styles.attachmentButton}>
-                <Ionicons name="location-outline" size={24} color={theme.colors.primary} />
-              </TouchableOpacity>
-            </View>
-          </View>
-          {renderInputArea()}
-        </BlurView>
+        {renderFloatingActionButton()}
+        {renderInputArea()}
       </KeyboardAvoidingView>
       {renderPreview()}
       {renderFilePreview()}
@@ -669,22 +681,39 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
     padding: theme.spacing.md,
-    backgroundColor: theme.colors.primary,
   },
-  headerText: {
-    color: theme.colors.surface,
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.primary,
+    marginRight: theme.spacing.md,
+  },
+  headerInfo: {
+    flex: 1,
+  },
+  headerTitle: {
     fontSize: theme.typography.sizes.lg,
     fontWeight: theme.typography.fontWeights.bold,
+    color: theme.colors.text,
+  },
+  headerSubtitle: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.muted,
   },
   messageList: {
     padding: theme.spacing.md,
   },
   messageContainer: {
-    maxWidth: '80%',
+    maxWidth: '75%',
     padding: theme.spacing.sm,
     marginBottom: theme.spacing.sm,
     borderRadius: theme.roundness,
@@ -714,41 +743,63 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xs,
   },
   inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: theme.spacing.sm,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: theme.spacing.xs,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
+    backgroundColor: theme.colors.background,
   },
   input: {
     flex: 1,
-    height: 40,
+    height: 44,
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.roundness,
-    paddingHorizontal: theme.spacing.sm,
+    borderRadius: 22,
+    paddingHorizontal: theme.spacing.lg,
     marginRight: theme.spacing.sm,
     color: theme.colors.text,
   },
   sendButton: {
-    padding: theme.spacing.sm,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: theme.colors.primary,
-    borderRadius: theme.roundness,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  recordButton: {
-    padding: theme.spacing.sm,
+  fabContainer: {
+    position: 'absolute',
+    bottom: 80,
+    right: 20,
+    alignItems: 'flex-end',
+  },
+  fab: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  fabOpen: {
     backgroundColor: theme.colors.error,
-    borderRadius: theme.roundness,
   },
-  attachmentButton: {
-    padding: theme.spacing.sm,
+  fabMenu: {
+    marginBottom: theme.spacing.sm,
+  },
+  fabMenuItem: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: theme.spacing.xs,
   },
   imageMessage: {
     width: 200,
@@ -776,18 +827,10 @@ const styles = StyleSheet.create({
     marginLeft: theme.spacing.sm,
     color: theme.colors.surface,
   },
-  locationMessage: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  locationMessageText: {
-    marginLeft: theme.spacing.sm,
-    color: theme.colors.surface,
-  },
-  downloadText: {
-    fontSize: theme.typography.sizes.xs,
-    color: theme.colors.surface,
-    marginTop: theme.spacing.xs,
+  mapPreview: {
+    width: 200,
+    height: 150,
+    borderRadius: theme.roundness,
   },
   openMapText: {
     fontSize: theme.typography.sizes.xs,
@@ -885,28 +928,6 @@ const styles = StyleSheet.create({
     color: theme.colors.surface,
     fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.fontWeights.bold,
-  },
-  mapPreview: {
-    width: 200,
-    height: 150,
-    borderRadius: theme.roundness,
-  },
-  recordingContainer: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: theme.spacing.sm,
-  },
-  recordingDuration: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text,
-    marginTop: theme.spacing.xs,
-  },
-  stopRecordingButton: {
-    backgroundColor: theme.colors.error,
-    padding: theme.spacing.sm,
-    borderRadius: theme.roundness,
-    marginTop: theme.spacing.sm,
   },
   audioPreview: {
     alignItems: 'center',
