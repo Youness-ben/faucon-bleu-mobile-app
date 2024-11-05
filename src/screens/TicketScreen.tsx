@@ -53,6 +53,13 @@ interface Message {
   created_at: string;
 }
 
+interface AudioProgress {
+  [key: string]: {
+    position: number;
+    duration: number;
+  };
+}
+
 export default function Component({ route }: { route: TicketScreenRouteProp }) {
   const { t } = useTranslation();
   const { serviceId } = route.params;
@@ -65,6 +72,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentlyPlayingId, setCurrentlyPlayingId] = useState<string | null>(null);
   const [isAudioLoading, setIsAudioLoading] = useState<string | null>(null);
+  const [audioProgress, setAudioProgress] = useState<AudioProgress>({});
   const flatListRef = useRef<FlatList>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const { user } = useUser();
@@ -83,6 +91,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
   const recordingInterval = useRef<NodeJS.Timeout | null>(null);
 
   const [isFabOpen, setIsFabOpen] = useState(false);
+  const [isRecordingUIVisible, setIsRecordingUIVisible] = useState(false);
 
   useEffect(() => {
     fetchMessages();
@@ -226,6 +235,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
       setRecording(recording);
       setIsRecording(true);
       setRecordingDuration(0);
+      setIsRecordingUIVisible(true);
 
       recordingInterval.current = setInterval(() => {
         setRecordingDuration(prev => prev + 1);
@@ -234,7 +244,6 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
       console.error('Failed to start recording', err);
       Alert.alert('Error', 'Failed to start recording. Please try again.');
     }
-    setIsFabOpen(false);
   };
 
   const stopRecording = async () => {
@@ -312,25 +321,35 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
       const { sound: newSound } = await Audio.Sound.createAsync(
         { uri },
         { shouldPlay: true },
-        (status) => {
-          if (status.isLoaded) {
-            setIsAudioLoading(null);
-          }
-        }
+        onPlaybackStatusUpdate
       );
       setSound(newSound);
       setIsPlaying(true);
       setCurrentlyPlayingId(messageId);
-      newSound.setOnPlaybackStatusUpdate((status) => {
-        if (status.didJustFinish) {
-          setIsPlaying(false);
-          setCurrentlyPlayingId(null);
-        }
-      });
+      newSound.setOnPlaybackStatusUpdate(onPlaybackStatusUpdate);
     } catch (error) {
       console.error('Error playing audio:', error);
       Alert.alert('Error', 'Failed to play audio. Please try again.');
       setIsAudioLoading(null);
+    }
+  };
+
+  const onPlaybackStatusUpdate = (status: Audio.PlaybackStatus) => {
+    if (status.isLoaded) {
+      setIsAudioLoading(null);
+      if (currentlyPlayingId) {
+        setAudioProgress(prev => ({
+          ...prev,
+          [currentlyPlayingId]: {
+            position: status.positionMillis,
+            duration: status.durationMillis || 0,
+          },
+        }));
+      }
+      if (status.didJustFinish) {
+        setIsPlaying(false);
+        setCurrentlyPlayingId(null);
+      }
     }
   };
 
@@ -341,85 +360,184 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
     }
   };
 
+  const formatDuration = (milliseconds: number) => {
+    const totalSeconds = Math.floor(milliseconds / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+      </TouchableOpacity>
+      <View style={styles.headerContent}>
+        <Text style={styles.headerTitle}>{t('service.name')}</Text>
+        <Text style={styles.headerSubtitle}>{t('service.carInfo')}</Text>
+      </View>
+      <TouchableOpacity style={styles.moreButton}>
+        <Ionicons name="ellipsis-vertical" size={24} color={theme.colors.text} />
+      </TouchableOpacity>
+    </View>
+  );
+
   const renderMessage = ({ item }: { item: Message }) => (
     <Animated.View style={[
       styles.messageContainer,
       item.sender_type === user.type ? styles.currentUserMessage : styles.otherUserMessage,
       { opacity: fadeAnim }
     ]}>
-      <Text style={styles.senderName}>{item.sender_type === user.type ? '' : (item.sender_type === 'vehicle' ? t('common.conductor') : (item.sender_type === 'client' ? t('common.client') : 'Faucon Bleu'))}</Text>
-      {item.message_type === 'text' && <Text style={styles.messageText}>{item.content}</Text>}
-      {item.message_type === 'image' && (
-        <TouchableOpacity onPress={() => setPreviewFile({ uri: `${STORAGE_URL}/${item.file_path}`, type: 'image' })}>
-          <Image source={{ uri: `${STORAGE_URL}/${item.file_path}` }} style={styles.imageMessage} />
-          <Text style={styles.previewText}>Tap to preview</Text>
-        </TouchableOpacity>
-      )}
-      {item.message_type === 'video' && (
-        <TouchableOpacity onPress={() => setPreviewFile({ uri: `${STORAGE_URL}/${item.file_path}`, type: 'video' })}>
-          <Video
-            source={{ uri: `${STORAGE_URL}/${item.file_path}` }}
-            style={styles.videoMessage}
-            resizeMode="cover"
-            shouldPlay={false}
-          />
-          <Text style={styles.previewText}>Tap to preview</Text>
-        </TouchableOpacity>
-      )}
-      {item.message_type === 'file' && (
-        <View>
-          <TouchableOpacity onPress={() => {
-            const fileExtension = item.file_path?.split('.').pop()?.toLowerCase();
-            const viewableExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'];
-            if (fileExtension && viewableExtensions.includes(fileExtension)) {
-              setPreviewFile({ uri: `${STORAGE_URL}/${item.file_path}`, type: 'file' });
-            } else {
-              
-              item.file_path && downloadFile(item.file_path, item.content || 'file');
-            }
-          }}>
-            <View style={styles.fileMessage}>
-              <Ionicons name="document-outline" size={24} color={theme.colors.primary} />
-              <Text style={styles.fileMessageText}>{item.content || 'File attached'}</Text>
-            </View>
-            <Text style={styles.previewText}>
-              {item.file_path?.split('.').pop()?.toLowerCase() in ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'] 
-                ? 'Tap to preview' 
-                : 'Tap to download'}
-            </Text>
-          </TouchableOpacity>
+      {item.sender_type !== user.type && (
+        <View style={styles.avatarContainer}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{item.sender_type[0].toUpperCase()}</Text>
+          </View>
         </View>
       )}
-      {item.message_type === 'audio' && (
-        <TouchableOpacity onPress={() => item.file_path && (isPlaying && currentlyPlayingId === item.id ? pauseAudio() : playAudio(`${STORAGE_URL}/${item.file_path}`, item.id))}>
-          <View style={styles.audioMessage}>
-            {isAudioLoading === item.id ? (
-              <ActivityIndicator size="small" color={theme.colors.primary} />
-            ) : (
-              <Ionicons 
-                name={isPlaying && currentlyPlayingId === item.id ? "pause-outline" : "play-outline"} 
-                size={24} 
-                color={theme.colors.primary} 
-              />
-            )}
-            <Text style={styles.audioMessageText}>
-              {isAudioLoading === item.id ? 'Loading Audio...' : 
-                (isPlaying && currentlyPlayingId === item.id ? 'Pause Audio' : 'Play Audio')}
-            </Text>
+      <View style={styles.messageContent}>
+        {item.sender_type !== user.type && (
+          <Text style={styles.senderName}>
+            {item.sender_type === 'vehicle' ? t('common.conductor') : (item.sender_type === 'client' ? t('common.client') : 'Faucon Bleu')}
+          </Text>
+        )}
+        {item.message_type === 'text' && <Text style={styles.messageText}>{item.content}</Text>}
+        {item.message_type === 'image' && (
+          <TouchableOpacity onPress={() => setPreviewFile({ uri: `${STORAGE_URL}/${item.file_path}`, type: 'image' })}>
+            <Image source={{ uri: `${STORAGE_URL}/${item.file_path}` }} style={styles.imageMessage} />
+            <Text style={styles.previewText}>Tap to preview</Text>
+          </TouchableOpacity>
+        )}
+        {item.message_type === 'video' && (
+          <TouchableOpacity onPress={() => 
+            setPreviewFile({ uri: `${STORAGE_URL}/${item.file_path}`, type: 'video' })
+          }>
+            <Video
+              source={{ uri: `${STORAGE_URL}/${item.file_path}` }}
+              style={styles.videoMessage}
+              resizeMode="cover"
+              shouldPlay={false}
+            />
+            <Text style={styles.previewText}>Tap to preview</Text>
+          </TouchableOpacity>
+        )}
+        {item.message_type === 'file' && (
+          <View>
+            <TouchableOpacity onPress={() => {
+              const fileExtension = item.file_path?.split('.').pop()?.toLowerCase();
+              const viewableExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'];
+              if (fileExtension && viewableExtensions.includes(fileExtension)) {
+                setPreviewFile({ uri: `${STORAGE_URL}/${item.file_path}`, type: 'file' });
+              } else {
+                item.file_path && downloadFile(item.file_path, item.content || 'file');
+              }
+            }}>
+              <View style={styles.fileMessage}>
+                <Ionicons name="document-outline" size={24} color={theme.colors.primary} />
+                <Text style={styles.fileMessageText}>{item.content || 'File attached'}</Text>
+              </View>
+              <Text style={styles.previewText}>
+                {item.file_path?.split('.').pop()?.toLowerCase() in ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'] 
+                  ? 'Tap to preview' 
+                  : 'Tap to download'}
+              </Text>
+            </TouchableOpacity>
           </View>
-        </TouchableOpacity>
-      )}
-      {item.message_type === 'location' && item.latitude && item.longitude && (
-        <TouchableOpacity onPress={() => openLocation(item.latitude!, item.longitude!)}>
-          <Image
-            source={{ uri: `https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/pin-s+FF0000(${item.longitude},${item.latitude})/${item.longitude},${item.latitude},14,0/300x200?access_token=${MAPBOX_TOKEN}` }}
-            style={styles.mapPreview}
-          />
-          <Text style={styles.openMapText}>Open in Maps</Text>
-        </TouchableOpacity>
-      )}
-      <Text style={styles.timestamp}>{new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+        )}
+        {item.message_type === 'audio' && (
+          <TouchableOpacity onPress={() => item.file_path && (isPlaying && currentlyPlayingId === item.id ? pauseAudio() : playAudio(`${STORAGE_URL}/${item.file_path}`, item.id))}>
+            <View style={styles.audioMessage}>
+              <View style={styles.audioControls}>
+                {isAudioLoading === item.id ? (
+                  <ActivityIndicator size="small" color={theme.colors.primary} />
+                ) : (
+                  <Ionicons 
+                    name={isPlaying && currentlyPlayingId === item.id ? "pause" : "play"} 
+                    size={20} 
+                    color={theme.colors.primary} 
+                  />
+                )}
+                <Slider
+                  style={styles.audioSlider}
+                  minimumValue={0}
+                  maximumValue={100}
+                  value={audioProgress[item.id] ? (audioProgress[item.id].position / audioProgress[item.id].duration) * 100 : 0}
+                  minimumTrackTintColor={theme.colors.primary}
+                  maximumTrackTintColor={theme.colors.border}
+                />
+                <Text style={styles.timestamp}>
+                  {audioProgress[item.id] 
+                    ? formatDuration(audioProgress[item.id].position)
+                    : '0:00'}
+                </Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        )}
+        {item.message_type === 'location' && item.latitude && item.longitude && (
+          <TouchableOpacity onPress={() => openLocation(item.latitude!, item.longitude!)}>
+            <Image
+              source={{ uri: `https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/pin-s+FF0000(${item.longitude},${item.latitude})/${item.longitude},${item.latitude},14,0/300x200?access_token=${MAPBOX_TOKEN}` }}
+              style={styles.mapPreview}
+            />
+            <Text style={styles.openMapText}>Open in Maps</Text>
+          </TouchableOpacity>
+        )}
+        <Text style={styles.timestamp}>{new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+      </View>
     </Animated.View>
+  );
+
+  const renderInputArea = () => (
+    <View style={styles.inputContainer}>
+      {isRecordingUIVisible ? (
+        <View style={styles.recordingContainer}>
+          {isRecording ? (
+            <>
+              <Text style={styles.recordingDuration}>{formatDuration(recordingDuration * 1000)}</Text>
+              <TouchableOpacity onPress={stopRecording} style={styles.stopRecordingButton}>
+                <Ionicons name="stop" size={24} color={theme.colors.error} />
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity onPress={() => playAudio(previewUri!, 'preview')} style={styles.playButton}>
+                <Ionicons name={isPlaying ? "pause" : "play"} size={24} color={theme.colors.primary} />
+              </TouchableOpacity>
+              <Text style={styles.recordingDuration}>{formatDuration(recordingDuration * 1000)}</Text>
+              <TouchableOpacity onPress={sendRecordedAudio} style={styles.sendRecordingButton}>
+                <Ionicons name="send" size={24} color={theme.colors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={cancelRecording} style={styles.cancelRecordingButton}>
+                <Ionicons name="close" size={24} color={theme.colors.error} />
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      ) : (
+        <>
+          <TouchableOpacity style={styles.attachButton} onPress={() => setIsFabOpen(!isFabOpen)}>
+            <Ionicons name="add" size={24} color={theme.colors.primary} />
+          </TouchableOpacity>
+          <TextInput
+            style={styles.input}
+            value={inputText}
+            onChangeText={setInputText}
+            placeholder={t('ticket.inputPlaceholder')}
+            placeholderTextColor={theme.colors.placeholder}
+          />
+          {inputText.trim() ? (
+            <TouchableOpacity onPress={sendTextMessage} style={styles.sendButton}>
+              <Ionicons name="send" size={24} color={theme.colors.primary} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={startRecording} style={styles.micButton}>
+              <Ionicons name="mic" size={24} color={theme.colors.primary} />
+            </TouchableOpacity>
+          )}
+        </>
+      )}
+    </View>
   );
 
   const renderPreview = () => {
@@ -428,57 +546,47 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
     return (
       <Modal
         animationType="slide"
-        transparent={true}
+        transparent={false}
         visible={!!previewUri}
         onRequestClose={clearPreview}
       >
-        <View style={styles.previewContainer}>
-          <View style={styles.previewContent}>
+        <SafeAreaView style={styles.fullScreenPreview}>
+          <View style={styles.previewHeader}>
+            <TouchableOpacity onPress={clearPreview} style={styles.closeButton}>
+              <Ionicons name="close-circle" size={32} color={theme.colors.surface} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.fullScreenPreviewContent}>
             {previewType === 'image' ? (
-              <Image source={{ uri: previewUri }} style={styles.previewImage} />
+              <Image source={{ uri: previewUri }} style={styles.fullScreenPreviewImage} resizeMode="contain" />
             ) : previewType === 'video' ? (
               <Video
                 source={{ uri: previewUri }}
                 rate={1.0}
                 volume={1.0}
                 isMuted={false}
-                resizeMode="cover"
+                resizeMode="contain"
                 shouldPlay={false}
                 isLooping={false}
-                style={styles.previewVideo}
+                style={styles.fullScreenPreviewVideo}
                 useNativeControls
               />
-            ) : previewType === 'audio' ? (
-              <View style={styles.audioPreview}>
-                <Slider
-                  style={{width: 200, height: 40}}
-                  minimumValue={0}
-                  maximumValue={recordingDuration}
-                  value={recordingDuration}
-                  minimumTrackTintColor={theme.colors.primary}
-                  maximumTrackTintColor="#000000"
-                />
-                <TouchableOpacity onPress={() => playAudio(previewUri, 'preview')}>
-                  <Ionicons name={isPlaying ? "pause" : "play"} size={48} color={theme.colors.primary} />
-                </TouchableOpacity>
-                <Text style={styles.audioPreviewText}>{formatDuration(recordingDuration)}</Text>
-              </View>
             ) : (
               <View style={styles.filePreview}>
                 <Ionicons name="document-outline" size={48} color={theme.colors.primary} />
                 <Text style={styles.filePreviewText}>{previewName}</Text>
               </View>
             )}
-            <View style={styles.previewActions}>
-              <TouchableOpacity style={styles.previewButton} onPress={sendAttachment}>
-                <Text style={styles.previewButtonText}>Send</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.previewButton, styles.cancelButton]} onPress={clearPreview}>
-                <Text style={styles.previewButtonText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
           </View>
-        </View>
+          <View style={styles.previewActions}>
+            <TouchableOpacity style={styles.previewButton} onPress={sendAttachment}>
+              <Text style={styles.previewButtonText}>Send</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.previewButton, styles.cancelButton]} onPress={clearPreview}>
+              <Text style={styles.previewButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
       </Modal>
     );
   };
@@ -489,14 +597,22 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
     return (
       <Modal
         animationType="slide"
-        transparent={true}
+        transparent={false}
         visible={!!previewFile}
         onRequestClose={() => setPreviewFile(null)}
       >
-        <View style={styles.previewContainer}>
-          <View style={styles.previewContent}>
+        <SafeAreaView style={styles.fullScreenPreview}>
+          <View style={styles.previewHeader}>
+            <TouchableOpacity style={styles.downloadButton} onPress={() => downloadFile(previewFile.uri, 'file')}>
+              <Ionicons name="download-outline" size={24} color={theme.colors.surface} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setPreviewFile(null)} style={styles.closeButton}>
+              <Ionicons name="close-circle" size={32} color={theme.colors.surface} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.fullScreenPreviewContent}>
             {previewFile.type === 'image' ? (
-              <Image source={{ uri: previewFile.uri }} style={styles.previewImage} resizeMode="contain" />
+              <Image source={{ uri: previewFile.uri }} style={styles.fullScreenPreviewImage} resizeMode="contain" />
             ) : previewFile.type === 'video' ? (
               <Video
                 source={{ uri: previewFile.uri }}
@@ -506,22 +622,14 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
                 resizeMode="contain"
                 shouldPlay={true}
                 isLooping={false}
-                style={styles.previewVideo}
+                style={styles.fullScreenPreviewVideo}
                 useNativeControls
               />
             ) : (
               <WebView source={{ uri: previewFile.uri }} style={styles.previewWebView} />
             )}
-            <View style={styles.previewActions}>
-              <TouchableOpacity style={styles.previewButton} onPress={() => downloadFile(previewFile.uri, 'file')}>
-                <Text style={styles.previewButtonText}>Download</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.previewButton, styles.cancelButton]} onPress={() => setPreviewFile(null)}>
-                <Text style={styles.previewButtonText}>Close</Text>
-              </TouchableOpacity>
-            </View>
           </View>
-        </View>
+        </SafeAreaView>
       </Modal>
     );
   };
@@ -569,73 +677,24 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
     );
   };
 
-  const formatDuration = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  const sendRecordedAudio = () => {
+    if (previewUri) {
+      const file = {
+        uri: previewUri,
+        type: 'audio/m4a',
+        name: 'audio_message.m4a',
+      };
+      sendMessage('audio', undefined, file);
+      clearPreview();
+      setIsRecordingUIVisible(false);
+    }
   };
 
-  const renderHeader = () => (
-    <View style={styles.header}>
-      <View style={styles.headerContent}>
-        <View style={styles.headerAvatar} />
-        <View style={styles.headerInfo}>
-          <Text style={styles.headerTitle}>{t('service.name')}</Text>
-          <Text style={styles.headerSubtitle}>{t('service.carInfo')}</Text>
-        </View>
-      </View>
-    </View>
-  );
-
-  const renderFloatingActionButton = () => (
-    <View style={styles.fabContainer}>
-      {isFabOpen && (
-        <View style={styles.fabMenu}>
-          <TouchableOpacity onPress={pickImage} style={styles.fabMenuItem}>
-            <Ionicons name="image-outline" size={24} color={theme.colors.surface} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={pickDocument} style={styles.fabMenuItem}>
-            <Ionicons name="document-outline" size={24} color={theme.colors.surface} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={openLocationPicker} style={styles.fabMenuItem}>
-            <Ionicons name="location-outline" size={24} color={theme.colors.surface} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={isRecording ? stopRecording : startRecording} style={styles.fabMenuItem}>
-            <Ionicons name={isRecording ? "stop" : "mic-outline"} size={24} color={theme.colors.surface} />
-          </TouchableOpacity>
-        </View>
-      )}
-      <TouchableOpacity
-        style={[styles.fab, isFabOpen && styles.fabOpen]}
-        onPress={() => setIsFabOpen(!isFabOpen)}
-      >
-        <Ionicons name={isFabOpen ? "close" : "add"} size={24} color={theme.colors.surface} />
-      </TouchableOpacity>
-    </View>
-  );
-
-  const renderInputArea = () => (
-    <View style={styles.inputContainer}>
-      <TextInput
-        style={styles.input}
-        value={inputText}
-        onChangeText={setInputText}
-        placeholder={t('ticket.inputPlaceholder')}
-        placeholderTextColor={theme.colors.placeholder}
-      />
-      <TouchableOpacity 
-        onPress={sendTextMessage} 
-        style={styles.sendButton}
-        disabled={!inputText.trim()}
-      >
-        <Ionicons 
-          name="send" 
-          size={24} 
-          color={inputText.trim() ? theme.colors.surface : theme.colors.placeholder} 
-        />
-      </TouchableOpacity>
-    </View>
-  );
+  const cancelRecording = () => {
+    setIsRecordingUIVisible(false);
+    setRecordingDuration(0);
+    setPreviewUri(null);
+  };
 
   if (isLoading) {
     return (
@@ -660,11 +719,22 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.messageList}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-          scrollEnabled={!isFabOpen}
         />
-        {renderFloatingActionButton()}
         {renderInputArea()}
       </KeyboardAvoidingView>
+      {isFabOpen && (
+        <View style={styles.fabMenu}>
+          <TouchableOpacity onPress={pickImage} style={styles.fabMenuItem}>
+            <Ionicons name="image-outline" size={24} color={theme.colors.surface} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={pickDocument} style={styles.fabMenuItem}>
+            <Ionicons name="document-outline" size={24} color={theme.colors.surface} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={openLocationPicker} style={styles.fabMenuItem}>
+            <Ionicons name="location-outline" size={24} color={theme.colors.surface} />
+          </TouchableOpacity>
+        </View>
+      )}
       {renderPreview()}
       {renderFilePreview()}
       {renderLocationPicker()}
@@ -681,24 +751,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: theme.spacing.md,
     backgroundColor: theme.colors.background,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
-    padding: theme.spacing.md,
+  },
+  backButton: {
+    padding: theme.spacing.sm,
   },
   headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: theme.colors.primary,
-    marginRight: theme.spacing.md,
-  },
-  headerInfo: {
     flex: 1,
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: theme.typography.sizes.lg,
@@ -709,123 +775,131 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.sm,
     color: theme.colors.muted,
   },
+  moreButton: {
+    padding: theme.spacing.sm,
+  },
   messageList: {
     padding: theme.spacing.md,
   },
   messageContainer: {
-    maxWidth: '75%',
-    padding: theme.spacing.sm,
+    flexDirection: 'row',
     marginBottom: theme.spacing.sm,
-    borderRadius: theme.roundness,
+  },
+  avatarContainer: {
+    marginRight: theme.spacing.sm,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    color: theme.colors.surface,
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.fontWeights.bold,
+  },
+  messageContent: {
+    flex: 1,
+    padding: theme.spacing.md,
+    borderRadius: theme.roundness * 2,
+    maxWidth: '80%',
+    backgroundColor: theme.colors.background,
+    shadowColor: theme.colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   currentUserMessage: {
     alignSelf: 'flex-end',
-    backgroundColor: theme.colors.primary,
+    marginLeft: '20%',
   },
   otherUserMessage: {
     alignSelf: 'flex-start',
-    backgroundColor: theme.colors.secondary,
+    marginRight: '20%',
   },
   senderName: {
     fontSize: theme.typography.sizes.sm,
     fontWeight: theme.typography.fontWeights.bold,
     marginBottom: theme.spacing.xs,
-    color: theme.colors.surface,
+    color: theme.colors.muted,
   },
   messageText: {
-    color: theme.colors.surface,
     fontSize: theme.typography.sizes.md,
+    color: theme.colors.text,
   },
   timestamp: {
     fontSize: theme.typography.sizes.xs,
-    color: theme.colors.surface,
-    opacity: 0.7,
+    color: theme.colors.muted,
+    alignSelf: 'flex-end',
     marginTop: theme.spacing.xs,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
-    backgroundColor: theme.colors.background,
   },
   input: {
     flex: 1,
-    height: 44,
-    backgroundColor: theme.colors.surface,
-    borderRadius: 22,
-    paddingHorizontal: theme.spacing.lg,
-    marginRight: theme.spacing.sm,
+    marginHorizontal: theme.spacing.sm,
+    padding: theme.spacing.sm,
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.roundness,
     color: theme.colors.text,
   },
+  attachButton: {
+    padding: theme.spacing.sm,
+  },
   sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: theme.colors.primary,
+    padding: theme.spacing.sm,
+  },
+  micButton: {
+    padding: theme.spacing.sm,
+  },
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  fabContainer: {
-    position: 'absolute',
-    bottom: 80,
-    right: 20,
-    alignItems: 'flex-end',
-  },
-  fab: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: theme.colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  fabOpen: {
-    backgroundColor: theme.colors.error,
-  },
-  fabMenu: {
-    marginBottom: theme.spacing.sm,
-  },
-  fabMenuItem: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: theme.colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: theme.spacing.xs,
   },
   imageMessage: {
     width: 200,
-    height: 150,
+    height: 200,
     borderRadius: theme.roundness,
   },
   videoMessage: {
     width: 200,
-    height: 150,
+    height: 200,
     borderRadius: theme.roundness,
   },
   fileMessage: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: theme.colors.background,
+    padding: theme.spacing.sm,
+    borderRadius: theme.roundness,
   },
   fileMessageText: {
     marginLeft: theme.spacing.sm,
-    color: theme.colors.surface,
+    color: theme.colors.text,
   },
   audioMessage: {
+    backgroundColor: theme.colors.background,
+    padding: theme.spacing.sm,
+    borderRadius: theme.roundness,
+  },
+  audioControls: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  audioMessageText: {
-    marginLeft: theme.spacing.sm,
-    color: theme.colors.surface,
+  audioSlider: {
+    flex: 1,
+    marginHorizontal: theme.spacing.sm,
   },
   mapPreview: {
     width: 200,
@@ -833,14 +907,8 @@ const styles = StyleSheet.create({
     borderRadius: theme.roundness,
   },
   openMapText: {
-    fontSize: theme.typography.sizes.xs,
-    color: theme.colors.surface,
+    color: theme.colors.primary,
     marginTop: theme.spacing.xs,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   previewContainer: {
     flex: 1,
@@ -852,64 +920,54 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderRadius: theme.roundness,
     padding: theme.spacing.md,
-    width: '80%',
-    alignItems: 'center',
+    width: '90%',
+    maxHeight: '80%',
   },
   previewImage: {
-    width: 200,
-    height: 200,
+    width: '100%',
+    height: 300,
     borderRadius: theme.roundness,
   },
   previewVideo: {
-    width: 200,
-    height: 200,
+    width: '100%',
+    height: 300,
     borderRadius: theme.roundness,
   },
-  filePreview: {
-    alignItems: 'center',
-  },
-  filePreviewText: {
-    marginTop: theme.spacing.sm,
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text,
+  previewWebView: {
+    width: '100%',
+    height: 400,
   },
   previewActions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginTop: theme.spacing.md,
-    width: '100%',
+    padding: theme.spacing.md,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
   previewButton: {
     backgroundColor: theme.colors.primary,
-    padding: theme.spacing.sm,
+    padding: theme.spacing.md,
     borderRadius: theme.roundness,
-    width: '40%',
+    flexDirection: 'row',
     alignItems: 'center',
-  },
-  previewButtonText: {
-    color: theme.colors.surface,
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.fontWeights.bold,
+    justifyContent: 'center',
   },
   cancelButton: {
     backgroundColor: theme.colors.error,
   },
-  previewText: {
-    fontSize: theme.typography.sizes.xs,
+  previewButtonText: {
     color: theme.colors.surface,
-    marginTop: theme.spacing.xs,
-  },
-  previewWebView: {
-    width: '100%',
-    height: 300,
-    borderRadius: theme.roundness,
+    fontWeight: theme.typography.fontWeights.bold,
+    fontSize: theme.typography.sizes.md,
+    marginLeft: theme.spacing.sm,
   },
   mapContainer: {
     flex: 1,
   },
   map: {
-    width: Dimensions.get('window').width,
-    height: Dimensions.get('window').height - 100,
+    flex: 1,
   },
   mapActions: {
     flexDirection: 'row',
@@ -921,25 +979,95 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
     padding: theme.spacing.sm,
     borderRadius: theme.roundness,
-    width: '40%',
-    alignItems: 'center',
   },
   mapButtonText: {
     color: theme.colors.surface,
-    fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.fontWeights.bold,
   },
-  audioPreview: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 200,
-    height: 200,
-    borderRadius: theme.roundness,
-    backgroundColor: theme.colors.background,
+  fabMenu: {
+    position: 'absolute',
+    bottom: 80,
+    right: 20,
+    flexDirection: 'row',
   },
-  audioPreviewText: {
-    marginTop: theme.spacing.sm,
-    fontSize: theme.typography.sizes.lg,
+  fabMenuItem: {
+    backgroundColor: theme.colors.primary,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: theme.spacing.sm,
+  },
+  recordingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+    padding: theme.spacing.sm,
+    borderRadius: theme.roundness,
+  },
+  recordingDuration: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: theme.typography.sizes.md,
     color: theme.colors.text,
+  },
+  stopRecordingButton: {
+    padding: theme.spacing.sm,
+  },
+  playButton: {
+    padding: theme.spacing.sm,
+  },
+  sendRecordingButton: {
+    padding: theme.spacing.sm,
+  },
+  cancelRecordingButton: {
+    padding: theme.spacing.sm,
+  },
+  fullScreenPreview: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+  },
+  previewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: theme.spacing.md,
+  },
+  closeButton: {
+    padding: theme.spacing.sm,
+  },
+  downloadButton: {
+    padding: theme.spacing.sm,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.roundness,
+  },
+  previewTitle: {
+    flex: 1,
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.fontWeights.bold,
+    textAlign: 'center',
+    color: theme.colors.text,
+  },
+  fullScreenPreviewContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.lg,
+  },
+  fullScreenPreviewImage: {
+    width: '100%',
+    height: '100%',
+  },
+  fullScreenPreviewVideo: {
+    width: '100%',
+    height: '100%',
+  },
+  filePreview: {
+    alignItems: 'center',
+  },
+  filePreviewText: {
+    marginTop: theme.spacing.sm,
+    color: theme.colors.text,
+    fontSize: theme.typography.sizes.md,
   },
 });
