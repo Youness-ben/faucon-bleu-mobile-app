@@ -25,6 +25,9 @@ import TicketScreen from '../screens/TicketScreen';
 import ConductorHomeScreen from '../screens/ConductorHomeScreen';
 
 import { theme } from '../styles/theme';
+import ConductorOrderServiceScreen from '../screens/ConductorOrderServiceScreen';
+import ConductorServiceHistoryScreen from '../screens/ConductorServiceHistoryScreen';
+import ConductorServicesScreen from '../screens/ConductorServicesScreen';
 
 type RootStackParamList = {
   Splash: undefined;
@@ -41,6 +44,7 @@ type RootStackParamList = {
   Settings: undefined;
   Support: undefined;
   TicketScreen: { ticketId: string };
+  ConductorOrderServiceScreen : undefined;
 };
 
 type MainTabParamList = {
@@ -52,8 +56,8 @@ type MainTabParamList = {
 
 type ConductorTabParamList = {
   ConductorHome: undefined;
-  OrderService: undefined;
-  ServiceHistory: undefined;
+  ConductorServiceHistory: undefined;
+  ConductorServicesScreen: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -110,9 +114,9 @@ const ConductorTabs: React.FC = () => {
 
           if (route.name === 'ConductorHome') {
             iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'OrderService') {
+          } else if (route.name === 'ConductorServicesScreen') {
             iconName = focused ? 'construct' : 'construct-outline';
-          } else if (route.name === 'ServiceHistory') {
+          } else if (route.name === 'ConductorServiceHistory') {
             iconName = focused ? 'time' : 'time-outline';
           } else {
             iconName = 'alert-circle';
@@ -128,8 +132,8 @@ const ConductorTabs: React.FC = () => {
       }}
     >
       <ConductorTab.Screen name="ConductorHome" component={ConductorHomeScreen} options={{ title: t('navigation.home') }} />
-      <ConductorTab.Screen name="OrderService" component={OrderServiceScreen} options={{ title: t('navigation.orderService') }} />
-      <ConductorTab.Screen name="ServiceHistory" component={ServiceHistoryScreen} options={{ title: t('navigation.serviceHistory') }} />
+      <ConductorTab.Screen name="ConductorServicesScreen" component={ConductorServicesScreen} options={{ title: t('navigation.orderService') }} />
+      <ConductorTab.Screen name="ConductorServiceHistory" component={ConductorServiceHistoryScreen} options={{ title: t('navigation.serviceHistory') }} />
     </ConductorTab.Navigator>
   );
 };
@@ -143,6 +147,7 @@ const AppNavigator: React.FC = () => {
         <Stack.Screen name="Main" component={MainTabs} />
         <Stack.Screen name="ConductorMain" component={ConductorTabs} />
         <Stack.Screen name="OrderService" component={OrderServiceScreen} options={{ headerShown: true, title: 'Order Service' }} />
+        <Stack.Screen name="ConductorOrderServiceScreen" component={ConductorOrderServiceScreen} options={{ headerShown: true, title: 'Order Service' }} />
         <Stack.Screen name="ServiceHistory" component={ServiceHistoryScreen} options={{ headerShown: true, title: 'Service History' }} />
         <Stack.Screen name="AddVehicle" component={AddVehicleScreen} options={{ headerShown: true, title: 'Add Vehicle' }} />
         <Stack.Screen name="VehicleDetail" component={VehicleDetailScreen} options={{ headerShown: true, title: 'Vehicle Details' }} />
@@ -150,7 +155,9 @@ const AppNavigator: React.FC = () => {
         <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ headerShown: true, title: 'Edit Profile' }} />
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: true, title: 'Settings' }} />
         <Stack.Screen name="Support" component={SupportScreen} options={{ headerShown: true, title: 'Support' }} />
+        
         <Stack.Screen name="TicketScreen" component={TicketScreen} options={{ headerShown: true, title: 'Service Chat' }} />
+        
       </Stack.Navigator>
   );
 };
