@@ -14,6 +14,8 @@ import {
   SafeAreaView,
   Linking,
   ActivityIndicator,
+  Modal,
+  Dimensions,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,10 +27,13 @@ import * as FileSystem from 'expo-file-system';
 import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import { Video } from 'expo-av';
+import MapView, { Marker, PROVIDER_DEFAULT, UrlTile } from 'react-native-maps';
 import api from '../api';
 import { useUser } from '../UserContext';
 import { useNotification } from '../NotificationContext';
 import { STORAGE_URL } from '../../config';
+import { WebView } from 'react-native-webview';
 
 type RootStackParamList = {
   TicketScreen: { serviceId: string };
@@ -39,7 +44,7 @@ type TicketScreenRouteProp = RouteProp<RootStackParamList, 'TicketScreen'>;
 interface Message {
   id: string;
   sender_type: 'client' | 'vehicle' | 'agent';
-  message_type: 'text' | 'image' | 'file' | 'audio' | 'location';
+  message_type: 'text' | 'image' | 'file' | 'audio' | 'location' | 'video';
   content?: string;
   file_path?: string;
   latitude?: number;
@@ -64,6 +69,14 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
   const { user } = useUser();
   const navigation = useNavigation();
   const { clearNewMessages } = useNotification();
+
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
+  const [previewType, setPreviewType] = useState<'image' | 'file' | 'video' | null>(null);
+  const [previewName, setPreviewName] = useState<string | null>(null);
+  const [previewFile, setPreviewFile] = useState<{ uri: string; type: string } | null>(null);
+
+  const [isMapVisible, setIsMapVisible] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   useEffect(() => {
     fetchMessages();
@@ -133,7 +146,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
   const pickImage = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
         allowsEditing: true,
         aspect: [4, 3],
         quality: 1,
@@ -141,16 +154,13 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        const file = {
-          uri: asset.uri,
-          type: 'image/jpeg',
-          name: 'image.jpg',
-        };
-        sendMessage('image', undefined, file);
+        setPreviewUri(asset.uri);
+        setPreviewType(asset.type === 'video' ? 'video' : 'image');
+        setPreviewName(asset.type === 'video' ? 'video.mp4' : 'image.jpg');
       }
     } catch (error) {
-      console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image. Please try again.');
+      console.error('Error picking image or video:', error);
+      Alert.alert('Error', 'Failed to pick image or video. Please try again.');
     }
   };
 
@@ -162,17 +172,33 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
       });
 
       if (result.type === 'success') {
-        const file = {
-          uri: result.uri,
-          type: result.mimeType,
-          name: result.name,
-        };
-        sendMessage('file', undefined, file);
+        setPreviewUri(result.uri);
+        setPreviewType('file');
+        setPreviewName(result.name);
       }
     } catch (error) {
       console.error('Error picking document:', error);
       Alert.alert('Error', 'Failed to pick document. Please try again.');
     }
+  };
+
+  const sendAttachment = () => {
+    if (previewUri && previewType) {
+      const file = {
+        uri: previewUri,
+        type: previewType === 'image' ? 'image/jpeg' : (previewType === 'video' ? 'video/mp4' : 'application/octet-stream'),
+        name: previewName || 'file',
+      };
+      sendMessage(previewType, undefined, file);
+      clearPreview();
+    }
+  };
+
+  const clearPreview = () => {
+    setPreviewUri(null);
+    setPreviewType(null);
+    setPreviewName(null);
+    setPreviewFile(null);
   };
 
   const startRecording = async () => {
@@ -214,22 +240,15 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
     }
   };
 
-  const sendLocation = async () => {
-    try {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission denied', 'Permission to access location was denied');
-        return;
-      }
+  const openLocationPicker = () => {
+    setIsMapVisible(true);
+  };
 
-      let location = await Location.getCurrentPositionAsync({});
-      sendMessage('location', undefined, undefined, {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      });
-    } catch (error) {
-      console.error('Error sending location:', error);
-      Alert.alert('Error', 'Failed to send location. Please try again.');
+  const sendLocation = () => {
+    if (selectedLocation) {
+      sendMessage('location', undefined, undefined, selectedLocation);
+      setIsMapVisible(false);
+      setSelectedLocation(null);
     }
   };
 
@@ -312,22 +331,47 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
       <Text style={styles.senderName}>{item.sender_type === 'client' ? 'Client' : (item.sender_type === 'vehicle' ? 'Vehicle' : 'Agent')}</Text>
       {item.message_type === 'text' && <Text style={styles.messageText}>{item.content}</Text>}
       {item.message_type === 'image' && (
-        <TouchableOpacity onPress={() => item.file_path && downloadFile(item.file_path, 'image.jpg')}>
-          <Image source={{ uri: item.file_path }} style={styles.imageMessage} />
-          <Text style={styles.downloadText}>Tap to download</Text>
+        <TouchableOpacity onPress={() => setPreviewFile({ uri: `${STORAGE_URL}/${item.file_path}`, type: 'image' })}>
+          <Image source={{ uri: `${STORAGE_URL}/${item.file_path}` }} style={styles.imageMessage} />
+          <Text style={styles.previewText}>Tap to preview</Text>
+        </TouchableOpacity>
+      )}
+      {item.message_type === 'video' && (
+        <TouchableOpacity onPress={() => setPreviewFile({ uri: `${STORAGE_URL}/${item.file_path}`, type: 'video' })}>
+          <Video
+            source={{ uri: `${STORAGE_URL}/${item.file_path}` }}
+            style={styles.videoMessage}
+            resizeMode="cover"
+            shouldPlay={false}
+          />
+          <Text style={styles.previewText}>Tap to preview</Text>
         </TouchableOpacity>
       )}
       {item.message_type === 'file' && (
-        <TouchableOpacity onPress={() => item.file_path && downloadFile(item.file_path, item.content || 'file')}>
-          <View style={styles.fileMessage}>
-            <Ionicons name="document-outline" size={24} color={theme.colors.primary} />
-            <Text style={styles.fileMessageText}>{item.content || 'File attached'}</Text>
-          </View>
-          <Text style={styles.downloadText}>Tap to download</Text>
-        </TouchableOpacity>
+        <View>
+          <TouchableOpacity onPress={() => {
+            const fileExtension = item.file_path?.split('.').pop()?.toLowerCase();
+            const viewableExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'];
+            if (fileExtension && viewableExtensions.includes(fileExtension)) {
+              setPreviewFile({ uri: `${STORAGE_URL}/${item.file_path}`, type: 'file' });
+            } else {
+              item.file_path && downloadFile(item.file_path, item.content || 'file');
+            }
+          }}>
+            <View style={styles.fileMessage}>
+              <Ionicons name="document-outline" size={24} color={theme.colors.primary} />
+              <Text style={styles.fileMessageText}>{item.content || 'File attached'}</Text>
+            </View>
+            <Text style={styles.previewText}>
+              {item.file_path?.split('.').pop()?.toLowerCase() in ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'] 
+                ? 'Tap to preview' 
+                : 'Tap to download'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       )}
       {item.message_type === 'audio' && (
-        <TouchableOpacity onPress={() => item.file_path && (isPlaying && currentlyPlayingId === item.id ? pauseAudio() : playAudio(item.file_path, item.id))}>
+        <TouchableOpacity onPress={() => item.file_path && (isPlaying && currentlyPlayingId === item.id ? pauseAudio() :     playAudio(`${STORAGE_URL}/${item.file_path}`, item.id))}>
           <View style={styles.audioMessage}>
             {isAudioLoading === item.id ? (
               <ActivityIndicator size="small" color={theme.colors.primary} />
@@ -346,17 +390,163 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
         </TouchableOpacity>
       )}
       {item.message_type === 'location' && item.latitude && item.longitude && (
-        <TouchableOpacity onPress={() => openLocation(item.latitude!, item.longitude!)}>
-          <View style={styles.locationMessage}>
-            <Ionicons name="location-outline" size={24} color={theme.colors.primary} />
-            <Text style={styles.locationMessageText}>Location shared</Text>
-          </View>
-          <Text style={styles.openMapText}>Tap to open in Maps</Text>
-        </TouchableOpacity>
+        <View>
+          <MapView
+            provider={PROVIDER_DEFAULT}
+            style={styles.mapPreview}
+            initialRegion={{
+              latitude: item.latitude,
+              longitude: item.longitude,
+              latitudeDelta: 0.0922,
+              longitudeDelta: 0.0421,
+            }}
+          >
+            <UrlTile
+              urlTemplate="https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              maximumZ={19}
+            />
+            <Marker coordinate={{ latitude: item.latitude, longitude: item.longitude }} />
+          </MapView>
+          <TouchableOpacity onPress={() => openLocation(item.latitude!, item.longitude!)}>
+            <Text style={styles.openMapText}>Open in Maps</Text>
+          </TouchableOpacity>
+        </View>
       )}
       <Text style={styles.timestamp}>{new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
     </Animated.View>
   );
+
+  const renderPreview = () => {
+    if (!previewUri) return null;
+
+    return (
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={!!previewUri}
+        onRequestClose={clearPreview}
+      >
+        <View style={styles.previewContainer}>
+          <View style={styles.previewContent}>
+            {previewType === 'image' ? (
+              <Image source={{ uri: previewUri }} style={styles.previewImage} />
+            ) : previewType === 'video' ? (
+              <Video
+                source={{ uri: previewUri }}
+                rate={1.0}
+                volume={1.0}
+                isMuted={false}
+                resizeMode="cover"
+                shouldPlay={false}
+                isLooping={false}
+                style={styles.previewVideo}
+                useNativeControls
+              />
+            ) : (
+              <View style={styles.filePreview}>
+                <Ionicons name="document-outline" size={48} color={theme.colors.primary} />
+                <Text style={styles.filePreviewText}>{previewName}</Text>
+              </View>
+            )}
+            <View style={styles.previewActions}>
+              <TouchableOpacity style={styles.previewButton} onPress={sendAttachment}>
+                <Text style={styles.previewButtonText}>Send</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.previewButton, styles.cancelButton]} onPress={clearPreview}>
+                <Text style={styles.previewButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
+  const renderFilePreview = () => {
+    if (!previewFile) return null;
+
+    return (
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={!!previewFile}
+        onRequestClose={() => setPreviewFile(null)}
+      >
+        <View style={styles.previewContainer}>
+          <View style={styles.previewContent}>
+            {previewFile.type === 'image' ? (
+              <Image source={{ uri: previewFile.uri }} style={styles.previewImage} resizeMode="contain" />
+            ) : previewFile.type === 'video' ? (
+              <Video
+                source={{ uri: previewFile.uri }}
+                rate={1.0}
+                volume={1.0}
+                isMuted={false}
+                resizeMode="contain"
+                shouldPlay={true}
+                isLooping={false}
+                style={styles.previewVideo}
+                useNativeControls
+              />
+            ) : (
+              <WebView source={{ uri: previewFile.uri }} style={styles.previewWebView} />
+            )}
+            <View style={styles.previewActions}>
+              <TouchableOpacity style={styles.previewButton} onPress={() => downloadFile(previewFile.uri, 'file')}>
+                <Text style={styles.previewButtonText}>Download</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.previewButton, styles.cancelButton]} onPress={() => setPreviewFile(null)}>
+                <Text style={styles.previewButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
+  const renderLocationPicker = () => {
+    if (!isMapVisible) return null;
+
+    return (
+      <Modal
+        animationType="slide"
+        transparent={false}
+        visible={isMapVisible}
+        onRequestClose={() => setIsMapVisible(false)}
+      >
+        <View style={styles.mapContainer}>
+          <MapView
+            provider={PROVIDER_DEFAULT}
+            style={styles.map}
+            initialRegion={{
+              latitude: 37.78825,
+              longitude: -122.4324,
+              latitudeDelta: 0.0922,
+              longitudeDelta: 0.0421,
+            }}
+            onPress={(e) => setSelectedLocation(e.nativeEvent.coordinate)}
+          >
+            <UrlTile
+              urlTemplate="https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              maximumZ={19}
+            />
+            {selectedLocation && (
+              <Marker coordinate={selectedLocation} />
+            )}
+          </MapView>
+          <View style={styles.mapActions}>
+            <TouchableOpacity style={styles.mapButton} onPress={sendLocation}>
+              <Text style={styles.mapButtonText}>Send Location</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.mapButton, styles.cancelButton]} onPress={() => setIsMapVisible(false)}>
+              <Text style={styles.mapButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
 
   if (isLoading) {
     return (
@@ -391,13 +581,12 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
                 <Ionicons name="image-outline" size={24} color={theme.colors.primary} />
               </TouchableOpacity>
               <TouchableOpacity onPress={pickDocument} style={styles.attachmentButton}>
-                <Ionicons  name="document-outline" size={24} color={theme.colors.primary} />
-              
+                <Ionicons name="document-outline" size={24} color={theme.colors.primary} />
               </TouchableOpacity>
               <TouchableOpacity onPress={isRecording ? stopRecording : startRecording} style={styles.attachmentButton}>
                 <Ionicons name={isRecording ? "stop-circle-outline" : "mic-outline"} size={24} color={isRecording ? theme.colors.error : theme.colors.primary} />
               </TouchableOpacity>
-              <TouchableOpacity onPress={sendLocation} style={styles.attachmentButton}>
+              <TouchableOpacity onPress={openLocationPicker} style={styles.attachmentButton}>
                 <Ionicons name="location-outline" size={24} color={theme.colors.primary} />
               </TouchableOpacity>
             </View>
@@ -416,6 +605,9 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
           </View>
         </BlurView>
       </KeyboardAvoidingView>
+      {renderPreview()}
+      {renderFilePreview()}
+      {renderLocationPicker()}
     </SafeAreaView>
   );
 }
@@ -510,6 +702,11 @@ const styles = StyleSheet.create({
     height: 150,
     borderRadius: theme.roundness,
   },
+  videoMessage: {
+    width: 200,
+    height: 150,
+    borderRadius: theme.roundness,
+  },
   fileMessage: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -548,5 +745,97 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  previewContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  previewContent: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.roundness,
+    padding: theme.spacing.md,
+    width: '80%',
+    alignItems: 'center',
+  },
+  previewImage: {
+    width: 200,
+    height: 200,
+    borderRadius: theme.roundness,
+  },
+  previewVideo: {
+    width: 200,
+    height: 200,
+    borderRadius: theme.roundness,
+  },
+  filePreview: {
+    alignItems: 'center',
+  },
+  filePreviewText: {
+    marginTop: theme.spacing.sm,
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text,
+  },
+  previewActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: theme.spacing.md,
+    width: '100%',
+  },
+  previewButton: {
+    backgroundColor: theme.colors.primary,
+    padding: theme.spacing.sm,
+    borderRadius: theme.roundness,
+    width: '40%',
+    alignItems: 'center',
+  },
+  previewButtonText: {
+    color: theme.colors.surface,
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.fontWeights.bold,
+  },
+  cancelButton: {
+    backgroundColor: theme.colors.error,
+  },
+  previewText: {
+    fontSize: theme.typography.sizes.xs,
+    color: theme.colors.surface,
+    marginTop: theme.spacing.xs,
+  },
+  previewWebView: {
+    width: '100%',
+    height: 300,
+    borderRadius: theme.roundness,
+  },
+  mapContainer: {
+    flex: 1,
+  },
+  map: {
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height - 100,
+  },
+  mapActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+  },
+  mapButton: {
+    backgroundColor: theme.colors.primary,
+    padding: theme.spacing.sm,
+    borderRadius: theme.roundness,
+    width: '40%',
+    alignItems: 'center',
+  },
+  mapButtonText: {
+    color: theme.colors.surface,
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.fontWeights.bold,
+  },
+  mapPreview: {
+    width: 200,
+    height: 150,
+    borderRadius: theme.roundness,
   },
 });
