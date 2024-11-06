@@ -93,6 +93,8 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
   const [isFabOpen, setIsFabOpen] = useState(false);
   const [isRecordingUIVisible, setIsRecordingUIVisible] = useState(false);
 
+  const [audioPosition, setAudioPosition] = useState< number >(0);
+
   useEffect(() => {
     fetchMessages();
     clearNewMessages(serviceId);
@@ -190,10 +192,11 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
         copyToCacheDirectory: false,
       });
 
-      if (result.type === 'success') {
-        setPreviewUri(result.uri);
+      if (!result.canceled) {
+        console.log(result.assets);
+        setPreviewUri(result?.assets[0]?.uri);
         setPreviewType('file');
-        setPreviewName(result.name);
+        setPreviewName(result?.assets[0]?.name);
       }
     } catch (error) {
       console.error('Error picking document:', error);
@@ -302,7 +305,13 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
       
       if (downloadedUri) {
         console.log(`File downloaded to: ${downloadedUri}`);
-        Alert.alert('Success', `File downloaded successfully`);
+        Alert.alert('Success', `File downloaded successfully`,
+          [  { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Open',
+            onPress: () => Linking.openURL(downloadedUri),
+          },
+        ]);
       } else {
         throw new Error('Download failed');
       }
@@ -320,13 +329,14 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
       }
       const { sound: newSound } = await Audio.Sound.createAsync(
         { uri },
-        { shouldPlay: true },
-        onPlaybackStatusUpdate
+        { shouldPlay: true, positionMillis:  0 },
+         
       );
+      newSound.setOnPlaybackStatusUpdate((status)=>{onPlaybackStatusUpdate(status,messageId)});
+      newSound.setProgressUpdateIntervalAsync(1);
       setSound(newSound);
       setIsPlaying(true);
       setCurrentlyPlayingId(messageId);
-      newSound.setOnPlaybackStatusUpdate(onPlaybackStatusUpdate);
     } catch (error) {
       console.error('Error playing audio:', error);
       Alert.alert('Error', 'Failed to play audio. Please try again.');
@@ -334,23 +344,35 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
     }
   };
 
-  const onPlaybackStatusUpdate = (status: Audio.PlaybackStatus) => {
+  const onPlaybackStatusUpdate = (status: Audio.PlaybackStatus, messageId: string) => {
+    console.log('running');
     if (status.isLoaded) {
+      console.log('running 1');
       setIsAudioLoading(null);
-      if (currentlyPlayingId) {
-        setAudioProgress(prev => ({
-          ...prev,
-          [currentlyPlayingId]: {
-            position: status.positionMillis,
-            duration: status.durationMillis || 0,
-          },
-        }));
-      }
+      setAudioProgress(prev => ({
+        ...prev,
+        [messageId]: {
+          position: status.positionMillis,
+          duration: status.durationMillis || 0,
+        },
+      }));
+      console.log('running 2');
+
+      setAudioPosition( status.positionMillis);
       if (status.didJustFinish) {
         setIsPlaying(false);
         setCurrentlyPlayingId(null);
+      console.log('running 3');
+
       }
     }
+  };
+  const seekAudio = async (messageId: string, position: number) => {
+    if (sound && currentlyPlayingId === messageId) {
+      await sound.setPositionAsync(position);
+    }
+    setAudioPosition( position);
+
   };
 
   const pauseAudio = async () => {
@@ -373,7 +395,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
         <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
       </TouchableOpacity>
       <View style={styles.headerContent}>
-        <Text style={styles.headerTitle}>{t('service.name')}</Text>
+        <Text style={styles.headerTitle}>{}</Text>
         <Text style={styles.headerSubtitle}>{t('service.carInfo')}</Text>
       </View>
       <TouchableOpacity style={styles.moreButton}>
@@ -426,11 +448,13 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
             <TouchableOpacity onPress={() => {
               const fileExtension = item.file_path?.split('.').pop()?.toLowerCase();
               const viewableExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'];
-              if (fileExtension && viewableExtensions.includes(fileExtension)) {
+              
+
+            /*   if (fileExtension && viewableExtensions.includes(fileExtension)) {
                 setPreviewFile({ uri: `${STORAGE_URL}/${item.file_path}`, type: 'file' });
-              } else {
+              } else {*/
                 item.file_path && downloadFile(item.file_path, item.content || 'file');
-              }
+             /* } */
             }}>
               <View style={styles.fileMessage}>
                 <Ionicons name="document-outline" size={24} color={theme.colors.primary} />
@@ -444,36 +468,35 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
             </TouchableOpacity>
           </View>
         )}
-        {item.message_type === 'audio' && (
-          <TouchableOpacity onPress={() => item.file_path && (isPlaying && currentlyPlayingId === item.id ? pauseAudio() : playAudio(`${STORAGE_URL}/${item.file_path}`, item.id))}>
-            <View style={styles.audioMessage}>
-              <View style={styles.audioControls}>
-                {isAudioLoading === item.id ? (
-                  <ActivityIndicator size="small" color={theme.colors.primary} />
-                ) : (
-                  <Ionicons 
-                    name={isPlaying && currentlyPlayingId === item.id ? "pause" : "play"} 
-                    size={20} 
-                    color={theme.colors.primary} 
-                  />
-                )}
-                <Slider
-                  style={styles.audioSlider}
-                  minimumValue={0}
-                  maximumValue={100}
-                  value={audioProgress[item.id] ? (audioProgress[item.id].position / audioProgress[item.id].duration) * 100 : 0}
-                  minimumTrackTintColor={theme.colors.primary}
-                  maximumTrackTintColor={theme.colors.border}
+      {item.message_type === 'audio' && (
+        <TouchableOpacity onPress={() => item.file_path && (isPlaying && currentlyPlayingId === item.id ? pauseAudio() : playAudio(`${STORAGE_URL}/${item.file_path}`, item.id))}>
+          <View style={styles.audioMessage}>
+            <View style={styles.audioControls}>
+              {isAudioLoading === item.id ? (
+                <ActivityIndicator size="small" color={theme.colors.primary} />
+              ) : (
+                <Ionicons 
+                  name={isPlaying && currentlyPlayingId === item.id ? "pause" : "play"} 
+                  size={20} 
+                  color={theme.colors.primary} 
                 />
-                <Text style={styles.timestamp}>
-                  {audioProgress[item.id] 
-                    ? formatDuration(audioProgress[item.id].position)
-                    : '0:00'}
-                </Text>
-              </View>
+              )}
+              <Slider
+                style={styles.audioSlider}
+                minimumValue={0}
+                maximumValue={audioProgress[item.id]?.duration || 100}
+                value={audioPosition}
+                onValueChange={(value) => seekAudio(item.id, value)}
+                minimumTrackTintColor={theme.colors.primary}
+                maximumTrackTintColor={theme.colors.border}
+              />
+              <Text style={styles.timestamp}>
+                {formatDuration(audioPosition)}
+              </Text>
             </View>
-          </TouchableOpacity>
-        )}
+          </View>
+        </TouchableOpacity>
+      )}
         {item.message_type === 'location' && item.latitude && item.longitude && (
           <TouchableOpacity onPress={() => openLocation(item.latitude!, item.longitude!)}>
             <Image
@@ -539,6 +562,9 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
       )}
     </View>
   );
+
+
+
 
   const renderPreview = () => {
     if (!previewUri) return null;
