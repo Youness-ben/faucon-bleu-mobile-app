@@ -79,6 +79,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
   const navigation = useNavigation();
   const { clearNewMessages } = useNotification();
 
+  const [audioUri, setAudioUri] = useState<string | null>(null);
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [previewType, setPreviewType] = useState<'image' | 'file' | 'video' | 'audio' | null>(null);
   const [previewName, setPreviewName] = useState<string | null>(null);
@@ -260,7 +261,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
       const uri = recording.getURI();
       setRecording(null);
       if (uri) {
-        setPreviewUri(uri);
+        setAudioUri(uri);
         setPreviewType('audio');
         setPreviewName('audio_message.m4a');
       }
@@ -333,7 +334,6 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
          
       );
       newSound.setOnPlaybackStatusUpdate((status)=>{onPlaybackStatusUpdate(status,messageId)});
-      newSound.setProgressUpdateIntervalAsync(1);
       setSound(newSound);
       setIsPlaying(true);
       setCurrentlyPlayingId(messageId);
@@ -362,7 +362,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
       if (status.didJustFinish) {
         setIsPlaying(false);
         setCurrentlyPlayingId(null);
-      console.log('running 3');
+      console.log('running 2');
 
       }
     }
@@ -524,7 +524,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
             </>
           ) : (
             <>
-              <TouchableOpacity onPress={() => playAudio(previewUri!, 'preview')} style={styles.playButton}>
+              <TouchableOpacity onPress={() => playAudio(audioUri!, 'preview')} style={styles.playButton}>
                 <Ionicons name={isPlaying ? "pause" : "play"} size={24} color={theme.colors.primary} />
               </TouchableOpacity>
               <Text style={styles.recordingDuration}>{formatDuration(recordingDuration * 1000)}</Text>
@@ -704,12 +704,13 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
   };
 
   const sendRecordedAudio = () => {
-    if (previewUri) {
+    if (audioUri) {
       const file = {
-        uri: previewUri,
+        uri: audioUri,
         type: 'audio/m4a',
         name: 'audio_message.m4a',
       };
+      pauseAudio();
       sendMessage('audio', undefined, file);
       clearPreview();
       setIsRecordingUIVisible(false);
