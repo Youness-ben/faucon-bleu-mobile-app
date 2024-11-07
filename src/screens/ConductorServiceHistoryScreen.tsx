@@ -83,7 +83,7 @@ const ConductorServiceHistoryScreen: React.FC = () => {
   const renderServiceItem = ({ item }: { item: ServiceRecord }) => (
     <TouchableOpacity
       style={styles.serviceItem}
-      onPress={() => navigation.navigate('ServiceDetails', { serviceId: item.id })}
+      onPress={() => navigation.navigate('TicketScreen', { serviceId: item.id })}
     >
       <View style={styles.serviceInfo}>
         <Text style={styles.serviceName}>{item.service.name}</Text>
