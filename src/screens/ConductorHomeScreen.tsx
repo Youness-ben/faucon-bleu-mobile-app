@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, FlatList } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, FlatList, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
+import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import api from '../api';
 import { STORAGE_URL } from '../../config';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type RootStackParamList = {
   OrderService: { serviceId: number };
@@ -62,12 +65,52 @@ const ConductorHomeScreen: React.FC = () => {
     }
   }, [t]);
 
-  useFocusEffect(
+/*   useFocusEffect(
     useCallback(() => {
       fetchData();
     }, [fetchData])
-  );
+  ); */
+  useEffect(() => {
+    fetchData();
+    registerForPushNotificationsAsync();
+  }, [fetchData]);
 
+  const registerForPushNotificationsAsync = async () => {
+    let token;
+    if (Constants.isDevice || true) {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      if (finalStatus !== 'granted') {
+        alert('Failed to get push token for push notification!');
+        return;
+      }
+      token = (await Notifications.getExpoPushTokenAsync()).data;
+    } else {
+      alert('Must use physical device for Push Notifications');
+    }
+
+    if (Platform.OS === 'android') {
+      Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF231F7C',
+      });
+    }
+
+    if (token) {
+      await AsyncStorage.setItem('expoPushToken', token);
+      try { 
+        await api.post('/vehicle/update-push-token', { token });
+      } catch (error) {
+        console.error('Error sending push token to backend:', error);
+      }
+    }
+  };
   const handleOrderService = (serviceId: number) => {
     navigation.navigate('OrderService', { serviceId });
   };

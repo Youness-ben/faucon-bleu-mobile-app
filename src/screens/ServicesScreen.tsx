@@ -53,7 +53,8 @@ const ServicesScreen: React.FC = () => {
   );
 
   const categories = Array.from(new Set(services.map(service => service.category || t('services.uncategorized'))));
-
+  
+ 
   const renderServiceItem = ({ item }: { item: Service }) => (
     <View style={styles.serviceItem}>
       <TouchableOpacity
@@ -63,12 +64,12 @@ const ServicesScreen: React.FC = () => {
         <View style={styles.serviceIcon}>
           <Image source={{ uri: `${STORAGE_URL}/${item.icon}` }} 
           defaultSource={require('../../assets/logo.png')}
-          style={{width:24}} />
+          style={{width:24}} height={24} />
 
         </View>
         <View style={styles.serviceInfo}>
           <Text style={styles.serviceName}>{item.name}</Text>
-          <Text style={styles.servicePrice}>{t('services.price', { price: item.price })}</Text>
+          <Text style={styles.servicePrice}>{t('services.estimatedDuration', { duration: item.estimated_duration, unite: item.estimated_duration_unite })}</Text>
         </View>
         <Ionicons name="chevron-forward" size={24} color={theme.colors.primary} />
       </TouchableOpacity>

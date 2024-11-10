@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, SafeAreaView } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { RouteProp, useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -61,6 +61,17 @@ const ConductorOrderServiceScreen: React.FC = () => {
     setSelectedDate(currentDate);
   };
 
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
+      </TouchableOpacity>
+      
+      <Text style={styles.title}>{t('services.orderService')}</Text>
+
+      <View style={styles.headerRight} />
+    </View>
+  );
   const handleConfirmOrder = async () => {
     if (!service) return;
 
@@ -68,7 +79,7 @@ const ConductorOrderServiceScreen: React.FC = () => {
     try {
       const orderData = {
         service_id: service.id,
-        scheduled_at: selectedDate.toISOString(),
+        scheduled_at:  selectedDate.getFullYear()+"-"+(selectedDate.getMonth()+1)+"-"+selectedDate.getDate()+" 00:00:00",
       };
       await api.post('/vehicle/confirm-service', orderData);
       Alert.alert(
@@ -86,37 +97,42 @@ const ConductorOrderServiceScreen: React.FC = () => {
 
   if (isLoading) {
     return (
+      <SafeAreaView style={styles.safeArea}>
+        {renderHeader()}
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
+      </SafeAreaView>
     );
   }
 
   if (error || !service) {
     return (
+      <SafeAreaView style={styles.safeArea}>
+        {renderHeader()}
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>{error || t('orderService.unknownError')}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={fetchServiceDetails}>
           <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
         </TouchableOpacity>
       </View>
+      </SafeAreaView>
     );
   }
 
   return (
+    <SafeAreaView style={styles.safeArea}>
+      {renderHeader()}
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>{t('orderService.title')}</Text>
       
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{t('orderService.serviceDetails')}</Text>
         <Text style={styles.serviceName}>{service.name}</Text>
         <Text style={styles.serviceDescription}>{service.description}</Text>
         <Text style={styles.serviceDuration}>
-          {t('orderService.estimatedDuration', { duration: service.estimated_duration })}
+          {t('services.estimatedDuration', { duration: service.estimated_duration, unite: service.estimated_duration_unite  })}
         </Text>
-        <Text style={styles.servicePrice}>
-          {t('orderService.servicePrice', { price: service.base_price })}
-        </Text>
+
       </View>
 
       <View style={styles.section}>
@@ -145,6 +161,7 @@ const ConductorOrderServiceScreen: React.FC = () => {
         <Text style={styles.confirmButtonText}>{t('orderService.confirmService')}</Text>
       </TouchableOpacity>
     </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -245,6 +262,28 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: theme.typography.sizes.lg,
     fontWeight: theme.typography.fontWeights.bold,
+  },
+    safeArea: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.background,
+  },
+  backButton: {
+    padding: theme.spacing.sm,
+  },
+  headerTitle: {
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.fontWeights.bold,
+    color: theme.colors.text,
+  },
+  headerRight: {
+    width: 40, // To balance the back button on the left
   },
 });
 

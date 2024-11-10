@@ -8,10 +8,11 @@ import i18n from './src/localization/i18n';
 import AppNavigator from './src/navigation/AppNavigator';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
-import { Platform } from 'react-native';
+import { Platform, StatusBar, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { UserProvider } from './src/UserContext';
 import { NotificationProvider } from './src/NotificationContext';
+import { theme } from './src/styles/theme';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -46,7 +47,6 @@ export default function App() {
 
     notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
       console.log('Notification received:', notification);
-      // Handle foreground notifications here
       handleForegroundNotification(notification);
     });
 
@@ -64,8 +64,10 @@ export default function App() {
   const handleForegroundNotification = (notification) => {
     const data = notification.request.content.data;
     if (data.type === 'new_message') {
-      // Update the TicketScreen with new message
       // This will be handled by the NotificationContext
+    } else if (data.type === 'general') {
+      // Handle general notification
+      console.log('General notification received:', data.message);
     }
     // Handle other types of notifications as needed
   };
@@ -78,6 +80,9 @@ export default function App() {
     } else if (data.type === 'redirect' && data.screen && navigationRef.current) {
       // @ts-ignore
       navigationRef.current.navigate(data.screen, data.params || {});
+    } else if (data.type === 'general') {
+      // Handle general notification tap
+      console.log('General notification tapped:', data.message);
     }
     // Handle other types of notifications as needed
   };
@@ -94,7 +99,13 @@ export default function App() {
 
   return (
     <I18nextProvider i18n={i18n}>
-      <SafeAreaProvider onLayout={onLayoutRootView}>
+      <SafeAreaProvider >
+        <View style={{
+    flex: 1,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+    backgroundColor: theme.colors.background,
+  }} onLayout={onLayoutRootView}>
+          <StatusBar barStyle="dark-content" backgroundColor={theme.colors.background} />
         <NavigationContainer ref={navigationRef}>
           <UserProvider>
             <NotificationProvider>
@@ -102,9 +113,11 @@ export default function App() {
             </NotificationProvider>
           </UserProvider>
         </NavigationContainer>
+        </View>
       </SafeAreaProvider>
     </I18nextProvider>
   );
+  
 }
 
 async function registerForPushNotificationsAsync() {

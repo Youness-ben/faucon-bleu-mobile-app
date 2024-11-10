@@ -205,11 +205,16 @@ const VehicleDetailScreen: React.FC = () => {
       </View>
     );
   }
-
+  const handleGoBack = () => {
+    navigation.goBack();
+  };
   return (
     <View style={styles.container}>
       <ScrollView>
         <View style={styles.header}>
+        <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="white" />
+        </TouchableOpacity>
           <View style={styles.brandLogoContainer}>
             <Image
               source={{ uri: `${STORAGE_URL}/${vehicle.logo_url}` }}
@@ -563,6 +568,11 @@ const styles = StyleSheet.create({
   toastText: {
     color: 'white',
     fontSize: 16,
+  },
+
+  backButton: {
+    padding: theme.spacing.sm,
+    marginRight: theme.spacing.md,
   },
 });
 

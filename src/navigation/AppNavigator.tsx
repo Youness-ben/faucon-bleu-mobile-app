@@ -28,6 +28,7 @@ import { theme } from '../styles/theme';
 import ConductorOrderServiceScreen from '../screens/ConductorOrderServiceScreen';
 import ConductorServiceHistoryScreen from '../screens/ConductorServiceHistoryScreen';
 import ConductorServicesScreen from '../screens/ConductorServicesScreen';
+import { Platform } from 'react-native';
 
 type RootStackParamList = {
   Splash: undefined;
@@ -87,10 +88,15 @@ const MainTabs: React.FC = () => {
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
+        headerShown:false,
+        
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor:  theme.colors.textSecondary,
         tabBarStyle: {
           display: 'flex',
+          paddingTop: 10,
+          paddingBottom: Platform.OS === 'ios' ? 15 : 5,
+          height: Platform.OS === 'ios' ? 80 : 60,
         }
       })}
 
@@ -124,12 +130,19 @@ const ConductorTabs: React.FC = () => {
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
+        headerShown:false,
+        
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor:  theme.colors.textSecondary,
+        tabBarStyle: {
+          display: 'flex',
+          paddingTop: 10,
+          paddingBottom: Platform.OS === 'ios' ? 15 : 5,
+          height: Platform.OS === 'ios' ? 80 : 60,
+        }
       })}
-      //@ts-ignore
-      tabBarOptions={{
-        activeTintColor: theme.colors.primary,
-        inactiveTintColor: theme.colors.textSecondary,
-      }}
+
+
     >
       <ConductorTab.Screen name="ConductorHome" component={ConductorHomeScreen} options={{ title: t('navigation.home') }} />
       <ConductorTab.Screen name="ConductorServicesScreen" component={ConductorServicesScreen} options={{ title: t('navigation.orderService') }} />
@@ -146,17 +159,17 @@ const AppNavigator: React.FC = () => {
         <Stack.Screen name="ConductorLogin" component={ConductorLoginScreen} />
         <Stack.Screen name="Main" component={MainTabs} />
         <Stack.Screen name="ConductorMain" component={ConductorTabs} />
-        <Stack.Screen name="OrderService" component={OrderServiceScreen} options={{ headerShown: true, title: 'Order Service' }} />
-        <Stack.Screen name="ConductorOrderServiceScreen" component={ConductorOrderServiceScreen} options={{ headerShown: true, title: 'Order Service' }} />
-        <Stack.Screen name="ServiceHistory" component={ServiceHistoryScreen} options={{ headerShown: true, title: 'Service History' }} />
-        <Stack.Screen name="AddVehicle" component={AddVehicleScreen} options={{ headerShown: true, title: 'Add Vehicle' }} />
-        <Stack.Screen name="VehicleDetail" component={VehicleDetailScreen} options={{ headerShown: true, title: 'Vehicle Details' }} />
-        <Stack.Screen name="Invoices" component={InvoicesScreen} options={{ headerShown: true, title: 'Invoices' }} />
-        <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ headerShown: true, title: 'Edit Profile' }} />
-        <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: true, title: 'Settings' }} />
-        <Stack.Screen name="Support" component={SupportScreen} options={{ headerShown: true, title: 'Support' }} />
+        <Stack.Screen name="OrderService" component={OrderServiceScreen}  />
+        <Stack.Screen name="ConductorOrderServiceScreen" component={ConductorOrderServiceScreen} />
+        <Stack.Screen name="ServiceHistory" component={ServiceHistoryScreen}  />
+        <Stack.Screen name="AddVehicle" component={AddVehicleScreen} />
+        <Stack.Screen name="VehicleDetail" component={VehicleDetailScreen} />
+        <Stack.Screen name="Invoices" component={InvoicesScreen}  />
+        <Stack.Screen name="EditProfile" component={EditProfileScreen}  />
+        <Stack.Screen name="Settings" component={SettingsScreen}  />
+        <Stack.Screen name="Support" component={SupportScreen}  />
         
-        <Stack.Screen name="TicketScreen" component={TicketScreen} options={{ headerShown: true, title: 'Service Chat' }} />
+        <Stack.Screen name="TicketScreen" component={TicketScreen}  />
         
       </Stack.Navigator>
   );

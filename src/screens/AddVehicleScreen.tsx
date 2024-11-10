@@ -7,6 +7,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { theme } from '../styles/theme';
 import api from '../api';
 import Toast from '../components/Toast';
+import { Ionicons } from '@expo/vector-icons';
 
 type RootStackParamList = {
   Fleet: undefined;
@@ -105,10 +106,21 @@ const AddVehicleScreen: React.FC = () => {
     );
   }
 
+  
+  const handleGoBack = () => {
+    navigation.goBack();
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
+        </TouchableOpacity>
         <Text style={styles.title}>{t('addVehicle.title')}</Text>
+        <View />
+      </View>
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>{t('addVehicle.brand')}</Text>
@@ -244,17 +256,27 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
     backgroundColor: theme.colors.background,
   },
+  header: {
+    flexDirection: 'row',
+    
+    justifyContent: 'space-between',
+    paddingBottom:40
+  },
+  backButton: {
+    marginVertical:"auto"
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: theme.colors.background,
   },
+
   title: {
     fontSize: theme.typography.sizes.xl,
     fontWeight: theme.typography.fontWeights.bold,
-    marginBottom: theme.spacing.lg,
     color: theme.colors.primary,
+
   },
   formGroup: {
     marginBottom: theme.spacing.md,

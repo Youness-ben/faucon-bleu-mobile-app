@@ -100,7 +100,7 @@ export default function ConductorServicesScreen() {
         <View style={styles.serviceInfo}>
           <Text style={styles.serviceName}>{item.name}</Text>
           <Text style={styles.serviceDescription} numberOfLines={2}>{item.description}</Text>
-          <Text style={styles.servicePrice}>{t('services.price', { price: item.price })}</Text>
+          <Text style={styles.servicePrice}>{t('services.estimatedDuration', { duration: item.estimated_duration, unite: item.estimated_duration_unite })}</Text>
         </View>
         <Ionicons name="chevron-forward" size={24} color={theme.colors.primary} />
       </TouchableOpacity>

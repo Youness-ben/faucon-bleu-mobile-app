@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -35,6 +35,7 @@ import { useNotification } from '../NotificationContext';
 import { MAPBOX_TOKEN, STORAGE_URL } from '../../config';
 import { WebView } from 'react-native-webview';
 import Slider from '@react-native-community/slider';
+import initializeEcho from '../echo';
 
 type RootStackParamList = {
   TicketScreen: { serviceId: string };
@@ -96,22 +97,77 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
 
   const [audioPosition, setAudioPosition] = useState< number >(0);
 
-  useEffect(() => {
-    fetchMessages();
-    clearNewMessages(serviceId);
+
+  const [echo, setEcho] = useState<any>(null);  // State to hold the Echo instance
+  const [subscription, setSubscription] = useState<any>(null);
+  const [notificationSound, setNotificationSound] = React.useState<Audio.Sound | null>(null);
+
+  const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
+  const headerHeight = useRef(new Animated.Value(60)).current;
+
+  React.useEffect(() => {
+    // Load the notification sound
+    async function loadSound() {
+      const { sound } = await Audio.Sound.createAsync(require('../../assets/ping.mp3'));
+      setNotificationSound(sound);
+    }
+
+    loadSound();
 
     return () => {
-      if (sound) {
-        sound.unloadAsync();
-      }
-      if (recordingInterval.current) {
-        clearInterval(recordingInterval.current);
+      // Unload the sound when the component unmounts
+      if (notificationSound) {
+        notificationSound.unloadAsync();
       }
     };
-  }, [serviceId]);
+  }, []);
 
-  const fetchMessages = async () => {
-    setIsLoading(true);
+  
+  const playNotificationSound = React.useCallback(async () => {
+    if (notificationSound) {
+      try {
+        await notificationSound.playAsync();
+      } catch (error) {
+        console.error('Failed to play notification sound', error);
+      }
+    }
+  }, [notificationSound]);
+
+
+  useEffect(() => {
+    const setupEcho = async () => {
+      const echoInstance = await initializeEcho();  // Get the Echo instance
+      setEcho(echoInstance);
+    };
+
+    setupEcho();
+
+    return () => {
+      if (echo) {
+        echo.disconnect();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (echo) {
+
+      const channelName = `chat.${serviceId}`;
+      // Subscribe to the private channel
+       const sub = echo.private(channelName)
+        .listen('NewMessageSent', async (event: any) => {
+          playNotificationSound();
+            await fetchMessages(false);
+        }); 
+
+           setSubscription(sub);
+
+    }
+  }, [echo]);
+
+
+  const fetchMessages = useCallback(async (setLoading = true) => {
+    if (setLoading) setIsLoading(true);
     try {
       const response = await api.get(`service-orders/${serviceId}/chat`);
       setMessages(response.data);
@@ -127,7 +183,22 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
       duration: 500,
       useNativeDriver: true,
     }).start();
-  };
+  }, [serviceId, fadeAnim]);
+  
+
+  useEffect(() => {
+    fetchMessages();
+    clearNewMessages(serviceId);
+
+    return () => {
+      if (sound) {
+        sound.unloadAsync();
+      }
+      if (recordingInterval.current) {
+        clearInterval(recordingInterval.current);
+      }
+    };
+  }, [serviceId]);
 
   const sendMessage = async (messageType: string, content?: string, file?: any, location?: { latitude: number; longitude: number }) => {
     try {
@@ -150,19 +221,18 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
       const response = await api.post(`service-orders/${serviceId}/chat`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      console.log(response.data);
       setMessages(prevMessages => [...prevMessages, response.data]);
     } catch (error) {
       console.error('Error sending message:', error);
     }
   };
 
-  const sendTextMessage = () => {
+  const sendTextMessage = useCallback(() => {
     if (inputText.trim()) {
       sendMessage('text', inputText.trim());
       setInputText('');
     }
-  };
+  }, [inputText, sendMessage]);
 
   const pickImage = async () => {
     try {
@@ -389,19 +459,39 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  const toggleHeader = () => {
+    return;
+    setIsHeaderExpanded(!isHeaderExpanded);
+    Animated.spring(headerHeight, {
+      toValue: isHeaderExpanded ? 60 : 200,
+      useNativeDriver: false,
+    }).start();
+  };
+
   const renderHeader = () => (
-    <View style={styles.header}>
-      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-        <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
-      </TouchableOpacity>
-      <View style={styles.headerContent}>
-        <Text style={styles.headerTitle}>{}</Text>
-        <Text style={styles.headerSubtitle}>{t('service.carInfo')}</Text>
+    <Animated.View style={[styles.header, { height: headerHeight }]}>
+      <View style={styles.headerTopRow}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={toggleHeader} style={styles.headerContent}>
+          <Text style={styles.headerTitle}>{"Chat"}</Text>
+{/*           <Ionicons 
+            name={isHeaderExpanded ? "chevron-up" : "chevron-down"} 
+            size={20} 
+            color={theme.colors.text} 
+          /> */}
+        </TouchableOpacity>
+        <View style={styles.moreButton} />
       </View>
-      <TouchableOpacity style={styles.moreButton}>
-        <Ionicons name="ellipsis-vertical" size={24} color={theme.colors.text} />
-      </TouchableOpacity>
-    </View>
+      {isHeaderExpanded && (
+        <View style={styles.headerDetails}>
+          <Text style={styles.headerDetailText}>{t('service.carInfo')}: Toyota Camry</Text>
+          <Text style={styles.headerDetailText}>{t('service.serviceType')}: Oil Change</Text>
+          <Text style={styles.headerDetailText}>{t('service.status')}: In Progress</Text>
+        </View>
+      )}
+    </Animated.View>
   );
 
   const renderMessage = ({ item }: { item: Message }) => (
@@ -562,9 +652,6 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
       )}
     </View>
   );
-
-
-
 
   const renderPreview = () => {
     if (!previewUri) return null;
@@ -778,29 +865,41 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    backgroundColor: theme.colors.background,
+    overflow: 'hidden',
+  },
+  headerTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: theme.spacing.md,
-    backgroundColor: theme.colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    height: 80,
   },
   backButton: {
     padding: theme.spacing.sm,
   },
   headerContent: {
     flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
     fontSize: theme.typography.sizes.lg,
     fontWeight: theme.typography.fontWeights.bold,
     color: theme.colors.text,
+    marginRight: theme.spacing.sm,
   },
-  headerSubtitle: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.muted,
+  moreButton: {
+    padding: theme.spacing.sm,
+  },
+  headerDetails: {
+    padding: theme.spacing.md,
+  },
+  headerDetailText: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.sm,
   },
   moreButton: {
     padding: theme.spacing.sm,

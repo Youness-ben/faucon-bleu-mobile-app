@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, FlatList } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, FlatList, SafeAreaView } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { RouteProp, useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -72,6 +72,17 @@ const OrderServiceScreen: React.FC = () => {
     }, [fetchData])
   );
  
+ const renderHeader = () => (
+    <View style={styles.header}>
+      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
+      </TouchableOpacity>
+      
+      <Text style={styles.title}>{t('services.orderService')}</Text>
+
+      <View style={styles.headerRight} />
+    </View>
+  );
   const handleDateChange = (event: any, selectedDate?: Date) => {
     const currentDate = selectedDate || new Date();
     setShowDatePicker(false);
@@ -82,22 +93,18 @@ const OrderServiceScreen: React.FC = () => {
   const handleSubmit = async () => {
     if (!selectedVehicle || !service) return;
 
-    const scheduledAt = new Date(
-      selectedDate.getFullYear(),
-      selectedDate.getMonth(),
-      selectedDate.getDate(),
-    );
+    const scheduledAt =  selectedDate.getFullYear()+"-"+(selectedDate.getMonth()+1)+"-"+selectedDate.getDate()+" 00:00:00";
 
     const orderData = {
       vehicle_id: selectedVehicle.id,
       service_id: service.id,
-      scheduled_at: scheduledAt.toISOString(),
+      scheduled_at: scheduledAt,
     };
 
     try {
       const response = await api.post('/client/service-orders', orderData);
       console.log('Order submitted:', response.data);
-      navigation.goBack();
+      navigation.navigate("ServiceHistory");
     } catch (error) {
       console.error('Error submitting order:', error);
       setError(t('services.submitError'));
@@ -136,33 +143,39 @@ const OrderServiceScreen: React.FC = () => {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
+      <SafeAreaView style={styles.safeArea}>
+        {renderHeader()}
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (error || !service) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>{error || t('services.serviceNotFound')}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
-          <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
-        </TouchableOpacity>
-      </View>
+      <SafeAreaView style={styles.safeArea}>
+        {renderHeader()}
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error || t('services.serviceNotFound')}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
+            <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>{t('services.orderService')}</Text>
-      
+    <SafeAreaView style={styles.safeArea}>
+      {renderHeader()}
+      <ScrollView style={styles.container}>
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{t('services.serviceDetails')}</Text>
         <Text style={styles.serviceType}>{service.name}</Text>
         <Text style={styles.serviceDescription}>{service.description}</Text>
         <Text style={styles.serviceDuration}>
-          {t('services.estimatedDuration', { duration: service.estimated_duration })}
+          {t('services.estimatedDuration', { duration: service.estimated_duration, unite: service.estimated_duration_unite  })}
         </Text>
         {servicePrice &&
         <Text style={styles.servicePrice}>
@@ -239,7 +252,9 @@ const OrderServiceScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+      
+    </ScrollView>  
+      </SafeAreaView>
   );
 };
 
@@ -400,6 +415,29 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.fontWeights.medium,
+  }
+  
+  ,  safeArea: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.background,
+  },
+  backButton: {
+    padding: theme.spacing.sm,
+  },
+  headerTitle: {
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.fontWeights.bold,
+    color: theme.colors.text,
+  },
+  headerRight: {
+    width: 40, // To balance the back button on the left
   },
 });
 

@@ -79,24 +79,47 @@ const ConductorServiceHistoryScreen: React.FC = () => {
       fetchServiceHistory(page + 1);
     }
   };
+  const getStatusColor = (status?: ServiceRecord['status']) => {
+    switch (status) {
+      case 'completed':
+        return theme.colors.success;
+      case 'pending':
+        return theme.colors.warning;
+      case 'in_progress':
+        return theme.colors.info;
+      case 'cancelled':
+        return theme.colors.error;
+      default:
+        return theme.colors.text;
+    }
+  };
 
-  const renderServiceItem = ({ item }: { item: ServiceRecord }) => (
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+  };
+
+  const renderServiceItem = ({ item }: { item: ServiceRecord }) => {
+    return (
     <TouchableOpacity
       style={styles.serviceItem}
       onPress={() => navigation.navigate('TicketScreen', { serviceId: item.id })}
     >
-      <View style={styles.serviceInfo}>
-        <Text style={styles.serviceName}>{item.service.name}</Text>
-        <Text style={styles.serviceDate}>{new Date(item.completion_date).toLocaleDateString()}</Text>
-      </View>
-      <View style={styles.serviceStatus}>
-        <Text style={[styles.statusText, { color: item.status === 'completed' ? theme.colors.success : theme.colors.error }]}>
-          {t(`serviceHistory.status.${item.status}`)}
+      <Text style={styles.serviceType}>{item.service?.name || t('serviceHistory.unknownService')}</Text>
+      <Text style={styles.vehicleName}>
+        {item.vehicle ? `${item.vehicle.brand_name || ''} ${item.vehicle.model || ''}`.trim() : t('serviceHistory.unknownVehicle')}
+      </Text>
+      <Text style={styles.serviceDate}>{formatDate(item.scheduled_at)}</Text>
+      <View style={styles.serviceDetails}>
+        <Text style={[styles.serviceStatus, { color: getStatusColor(item.status) }]}>
+          {item.status ? t(`serviceStatus.${item.status}`) : t('serviceHistory.unknownStatus')}
         </Text>
-        <Text style={styles.servicePrice}>{t('serviceHistory.price', { price: item.price })}</Text>
+
       </View>
     </TouchableOpacity>
-  );
+  )};
 
   const FilterModal = () => (
     <Modal
@@ -291,40 +314,41 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.xl,
   },
   serviceItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     backgroundColor: 'white',
     borderRadius: theme.roundness,
-    marginBottom: theme.spacing.md,
     padding: theme.spacing.md,
+    marginBottom: theme.spacing.md,
     ...theme.elevation.small,
   },
-  serviceInfo: {
-    flex: 1,
-  },
-  serviceName: {
-    fontSize: theme.typography.sizes.md,
+  serviceType: {
+    fontSize: theme.typography.sizes.lg,
     fontWeight: theme.typography.fontWeights.bold,
     color: theme.colors.text,
+    marginBottom: theme.spacing.xs,
+  },
+  vehicleName: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.textSecondary,
     marginBottom: theme.spacing.xs,
   },
   serviceDate: {
     fontSize: theme.typography.sizes.sm,
     color: theme.colors.textSecondary,
-  },
-  serviceStatus: {
-    alignItems: 'flex-end',
-  },
-  statusText: {
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: theme.typography.fontWeights.medium,
     marginBottom: theme.spacing.xs,
   },
-  servicePrice: {
+  serviceDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  serviceStatus: {
     fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.fontWeights.medium,
+  },
+  serviceCost: {
+    fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.primary,
+    color: theme.colors.text,
   },
   emptyStateContainer: {
     flex: 1,

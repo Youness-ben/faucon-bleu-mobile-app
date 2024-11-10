@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, ActivityIndicator, RefreshControl, SafeAreaView } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
@@ -262,28 +262,48 @@ const ServiceHistoryScreen: React.FC = () => {
     </Modal>
   );
 
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
+      </TouchableOpacity>
+      
+      <Text style={styles.title}>{t('serviceHistory.title')}</Text>
+
+      <View style={styles.headerRight} />
+    </View>
+  );
+
   if (isLoading) {
     return (
+      <SafeAreaView style={styles.safeArea}>
+        {renderHeader()}
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
+      </SafeAreaView>
     );
   }
 
   if (error) {
     return (
+      <SafeAreaView style={styles.safeArea}>
+        {renderHeader()}
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={() => fetchServiceHistory()}>
           <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
         </TouchableOpacity>
       </View>
+      </SafeAreaView>
     );
   }
 
   return (
+    <SafeAreaView style={styles.safeArea}>
+      {renderHeader()}
     <View style={styles.container}>
-      <Text style={styles.title}>{t('serviceHistory.title')}</Text>
+
       
       <View style={styles.filtersContainer}>
         <TouchableOpacity
@@ -331,17 +351,18 @@ const ServiceHistoryScreen: React.FC = () => {
         </View>
       )}
 
-      <TouchableOpacity
+     {false && <TouchableOpacity
         style={styles.exportButton}
         onPress={() => console.log('Export service history')}
       >
         <Ionicons name="download-outline" size={20} color="white" style={styles.buttonIcon} />
         <Text style={styles.exportButtonText}>{t('serviceHistory.export')}</Text>
-      </TouchableOpacity>
+      </TouchableOpacity>}
 
       <FilterModal />
       <SortModal />
     </View>
+    </SafeAreaView>
   );
 };
 
@@ -541,6 +562,29 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.fontWeights.bold,
+  },
+
+  safeArea: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.background,
+  },
+  backButton: {
+    padding: theme.spacing.sm,
+  },
+  headerTitle: {
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.fontWeights.bold,
+    color: theme.colors.text,
+  },
+  headerRight: {
+    width: 40, // To balance the back button on the left
   },
 });
 
