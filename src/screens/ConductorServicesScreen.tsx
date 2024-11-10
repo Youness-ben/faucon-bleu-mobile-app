@@ -94,7 +94,7 @@ export default function ConductorServicesScreen() {
             style={styles.iconImage}
             width={24}
             height={24}
-            defaultSource={require('../../assets/default-service-icon.png')}
+            defaultSource={require('../../assets/default_service_icon.png')}
           />
         </View>
         <View style={styles.serviceInfo}>

@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "476216083787",
-    "project_id": "fauconbleu-ee67b",
-    "storage_bucket": "fauconbleu-ee67b.firebasestorage.app"
+    "project_number": "439589804157",
+    "project_id": "faucon-bleu",
+    "storage_bucket": "faucon-bleu.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:476216083787:android:1155ef1c01a8f36e7014ce",
+        "mobilesdk_app_id": "1:439589804157:android:b7da4f0275e38ae5137914",
         "android_client_info": {
-          "package_name": "ma.fauconbleu"
+          "package_name": "ma.fauconbleu.services"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyC5OL1PGZwIadbC0M_nCY3rpMo8Q6gTEBI"
+          "current_key": "AIzaSyDcstJR0K5qhInKGywc5ZClQ5Fdxpm7kug"
         }
       ],
       "services": {
