@@ -136,7 +136,8 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
 
   useEffect(() => {
     const setupEcho = async () => {
-      const echoInstance = await initializeEcho();  // Get the Echo instance
+      const echoInstance = await initializeEcho(); 
+      console.log("-",await echoInstance?.socketId());
       setEcho(echoInstance);
     };
 

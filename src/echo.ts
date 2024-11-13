@@ -22,34 +22,47 @@ const getSanctumToken = async () => {
       console.error('No Sanctum token found.');
       return null; 
     }
-    const echo = new Echo({
-      broadcaster: 'reverb',  
-      Pusher,
-      key: PUSHER_APP_KEY,  
-      wsHost:PUSHER_HOST, 
-      wsPort: PUSHER_PORT,  
-      forceTLS: false,  
-      encrypted: false,  
-      authorizer:(channel :any, options : any) => {
-        return {
-            authorize: (socketId :any , callback : any ) => {
-                api.post('/broadcasting/auth', {
-                    socket_id: socketId,
-                    channel_name: channel.name
-                })
-                .then(response => {
-                    callback(false, response.data);
-                })
-                .catch(error => {
-                    callback(true, error);
-                });
-            }
-        };
-    },
-    
-    });
 
-    return echo;
+    console.log(token);
+
+   try {
+    const echo = new Echo({
+  broadcaster: 'reverb',
+  Pusher,
+  key: PUSHER_APP_KEY, // Replace with your actual app key from Laravel Reverb
+  wsHost: PUSHER_HOST, // Replace with your WebSocket server domain
+  wsPort: PUSHER_PORT, // Replace with the port if different
+  wssPort: PUSHER_PORT,
+  forceTLS: true,
+  disableStats: true,
+  
+  enabledTransports: ['ws', 'wss'],
+ authorizer: (channel :any, options : any) => {
+       return {
+         authorize: (socketId : any, callback : any ) => {
+          
+           api.post('/broadcasting/auth', {
+             socket_id: socketId,
+             channel_name: channel.name
+           })
+           .then(response => {
+             console.log(response);
+             callback(false, response.data);
+           })
+           .catch(error => {
+             console.log(error);
+             callback(true, error);
+           });
+         }
+       };
+     },
+});
+   return echo;
+   } catch (error) {
+        console.log("hhaha",error);
+
+   }
+ //   return echo;
   };
   
   export default initializeEcho;
