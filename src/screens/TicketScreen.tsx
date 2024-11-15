@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { format, isToday, isYesterday } from 'date-fns';
 import {
   View,
   Text,
@@ -98,7 +99,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
   const [audioPosition, setAudioPosition] = useState< number >(0);
 
 
-  const [echo, setEcho] = useState<any>(null);  // State to hold the Echo instance
+  const [echo, setEcho] = useState<any>(null); 
   const [subscription, setSubscription] = useState<any>(null);
   const [notificationSound, setNotificationSound] = React.useState<Audio.Sound | null>(null);
 
@@ -106,7 +107,6 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
   const headerHeight = useRef(new Animated.Value(60)).current;
 
   React.useEffect(() => {
-    // Load the notification sound
     async function loadSound() {
       const { sound } = await Audio.Sound.createAsync(require('../../assets/ping.mp3'));
       setNotificationSound(sound);
@@ -115,7 +115,6 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
     loadSound();
 
     return () => {
-      // Unload the sound when the component unmounts
       if (notificationSound) {
         notificationSound.unloadAsync();
       }
@@ -137,7 +136,6 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
   useEffect(() => {
     const setupEcho = async () => {
       const echoInstance = await initializeEcho(); 
-      console.log("-",await echoInstance?.socketId());
       setEcho(echoInstance);
     };
 
@@ -495,112 +493,135 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
     </Animated.View>
   );
 
-  const renderMessage = ({ item }: { item: Message }) => (
-    <Animated.View style={[
-      styles.messageContainer,
-      item.sender_type === user.type ? styles.currentUserMessage : styles.otherUserMessage,
-      { opacity: fadeAnim }
-    ]}>
-      {item.sender_type !== user.type && (
-        <View style={styles.avatarContainer}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{item.sender_type[0].toUpperCase()}</Text>
-          </View>
-        </View>
-      )}
-      <View style={styles.messageContent}>
-        {item.sender_type !== user.type && (
-          <Text style={styles.senderName}>
-            {item.sender_type === 'vehicle' ? t('common.conductor') : (item.sender_type === 'client' ? t('common.client') : 'Faucon Bleu')}
-          </Text>
-        )}
-        {item.message_type === 'text' && <Text style={styles.messageText}>{item.content}</Text>}
-        {item.message_type === 'image' && (
-          <TouchableOpacity onPress={() => setPreviewFile({ uri: `${STORAGE_URL}/${item.file_path}`, type: 'image' })}>
-            <Image source={{ uri: `${STORAGE_URL}/${item.file_path}` }} style={styles.imageMessage} />
-            <Text style={styles.previewText}>Tap to preview</Text>
-          </TouchableOpacity>
-        )}
-        {item.message_type === 'video' && (
-          <TouchableOpacity onPress={() => 
-            setPreviewFile({ uri: `${STORAGE_URL}/${item.file_path}`, type: 'video' })
-          }>
-            <Video
-              source={{ uri: `${STORAGE_URL}/${item.file_path}` }}
-              style={styles.videoMessage}
-              resizeMode="cover"
-              shouldPlay={false}
-            />
-            <Text style={styles.previewText}>Tap to preview</Text>
-          </TouchableOpacity>
-        )}
-        {item.message_type === 'file' && (
-          <View>
-            <TouchableOpacity onPress={() => {
-              const fileExtension = item.file_path?.split('.').pop()?.toLowerCase();
-              const viewableExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'];
-              
-
-            /*   if (fileExtension && viewableExtensions.includes(fileExtension)) {
-                setPreviewFile({ uri: `${STORAGE_URL}/${item.file_path}`, type: 'file' });
-              } else {*/
-                item.file_path && downloadFile(item.file_path, item.content || 'file');
-             /* } */
-            }}>
-              <View style={styles.fileMessage}>
-                <Ionicons name="document-outline" size={24} color={theme.colors.primary} />
-                <Text style={styles.fileMessageText}>{item.content || 'File attached'}</Text>
+  const renderMessage = ({ item }: { item: Message })  => {
+    const messageDate = new Date(item.created_at);
+    let dateDisplay = format(messageDate, 'MM/dd/yyyy');
+    
+    if (isToday(messageDate)) {
+      dateDisplay = 'Today';
+    } else if (isYesterday(messageDate)) {
+      dateDisplay = 'Yesterday';
+    }
+  
+    const timeDisplay = format(messageDate, 'HH:mm');
+  
+    return (
+    <View style={[
+      styles.messageWrapper,
+      item.sender_type === user.type ? styles.currentUserMessageWrapper : styles.otherUserMessageWrapper
+      ]}>
+        <Animated.View style={[
+          styles.messageContainer,
+          item.sender_type === user.type ? styles.currentUserMessage : styles.otherUserMessage,
+          { opacity: fadeAnim }
+        ]}>
+          {item.sender_type !== user.type && (
+            <View style={styles.avatarContainer}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{item.sender_type[0].toUpperCase()}</Text>
               </View>
-              <Text style={styles.previewText}>
-                {item.file_path?.split('.').pop()?.toLowerCase() in ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'] 
-                  ? 'Tap to preview' 
-                  : 'Tap to download'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      {item.message_type === 'audio' && (
-        <TouchableOpacity onPress={() => item.file_path && (isPlaying && currentlyPlayingId === item.id ? pauseAudio() : playAudio(`${STORAGE_URL}/${item.file_path}`, item.id))}>
-          <View style={styles.audioMessage}>
-            <View style={styles.audioControls}>
-              {isAudioLoading === item.id ? (
-                <ActivityIndicator size="small" color={theme.colors.primary} />
-              ) : (
-                <Ionicons 
-                  name={isPlaying && currentlyPlayingId === item.id ? "pause" : "play"} 
-                  size={20} 
-                  color={theme.colors.primary} 
-                />
-              )}
-              <Slider
-                style={styles.audioSlider}
-                minimumValue={0}
-                maximumValue={audioProgress[item.id]?.duration || 100}
-                value={audioPosition}
-                onValueChange={(value) => seekAudio(item.id, value)}
-                minimumTrackTintColor={theme.colors.primary}
-                maximumTrackTintColor={theme.colors.border}
-              />
-              <Text style={styles.timestamp}>
-                {formatDuration(audioPosition)}
-              </Text>
             </View>
+          )}
+          <View style={styles.messageContent}>
+            {item.sender_type !== user.type && (
+              <Text style={styles.senderName}>
+                {item.sender_type === 'vehicle' ? t('common.conductor') : (item.sender_type === 'client' ? t('common.client') : 'Faucon Bleu')}
+              </Text>
+            )}
+            {item.message_type === 'text' && <Text style={styles.messageText}>{item.content}</Text>}
+            {item.message_type === 'image' && (
+              <TouchableOpacity onPress={() => setPreviewFile({ uri: `${STORAGE_URL}/${item.file_path}`, type: 'image' })}>
+                <Image source={{ uri: `${STORAGE_URL}/${item.file_path}` }} style={styles.imageMessage} />
+                <Text style={styles.previewText}>Tap to preview</Text>
+              </TouchableOpacity>
+            )}
+            {item.message_type === 'video' && (
+              <TouchableOpacity onPress={() => 
+                setPreviewFile({ uri: `${STORAGE_URL}/${item.file_path}`, type: 'video' })
+              }>
+                <Video
+                  source={{ uri: `${STORAGE_URL}/${item.file_path}` }}
+                  style={styles.videoMessage}
+                  resizeMode="cover"
+                  shouldPlay={false}
+                />
+                <Text style={styles.previewText}>Tap to preview</Text>
+              </TouchableOpacity>
+            )}
+            {item.message_type === 'file' && (
+              <View>
+                <TouchableOpacity onPress={() => {
+                  const fileExtension = item.file_path?.split('.').pop()?.toLowerCase();
+                  const viewableExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'];
+                  
+
+                /*   if (fileExtension && viewableExtensions.includes(fileExtension)) {
+                    setPreviewFile({ uri: `${STORAGE_URL}/${item.file_path}`, type: 'file' });
+                  } else {*/
+                    item.file_path && downloadFile(item.file_path, item.content || 'file');
+                /* } */
+                }}>
+                  <View style={styles.fileMessage}>
+                    <Ionicons name="document-outline" size={24} color={theme.colors.primary} />
+                    <Text style={styles.fileMessageText}>{item.content || 'File attached'}</Text>
+                  </View>
+                  <Text style={styles.previewText}>
+                    {item.file_path?.split('.').pop()?.toLowerCase() in ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'] 
+                      ? 'Tap to preview' 
+                      : 'Tap to download'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          {item.message_type === 'audio' && (
+            <TouchableOpacity onPress={() => item.file_path && (isPlaying && currentlyPlayingId === item.id ? pauseAudio() : playAudio(`${STORAGE_URL}/${item.file_path}`, item.id))}>
+              <View style={styles.audioMessage}>
+                <View style={styles.audioControls}>
+                  {isAudioLoading === item.id ? (
+                    <ActivityIndicator size="small" color={theme.colors.primary} />
+                  ) : (
+                    <Ionicons 
+                      name={isPlaying && currentlyPlayingId === item.id ? "pause" : "play"} 
+                      size={20} 
+                      color={theme.colors.primary} 
+                    />
+                  )}
+                  <Slider
+                    style={styles.audioSlider}
+                    minimumValue={0}
+                    maximumValue={audioProgress[item.id]?.duration || 100}
+                    value={audioPosition}
+                    onValueChange={(value) => seekAudio(item.id, value)}
+                    minimumTrackTintColor={theme.colors.primary}
+                    maximumTrackTintColor={theme.colors.border}
+                  />
+                  <Text style={styles.timestamp}>
+                    {formatDuration(audioPosition)}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          )}
+            {item.message_type === 'location' && item.latitude && item.longitude && (
+              <TouchableOpacity onPress={() => openLocation(item.latitude!, item.longitude!)}>
+                <Image
+                  source={{ uri: `https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/pin-s+FF0000(${item.longitude},${item.latitude})/${item.longitude},${item.latitude},14,0/300x200?access_token=${MAPBOX_TOKEN}` }}
+                  style={styles.mapPreview}
+                />
+                <Text style={styles.openMapText}>Open in Maps</Text>
+              </TouchableOpacity>
+            )}
           </View>
-        </TouchableOpacity>
-      )}
-        {item.message_type === 'location' && item.latitude && item.longitude && (
-          <TouchableOpacity onPress={() => openLocation(item.latitude!, item.longitude!)}>
-            <Image
-              source={{ uri: `https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/pin-s+FF0000(${item.longitude},${item.latitude})/${item.longitude},${item.latitude},14,0/300x200?access_token=${MAPBOX_TOKEN}` }}
-              style={styles.mapPreview}
-            />
-            <Text style={styles.openMapText}>Open in Maps</Text>
-          </TouchableOpacity>
-        )}
-        <Text style={styles.timestamp}>{new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-      </View>
-    </Animated.View>
+        </Animated.View>      
+        <Text style={[
+            styles.timestamp,
+            item.sender_type === user.type ? styles.timestampRight : styles.timestampLeft
+          ]}>
+          {`${dateDisplay} ${timeDisplay}`}
+        </Text>
+    </View>
   );
+}
 
   const renderInputArea = () => (
     <View style={styles.inputContainer}>
@@ -824,7 +845,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
       <KeyboardAvoidingView 
         style={styles.container} 
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 30}
       >
         {renderHeader()}
         <FlatList
@@ -836,7 +857,6 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
         />
         {renderInputArea()}
-      </KeyboardAvoidingView>
       {isFabOpen && (
         <View style={styles.fabMenu}>
           <TouchableOpacity onPress={pickImage} style={styles.fabMenuItem}>
@@ -853,6 +873,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
       {renderPreview()}
       {renderFilePreview()}
       {renderLocationPicker()}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -874,7 +895,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: theme.spacing.md,
-    height: 80,
+    height: 90,
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  
+    elevation: 4,
+    backgroundColor: '#fff',
+
   },
   backButton: {
     padding: theme.spacing.sm,
@@ -939,6 +968,27 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+  },  messageWrapper: {
+    marginBottom: theme.spacing.md,
+  },
+  currentUserMessageWrapper: {
+    alignItems: 'flex-end',
+  },
+  otherUserMessageWrapper: {
+    alignItems: 'flex-start',
+  },
+  timestamp: {
+    fontSize: theme.typography.sizes.xs,
+    color: theme.colors.muted,
+    marginTop: theme.spacing.xxs,
+  },
+  timestampRight: {
+    alignSelf: 'flex-end',
+    marginRight: theme.spacing.sm,
+  },
+  timestampLeft: {
+    alignSelf: 'flex-start',
+    marginLeft: theme.spacing.sm,
   },
   currentUserMessage: {
     alignSelf: 'flex-end',

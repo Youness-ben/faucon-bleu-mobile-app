@@ -64,7 +64,6 @@ export default function App() {
   const handleForegroundNotification = (notification) => {
     const data = notification.request.content.data;
     if (data.type === 'new_message') {
-      // This will be handled by the NotificationContext
     } else if (data.type === 'general') {
       // Handle general notification
       console.log('General notification received:', data.message);
@@ -102,7 +101,7 @@ export default function App() {
       <SafeAreaProvider >
         <View style={{
     flex: 1,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+    paddingTop: Platform.OS === 'android' ?0 : 0,
     backgroundColor: theme.colors.background,
   }} onLayout={onLayoutRootView}>
           <StatusBar barStyle="dark-content" backgroundColor={theme.colors.background} />
