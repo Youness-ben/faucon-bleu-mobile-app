@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, FlatList, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, FlatList, Platform,Animated, Dimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -10,6 +10,9 @@ import Constants from 'expo-constants';
 import api from '../api';
 import { STORAGE_URL } from '../../config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { format } from 'date-fns';
+import LottieView from "lottie-react-native";
+
 
 type RootStackParamList = {
   OrderService: { serviceId: number };
@@ -31,12 +34,42 @@ interface Vehicle {
   logo_url: string;
 }
 
+interface ServiceRecord {
+  id: number;
+  service_name: string;
+  completion_date: string;
+  status: 'completed' | 'cancelled';
+  price: number;
+}
+
 interface Service {
   id: number;
   name: string;
   description: string;
   scheduled_at: string;
 }
+
+interface Banner {
+  id: number;
+  image_path: string;
+  title: string;
+  description: string;
+}
+  const { width: SCREEN_WIDTH } = Dimensions.get('window');
+  const Placeholder: React.FC<{ style: any }> = ({ style }) => {
+  const opacity = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+  }, [opacity]);
+
+  return <Animated.View style={[style, { opacity, backgroundColor: theme.colors.secondary }]} />;
+};
 
 const ConductorHomeScreen: React.FC = () => {
   const { t } = useTranslation();
@@ -46,16 +79,22 @@ const ConductorHomeScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showFullVin, setShowFullVin] = useState(false);
+  const [banners, setBanners] = useState<Banner[]>([]);
+  const [activeSlide, setActiveSlide] = useState(0);
+
+
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [vehicleResponse, servicesResponse] = await Promise.all([
+      const [vehicleResponse,bannersResponse, servicesResponse] = await Promise.all([
         api.get('/vehicle/data'),
+        api.get('/vehicle/banners'),
         api.get('/vehicle/upcoming-services'),
       ]);
       setVehicle(vehicleResponse.data);
+      setBanners(bannersResponse.data);
       setUpcomingServices(servicesResponse.data);
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -65,15 +104,14 @@ const ConductorHomeScreen: React.FC = () => {
     }
   }, [t]);
 
-/*   useFocusEffect(
+   useFocusEffect(
     useCallback(() => {
       fetchData();
     }, [fetchData])
-  ); */
+  ); 
   useEffect(() => {
-    fetchData();
     registerForPushNotificationsAsync();
-  }, [fetchData]);
+  }, []);
 
   const registerForPushNotificationsAsync = async () => {
     let token;
@@ -112,8 +150,51 @@ const ConductorHomeScreen: React.FC = () => {
     }
   };
   const handleOrderService = (serviceId: number) => {
-    navigation.navigate('OrderService', { serviceId });
+    navigation.navigate('TicketScreen', { serviceId });
   };
+  const renderAdBanner = useCallback(() => (
+    <View style={styles.carouselContainer}>
+      {isLoading ? (
+        <Placeholder style={{ width: SCREEN_WIDTH, height: 200 }} />
+      ) : (
+        <FlatList
+          data={banners}
+          renderItem={({ item }) => (
+            <View style={styles.adBannerItem}>
+              <Image source={{ uri: `${STORAGE_URL}/${item.image_path}` }} style={styles.adBannerImage}
+              defaultSource={require('../../assets/logo.png') }
+              />
+            </View>
+          )}
+          keyExtractor={(item) => item.id.toString()}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={(event) => {
+            const slideSize = event.nativeEvent.layoutMeasurement.width;
+            const index = event.nativeEvent.contentOffset.x / slideSize;
+            const roundIndex = Math.round(index);
+            setActiveSlide(roundIndex);
+          }}
+          scrollEventThrottle={200}
+        />
+      )}
+
+      
+      <View style={styles.pagination}>
+        {banners.map((_, index) => (
+          <View
+            key={index}
+            style={[
+              styles.paginationDot,
+              index === activeSlide ? styles.paginationDotActive : null,
+            ]}
+          />
+        ))}
+      </View>
+    </View>
+  ), [isLoading, banners, activeSlide]);
+
 
   if (isLoading) {
     return (
@@ -134,8 +215,47 @@ const ConductorHomeScreen: React.FC = () => {
     );
   }
 
+
+  const getStatusColor = (status?: ServiceRecord['status']) => {
+    switch (status) {
+      case 'completed':
+        return theme.colors.success;
+      case 'pending':
+        return theme.colors.warning;
+      case 'in_progress':
+        return theme.colors.info;
+      case 'cancelled':
+        return theme.colors.error;
+      default:
+        return theme.colors.text;
+    }
+  };
+
+ const renderServiceItem = ({ item }: { item: ServiceRecord }) => {
+    return (
+    <TouchableOpacity
+      style={styles.serviceItem}
+      onPress={()=>handleOrderService(item.id)}
+    >
+    <View   style={{flex:1}}   >
+        <Text style={styles.serviceType}>{item.service?.name || t('serviceHistory.unknownService')}</Text>
+
+        <Text style={styles.serviceDate}>{item.scheduled_at ? format(item.scheduled_at, 'MM/dd/yyyy') : 'N/A' }</Text>
+        <View style={styles.serviceDetails}>
+        <Text style={[styles.serviceStatus, { color: getStatusColor(item.status) }]}>
+          {item.status ? t(`serviceStatus.${item.status}`) : t('serviceHistory.unknownStatus')}
+        </Text>
+
+        </View>
+    </View>
+     <View style={{alignItems:'center'}} >
+      <Ionicons name='arrow-forward-circle-outline' style={{marginVertical:'auto'}} size={40} color={theme.colors.primary}/>
+    </View>
+    </TouchableOpacity>
+  )};
   return (
     <ScrollView style={styles.container}>
+      {renderAdBanner()}
       <View style={styles.header}>
         <View style={styles.brandLogoContainer}>
           <Image
@@ -175,26 +295,29 @@ const ConductorHomeScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.infoCard}>
+      <View style={styles.infoCardUp}>
         <Text style={styles.sectionTitle}>{t('conductorHome.upcomingServices')}</Text>
         {upcomingServices.length > 0 ? (
           <FlatList
+            contentContainerStyle={styles.listContent}
             data={upcomingServices}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.serviceItem}
-                onPress={() => handleOrderService(item.id)}
-              >
-                <Text style={styles.serviceName}>{item.service.name}</Text>
-                <Text style={styles.serviceDescription}>{item.service.description}</Text>
-                <Text style={styles.serviceDate}>{new Date(item.scheduled_at).toLocaleDateString()}</Text>
-              </TouchableOpacity>
-            )}
+            renderItem={renderServiceItem}
             keyExtractor={(item) => item.id.toString()}
             scrollEnabled={false}
           />
         ) : (
+          <>
+            <LottieView
+                      
+                    autoPlay={true}
+                    style={{width:200,height:undefined,aspectRatio:1,marginHorizontal:'auto'}}
+                    source={require("../../assets/emptybag.json")}
+                  />
           <Text style={styles.noServicesText}>{t('conductorHome.noUpcomingServices')}</Text>
+                  <TouchableOpacity style={[styles.retryButton,{width:150,marginHorizontal:'auto',marginTop:20,alignItems:'center'}]} onPress={()=>navigation.navigate('ConductorServicesScreen')}>
+          <Text style={styles.retryButtonText}>{t('common.orderNewService')}</Text>
+        </TouchableOpacity>
+          </>
         )}
       </View>
     </ScrollView>
@@ -248,7 +371,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: theme.spacing.lg,
+    padding: theme.spacing.md,
     backgroundColor: theme.colors.primary,
   },
   brandLogoContainer: {
@@ -279,8 +402,18 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
   },
   infoCard: {
-    backgroundColor: 'white',
     borderRadius: theme.roundness,
+    margin: theme.spacing.md,
+    padding: theme.spacing.lg,
+    ...theme.elevation.medium,
+
+    paddingTop:5,
+    paddingBottom:0,
+  },
+  infoCardUp: {
+    borderRadius: theme.roundness,
+    marginTop:0,
+    paddingTop:0,
     margin: theme.spacing.md,
     padding: theme.spacing.lg,
     ...theme.elevation.medium,
@@ -288,7 +421,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: theme.typography.sizes.lg,
     fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.text,
+    color: theme.colors.primary,
     marginBottom: theme.spacing.md,
   },
   detailsGrid: {
@@ -318,20 +451,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: theme.spacing.md,
-    paddingTop: theme.spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+    
+    marginBottom: theme.spacing.md,
+    paddingBottom: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
   },
   vinIcon: {
     marginRight: theme.spacing.sm,
   },
-  serviceItem: {
-    backgroundColor: theme.colors.background,
-    padding: theme.spacing.md,
-    borderRadius: theme.roundness,
-    marginBottom: theme.spacing.sm,
+
+  listContent: {
+    paddingBottom: theme.spacing.xl,
   },
+
   serviceName: {
     fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.fontWeights.bold,
@@ -352,6 +485,86 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     textAlign: 'center',
     marginTop: theme.spacing.md,
+  },
+   serviceItem: {
+    padding: theme.spacing.md,
+    borderRadius: theme.roundness,
+    marginBottom: theme.spacing.sm,
+    backgroundColor: 'white',
+    flexDirection:'row',
+    flex:1,
+    margin:5
+  },
+  serviceType: {
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.fontWeights.bold,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.xs,
+  },
+  vehicleName: {
+    fontSize: theme.typography.sizes.md,
+    color: 'white',
+    fontWeight:'bold',
+    marginBottom: theme.spacing.xs,
+  },
+  serviceDate: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xs,
+  },
+  serviceDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  serviceStatus: {
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.fontWeights.medium,
+  },
+  serviceCost: {
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.fontWeights.bold,
+    color: theme.colors.text,
+  },
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyStateText: {
+    fontSize: theme.typography.sizes.lg,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    marginTop: theme.spacing.md,
+  },
+  carouselContainer: {
+    height: 200,
+    marginBottom: theme.spacing.md,
+  },
+  adBannerItem: {
+    width: SCREEN_WIDTH,
+    height: 200,
+  },
+  adBannerImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  pagination: {
+    flexDirection: 'row',
+    position: 'absolute',
+    bottom: theme.spacing.sm,
+    alignSelf: 'center',
+  },
+  paginationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginHorizontal: 4,
+    backgroundColor: theme.colors.secondary,
+  },
+  paginationDotActive: {
+    backgroundColor: theme.colors.primary,
   },
 });
 

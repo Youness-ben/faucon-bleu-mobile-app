@@ -459,7 +459,6 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
   };
 
   const toggleHeader = () => {
-    return;
     setIsHeaderExpanded(!isHeaderExpanded);
     Animated.spring(headerHeight, {
       toValue: isHeaderExpanded ? 60 : 200,
@@ -475,11 +474,11 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
         </TouchableOpacity>
         <TouchableOpacity onPress={toggleHeader} style={styles.headerContent}>
           <Text style={styles.headerTitle}>{"Chat"}</Text>
-{/*           <Ionicons 
+           <Ionicons 
             name={isHeaderExpanded ? "chevron-up" : "chevron-down"} 
             size={20} 
             color={theme.colors.text} 
-          /> */}
+          /> 
         </TouchableOpacity>
         <View style={styles.moreButton} />
       </View>

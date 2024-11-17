@@ -1,20 +1,27 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
+import { useNavigation } from '@react-navigation/native';
+import { useUser } from '../UserContext';
 
 const SupportScreen: React.FC = () => {
   const { t } = useTranslation();
-
+  const navigation = useNavigation();
+  const {logout} = useUser();
   const contactMethods = [
     { icon: 'call-outline', title: t('support.phone'), value: '+212 5 22 34 56 78', action: () => Linking.openURL('tel:+212522345678') },
     { icon: 'mail-outline', title: t('support.email'), value: 'support@fleetapp.com', action: () => Linking.openURL('mailto:support@fleetapp.com') },
     { icon: 'logo-whatsapp', title: t('support.whatsapp'), value: '+212 6 12 34 56 78', action: () => Linking.openURL('https://wa.me/212612345678') },
     { icon: 'location-outline', title: t('support.address'), value: t('support.officeAddress'), action: () => Linking.openURL('https://maps.google.com/?q=Casablanca+Morocco') },
   ];
-
   return (
+    <>
+       <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
+      </TouchableOpacity>
+      
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <Ionicons name="help-buoy-outline" size={60} color={theme.colors.primary} />
@@ -44,6 +51,7 @@ const SupportScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
     </ScrollView>
+    </>
   );
 };
 
@@ -121,6 +129,9 @@ const styles = StyleSheet.create({
     color: theme.colors.background,
     fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.fontWeights.bold,
+  },
+  backButton: {
+    padding: theme.spacing.lg,
   },
 });
 

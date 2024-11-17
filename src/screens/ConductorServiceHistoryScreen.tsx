@@ -17,7 +17,7 @@ interface ServiceRecord {
   id: number;
   service_name: string;
   completion_date: string;
-  status: 'completed' | 'cancelled';
+  status: 'completed' | 'cancelled' | 'in_progress' | 'pending';
   price: number;
 }
 
@@ -37,14 +37,15 @@ const ConductorServiceHistoryScreen: React.FC = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
-  const fetchServiceHistory = useCallback(async (pageNumber: number, refresh = false) => {
+  const fetchServiceHistory = useCallback(async (pageNumber: number, refresh = false, skipFocusFetch = false) => {
     if (pageNumber === 1) {
       setIsLoading(true);
     }
     setError(null);
     try {
+      console.log('-',filter);
       const response = await api.get('vehicle/service-history', {
-        params: { filter, sort_by: sortBy, page: pageNumber, per_page: ITEMS_PER_PAGE },
+        params: { filter, sort_by: sortBy,status: filter, page: pageNumber, per_page: ITEMS_PER_PAGE },
       });
       const newRecords = response.data.data;
       if (pageNumber === 1 || refresh) {
@@ -65,7 +66,7 @@ const ConductorServiceHistoryScreen: React.FC = () => {
 
   useFocusEffect(
     useCallback(() => {
-      fetchServiceHistory(1);
+      fetchServiceHistory(1,false, true);
     }, [fetchServiceHistory])
   );
 
@@ -107,31 +108,36 @@ const ConductorServiceHistoryScreen: React.FC = () => {
       style={styles.serviceItem}
       onPress={() => navigation.navigate('TicketScreen', { serviceId: item.id })}
     >
-      <Text style={styles.serviceType}>{item.service?.name || t('serviceHistory.unknownService')}</Text>
-      <Text style={styles.vehicleName}>
-        {item.vehicle ? `${item.vehicle.brand_name || ''} ${item.vehicle.model || ''}`.trim() : t('serviceHistory.unknownVehicle')}
-      </Text>
-      <Text style={styles.serviceDate}>{formatDate(item.scheduled_at)}</Text>
-      <View style={styles.serviceDetails}>
+    <View   style={{flex:1}}   >
+        <Text style={styles.serviceType}>{item.service?.name || t('serviceHistory.unknownService')}</Text>
+        <Text style={styles.vehicleName}>
+          {item.vehicle ? `${item.vehicle.brand_name || ''} ${item.vehicle.model || ''}`.trim() : t('serviceHistory.unknownVehicle')}
+        </Text>
+        <Text style={styles.serviceDate}>{formatDate(item.scheduled_at)}</Text>
+        <View style={styles.serviceDetails}>
         <Text style={[styles.serviceStatus, { color: getStatusColor(item.status) }]}>
           {item.status ? t(`serviceStatus.${item.status}`) : t('serviceHistory.unknownStatus')}
         </Text>
 
+        </View>
       </View>
+     <View style={{alignItems:'center'}} >
+      <Ionicons name='arrow-forward-circle-outline' style={{marginVertical:'auto'}} size={40} color={theme.colors.primary}/>
+    </View>
     </TouchableOpacity>
   )};
 
-  const FilterModal = () => (
+const FilterModal = () => (
     <Modal
       visible={showFilterModal}
       transparent={true}
-      animationType="slide"
+      animationType="fade"
       onRequestClose={() => setShowFilterModal(false)}
     >
-      <View style={styles.modalContainer}>
+      <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>{t('serviceHistory.filterBy')}</Text>
-          {['all', 'completed', 'cancelled'].map((status) => (
+          {['all', , 'pending' ,'in_progress' ,'completed', 'cancelled'  ].map((status) => (
             <TouchableOpacity
               key={status}
               style={[styles.modalOption, filter === status && styles.selectedOption]}
@@ -141,14 +147,18 @@ const ConductorServiceHistoryScreen: React.FC = () => {
                 fetchServiceHistory(1, true);
               }}
             >
-              <Text style={styles.modalOptionText}>
-                {t(`serviceHistory.filterOptions.${status}`)}
-              </Text>
+              <Text style={[styles.modalOptionText, filter !== status && {color : getStatusColor(status)}]}>{t(`serviceStatus.${status}`)}</Text>
               {filter === status && (
                 <Ionicons name="checkmark" size={24} color={theme.colors.primary} />
               )}
             </TouchableOpacity>
           ))}
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setShowFilterModal(false)}
+          >
+            <Text style={styles.closeButtonText}>{t('common.close')}</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>
@@ -158,13 +168,13 @@ const ConductorServiceHistoryScreen: React.FC = () => {
     <Modal
       visible={showSortModal}
       transparent={true}
-      animationType="slide"
+      animationType="fade" 
       onRequestClose={() => setShowSortModal(false)}
     >
-      <View style={styles.modalContainer}>
+      <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>{t('serviceHistory.sortBy')}</Text>
-          {['date', 'price'].map((sort) => (
+          {['date', 'cost'].map((sort) => (
             <TouchableOpacity
               key={sort}
               style={[styles.modalOption, sortBy === sort && styles.selectedOption]}
@@ -174,14 +184,18 @@ const ConductorServiceHistoryScreen: React.FC = () => {
                 fetchServiceHistory(1, true);
               }}
             >
-              <Text style={styles.modalOptionText}>
-                {t(`serviceHistory.sortOptions.${sort}`)}
-              </Text>
+              <Text style={styles.modalOptionText}>{t(`serviceHistory.${sort}`)}</Text>
               {sortBy === sort && (
-                <Ionicons name="checkmark" size={24} color={theme.colors.primary} />
+                <Ionicons name="checkbox-outline" size={24} color={theme.colors.primary} />
               )}
             </TouchableOpacity>
           ))}
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setShowSortModal(false)}
+          >
+            <Text style={styles.closeButtonText}>{t('common.close')}</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>
@@ -210,11 +224,17 @@ const ConductorServiceHistoryScreen: React.FC = () => {
     <View style={styles.container}>
       <Text style={styles.title}>{t('serviceHistory.title')}</Text>
       <View style={styles.filterContainer}>
-        <TouchableOpacity style={styles.filterButton} onPress={() => setShowFilterModal(true)}>
+        <TouchableOpacity
+          style={styles.filterButton}
+          onPress={() => setShowFilterModal(true)}
+        >
           <Ionicons name="filter" size={24} color={theme.colors.primary} />
           <Text style={styles.filterButtonText}>{t('serviceHistory.filter')}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.filterButton} onPress={() => setShowSortModal(true)}>
+        <TouchableOpacity
+          style={styles.filterButton}
+          onPress={() => setShowSortModal(true)}
+        >
           <Ionicons name="swap-vertical" size={24} color={theme.colors.primary} />
           <Text style={styles.filterButtonText}>{t('serviceHistory.sort')}</Text>
         </TouchableOpacity>
@@ -257,6 +277,73 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
     padding: theme.spacing.md,
+  },
+  title: {
+    fontSize: theme.typography.sizes.xl,
+    fontWeight: theme.typography.fontWeights.bold,
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.md,
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.md,
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.primaryLight,
+    borderRadius: 20,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+  },
+  filterButtonText: {
+    marginLeft: theme.spacing.sm,
+    color: theme.colors.primary,
+    fontSize: theme.typography.sizes.md,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: theme.colors.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: theme.spacing.lg,
+  },
+  modalTitle: {
+    fontSize: theme.typography.sizes.xl,
+    fontWeight: theme.typography.fontWeights.bold,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.md,
+  },
+  modalOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.md,
+    borderRadius:10
+  },
+  selectedOption: {
+    backgroundColor: theme.colors.secondary,
+  },
+  modalOptionText: {
+    fontSize: theme.typography.sizes.lg,
+    color: theme.colors.text,
+  },
+  closeButton: {
+    marginTop: theme.spacing.md,
+    backgroundColor: theme.colors.textSecondary,
+    borderRadius: 20,
+    paddingVertical: theme.spacing.sm,
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.fontWeights.semibold,
+    color: theme.colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -319,6 +406,7 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
     marginBottom: theme.spacing.md,
     ...theme.elevation.small,
+    flexDirection:'row',
   },
   serviceType: {
     fontSize: theme.typography.sizes.lg,
@@ -378,16 +466,20 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     marginBottom: theme.spacing.md,
   },
+
   modalOption: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: theme.spacing.sm,
-    borderBottomWidth: 1,
+    borderBottomWidth: 0,
+    borderRadius:10,
+    paddingStart:10,
     borderBottomColor: theme.colors.border,
   },
+
   selectedOption: {
-    backgroundColor: theme.colors.primaryLight,
+    backgroundColor: theme.colors.primary,
   },
   modalOptionText: {
     fontSize: theme.typography.sizes.md,

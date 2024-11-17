@@ -12,6 +12,7 @@
     "loginToContinue": "Login to continue",
     "email": "Email",
     "rememberMe": "Remember Me",
+    "clientLogin" : "Go back",
     "forgotPassword": "Forgot Password?"
   },
   "common": {
@@ -24,7 +25,8 @@
     "retry": "Retry",
     "close": "Close",
     "cancel": "Cancel",
-    "delete": "Delete"
+    "delete": "Delete",
+    "orderNewService": "Order new service"
   },
   "conductorHome": {
     "fetchError": "Error fetching data",
@@ -95,8 +97,8 @@
     "sort": "Sort",
     "filterBy": "Filter By",
     "sortBy": "Sort By",
-    "sortByDate": "Date",
-    "sortByCost": "Cost",
+    "date": "Date",
+    "cost": "Cost",
     "ascending": "Ascending",
     "descending": "Descending",
     "export": "Export History",
@@ -229,7 +231,14 @@
     "support": "Support",
     "settings": "Settings",
     "selectLanguage": "Select language",
-    "logout": "Logout"
+    "logout": "Logout",
+    "delete_account": "Delete your account",
+    "ask_confirm_logout": "Are you sure you want to log out?",
+    "confirm_delete_account": "Confirm account deletion",
+    "account_deletion_pending": "Account Deletion Pending",
+    "account_deletion_time": "Your account deletion request has been received. This process may take up to 5 business days. Logging back in during this time will cancel the deletion request.",
+    "ask_confirm_delete_account": "Are you sure you want to delete your account? This action is irreversible."
+
   },
   "editProfile": {
     "changePhoto": "Change Photo",

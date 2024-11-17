@@ -116,7 +116,9 @@ export default function ConductorServicesScreen() {
   const renderCategory = ({ item: category }: { item: string }) => (
     <View style={styles.categoryContainer}>
       <Text style={styles.categoryTitle}>
-        {category ? t(`services.categories.${category.toLowerCase()}`, category) : t('services.uncategorized')}
+        {
+        //category ? t(`services.categories.${category.toLowerCase()}`, category) : t('services.uncategorized')
+        }
       </Text>
       <FlatList
         data={services.filter(service => (service.category || t('services.uncategorized')) === category)}
@@ -190,7 +192,7 @@ export default function ConductorServicesScreen() {
               <Text style={styles.modalDescription}>{selectedService?.description}</Text>
               <Text style={styles.modalLongDescription}>{selectedService?.long_description}</Text>
               <Text style={styles.modalPrice}>
-                {t('services.price', { price: selectedService?.price })}
+          <Text style={styles.servicePrice}>{t('services.estimatedDuration', { duration: selectedService?.estimated_duration, unite: selectedService?.estimated_duration_unite })}</Text>
               </Text>
             </ScrollView>
             <TouchableOpacity

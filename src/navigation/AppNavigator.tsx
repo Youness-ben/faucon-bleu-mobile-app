@@ -29,6 +29,8 @@ import ConductorOrderServiceScreen from '../screens/ConductorOrderServiceScreen'
 import ConductorServiceHistoryScreen from '../screens/ConductorServiceHistoryScreen';
 import ConductorServicesScreen from '../screens/ConductorServicesScreen';
 import { Platform } from 'react-native';
+import ConductorSettingsScreen from '../screens/ConductorSettingsScreen';
+import AccountDeletionConfirmation from '../screens/AccountDeletionConfirmation';
 
 type RootStackParamList = {
   Splash: undefined;
@@ -46,6 +48,7 @@ type RootStackParamList = {
   Support: undefined;
   TicketScreen: { ticketId: string };
   ConductorOrderServiceScreen : undefined;
+  AccountDeletionConfirmation : undefined;
 };
 
 type MainTabParamList = {
@@ -124,6 +127,8 @@ const ConductorTabs: React.FC = () => {
             iconName = focused ? 'construct' : 'construct-outline';
           } else if (route.name === 'ConductorServiceHistory') {
             iconName = focused ? 'time' : 'time-outline';
+          }else if (route.name === 'ConductorSettings') {
+            iconName = focused ? 'settings' : 'settings-outline';
           } else {
             iconName = 'alert-circle';
           }
@@ -144,9 +149,10 @@ const ConductorTabs: React.FC = () => {
 
 
     >
-      <ConductorTab.Screen name="ConductorHome" component={ConductorHomeScreen} options={{ title: t('navigation.home') }} />
+ <ConductorTab.Screen name="ConductorHome" component={ConductorHomeScreen} options={{ title: t('navigation.home') }} />
       <ConductorTab.Screen name="ConductorServicesScreen" component={ConductorServicesScreen} options={{ title: t('navigation.orderService') }} />
       <ConductorTab.Screen name="ConductorServiceHistory" component={ConductorServiceHistoryScreen} options={{ title: t('navigation.serviceHistory') }} />
+      <ConductorTab.Screen name="ConductorSettings" component={ConductorSettingsScreen} options={{ title: t('navigation.settings') }}   />
     </ConductorTab.Navigator>
   );
 };
@@ -168,7 +174,7 @@ const AppNavigator: React.FC = () => {
         <Stack.Screen name="EditProfile" component={EditProfileScreen}  />
         <Stack.Screen name="Settings" component={SettingsScreen}  />
         <Stack.Screen name="Support" component={SupportScreen}  />
-        
+        <Stack.Screen name="AccountDeletionConfirmation" component={AccountDeletionConfirmation}  />
         <Stack.Screen name="TicketScreen" component={TicketScreen}  />
         
       </Stack.Navigator>

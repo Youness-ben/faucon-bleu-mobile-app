@@ -7,6 +7,7 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  Image,
   ScrollView,
   ActivityIndicator,
   Alert,
@@ -56,6 +57,10 @@ const ConductorLoginScreen: React.FC = () => {
     }
   };
 
+  const navigateToLogin = () => {
+    navigation.navigate('Login');
+  };
+  
   
   const toggleShowPassword = () => setShowPassword(!showPassword);
 
@@ -65,6 +70,13 @@ const ConductorLoginScreen: React.FC = () => {
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.logoContainer}>
+          <Image
+            source={require('../../assets/logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
         <Text style={styles.title}>{t('auth.conductorLogin')}</Text>
         <Text style={styles.subtitle}>{t('auth.enterVehicleDetails')}</Text>
         
@@ -103,6 +115,12 @@ const ConductorLoginScreen: React.FC = () => {
           ) : (
             <Text style={styles.buttonText}>{t('auth.signIn')}</Text>
           )}
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.conductorButton} 
+          onPress={navigateToLogin}
+        >
+          <Text style={styles.conductorButtonText}>{t('auth.clientLogin')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -164,6 +182,26 @@ const styles = StyleSheet.create({
     color: theme.colors.buttonText,
     fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.fontWeights.bold,
+  },
+  conductorButton: {
+    marginTop: theme.spacing.md,
+    backgroundColor: theme.colors.secondary,
+    borderRadius: theme.roundness,
+    padding: theme.spacing.md,
+    alignItems: 'center',
+  },
+  conductorButtonText: {
+    color: theme.colors.buttonText,
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.fontWeights.bold,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: theme.spacing.xl,
+  },
+  logo: {
+    width: 200,
+    height: 120,
   },
 });
 

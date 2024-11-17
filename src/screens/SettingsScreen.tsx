@@ -10,6 +10,7 @@ const SettingsScreen: React.FC = () => {
   const [emailNotifications, setEmailNotifications] = useState(true);
 
   return (
+    
     <ScrollView style={styles.container}>
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{t('settings.appearance')}</Text>

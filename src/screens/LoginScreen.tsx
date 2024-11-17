@@ -46,7 +46,6 @@ const LoginScreen: React.FC = () => {
 
     setIsLoading(true);
     try {
-      console.log("here");
       const response = await api.post('/login/client', { email, password });
       const { token, user } = response.data;
       console.log("and there");
@@ -113,17 +112,7 @@ const LoginScreen: React.FC = () => {
         </View>
 
         <View style={styles.optionsContainer}>
-          <TouchableOpacity style={styles.rememberMeContainer} onPress={toggleRememberMe}>
-            <Ionicons 
-              name={rememberMe ? "checkbox-outline" : "square-outline"} 
-              size={24} 
-              color={theme.colors.primary} 
-            />
-            <Text style={styles.rememberMeText}>{t('auth.rememberMe')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity>
-            <Text style={styles.forgotPasswordText}>{t('auth.forgotPassword')}</Text>
-          </TouchableOpacity>
+
         </View>
 
         <TouchableOpacity 
@@ -164,7 +153,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.xl,
   },
   logo: {
-    width: 120,
+    width: 200,
     height: 120,
   },
   title: {
