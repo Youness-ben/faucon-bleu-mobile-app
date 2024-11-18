@@ -91,7 +91,7 @@ const AddVehicleScreen: React.FC = () => {
         throw new Error('Unexpected response status');
       }
     } catch (error) {
-      console.error('Error adding vehicle:', error);
+      console.error('Error adding vehicle:', error.response.data);
       showToast(t('addVehicle.addFailed'), 'error');
     } finally {
       setIsLoading(false);

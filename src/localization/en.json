@@ -133,6 +133,7 @@
     "welcome": "Welcome",
     "quickService": "Quick Service",
     "serviceHistory": "Service History",
+    "callSupport": "Support",
     "myVehicles": "My Vehicles",
     "noVehicles": "No vehicles found",
     "upcomingServices": "Upcoming Services",
@@ -147,6 +148,7 @@
   },
   "fleet": {
     "title": "My Fleet",
+    "searchPlaceholder" : "Search",
     "fetchError": "Error fetching vehicles",
     "addVehicle": "Add Vehicle",
     "emptyStateTitle": "No Vehicles Yet",
@@ -242,7 +244,8 @@
   },
   "editProfile": {
     "changePhoto": "Change Photo",
-    "name": "Name",
+    "firstName": "First Name",
+    "lastName": "Last Name",
     "namePlaceholder": "Enter your name",
     "email": "Email",
     "emailPlaceholder": "Enter your email",
@@ -257,6 +260,15 @@
       "pending": "Pending",
       "overdue": "Overdue"
     },
+    "downloadInvoice": "Download invoice"
+  },
+  "support": {
+    "title": "Contact informations",
+    "subtitle": "Available during business hours",
+    "phone": "Phone",
+    "email": "Email",
+    "whatsapp": "Whatsapp",
+    "address": "Address",
     "downloadInvoice": "Download invoice"
   }
 }

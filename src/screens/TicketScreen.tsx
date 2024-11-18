@@ -39,7 +39,7 @@ import Slider from '@react-native-community/slider';
 import initializeEcho from '../echo';
 
 type RootStackParamList = {
-  TicketScreen: { serviceId: string };
+  TicketScreen: { serviceId: string,service ?: any  };
 };
 
 type TicketScreenRouteProp = RouteProp<RootStackParamList, 'TicketScreen'>;
@@ -64,7 +64,7 @@ interface AudioProgress {
 
 export default function Component({ route }: { route: TicketScreenRouteProp }) {
   const { t } = useTranslation();
-  const { serviceId } = route.params;
+  const { serviceId ,service} = route.params;
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
@@ -107,6 +107,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
   const headerHeight = useRef(new Animated.Value(60)).current;
 
   React.useEffect(() => {
+    console.log(service);
     async function loadSound() {
       const { sound } = await Audio.Sound.createAsync(require('../../assets/ping.mp3'));
       setNotificationSound(sound);
@@ -484,7 +485,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
       </View>
       {isHeaderExpanded && (
         <View style={styles.headerDetails}>
-          <Text style={styles.headerDetailText}>{t('service.carInfo')}: Toyota Camry</Text>
+          <Text style={styles.headerDetailText}>{t('service.carInfo')}: {service}</Text>
           <Text style={styles.headerDetailText}>{t('service.serviceType')}: Oil Change</Text>
           <Text style={styles.headerDetailText}>{t('service.status')}: In Progress</Text>
         </View>

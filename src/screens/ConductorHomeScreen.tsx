@@ -149,8 +149,8 @@ const ConductorHomeScreen: React.FC = () => {
       }
     }
   };
-  const handleOrderService = (serviceId: number) => {
-    navigation.navigate('TicketScreen', { serviceId });
+  const handleOrderService = (serviceId: number,service : any) => {
+    navigation.navigate('TicketScreen', { serviceId : serviceId ,service : service});
   };
   const renderAdBanner = useCallback(() => (
     <View style={styles.carouselContainer}>
@@ -235,7 +235,7 @@ const ConductorHomeScreen: React.FC = () => {
     return (
     <TouchableOpacity
       style={styles.serviceItem}
-      onPress={()=>handleOrderService(item.id)}
+      onPress={()=>handleOrderService(item.id,item)}
     >
     <View   style={{flex:1}}   >
         <Text style={styles.serviceType}>{item.service?.name || t('serviceHistory.unknownService')}</Text>

@@ -95,12 +95,18 @@ const MainTabs: React.FC = () => {
         
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor:  theme.colors.textSecondary,
+
         tabBarStyle: {
+          
           display: 'flex',
           paddingTop: 10,
-          paddingBottom: Platform.OS === 'ios' ? 15 : 5,
+          paddingBottom: Platform.OS === 'ios' ? 15 : 10,
           height: Platform.OS === 'ios' ? 80 : 60,
+          borderRadius:20,
+          marginHorizontal:5,
+          marginBottom:5
         }
+      
       })}
 
     >

@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Switch, ScrollView, Image, Modal, Animated, Easing } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Switch, ScrollView, Image, Modal, Animated, Easing, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../styles/theme';
+import { useUser } from '../UserContext';
 
 type RootStackParamList = {
   EditProfile: undefined;
@@ -22,6 +23,7 @@ export default function Component() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const {logout} = useUser();
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -49,6 +51,55 @@ export default function Component() {
     </TouchableOpacity>
   );
 
+const deleteAccount = () => {
+
+    Alert.alert(
+      t('profile.confirm_delete_account'),
+      t('profile.ask_confirm_delete_account'),
+      [
+        {
+          text: t('common.cancel'),
+          style: "cancel",
+        },
+        {
+          text: t('common.delete'),
+          style: "destructive",
+          onPress:async () => {
+      
+                await logout();
+                navigation.navigate("AccountDeletionConfirmation");
+
+            
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+const logoff = () => {
+
+    Alert.alert(
+      t('profile.ask_confirm_logout'),
+     "",
+      [
+        {
+          text: t('common.cancel'),
+          style: "cancel",
+        },
+        {
+          text: t('profile.logout'),
+          style: "destructive",
+          onPress:async () => {
+      
+                await logout();
+                navigation.navigate("Splash");
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView>
@@ -73,18 +124,6 @@ export default function Component() {
             onPress={() => navigation.navigate('Invoices')}
           />
           <OptionItem
-            icon="notifications-outline"
-            text={t('profile.notifications')}
-            rightElement={
-              <Switch
-                trackColor={{ false: theme.colors.disabled, true: theme.colors.primary }}
-                thumbColor={notificationsEnabled ? theme.colors.surface : theme.colors.secondary}
-                onValueChange={toggleNotifications}
-                value={notificationsEnabled}
-              />
-            }
-          />
-          <OptionItem
             icon="language-outline"
             text={t('profile.language')}
             onPress={() => setShowLanguageModal(true)}
@@ -99,16 +138,15 @@ export default function Component() {
             text={t('profile.support')}
             onPress={() => navigation.navigate('Support')}
           />
-          <OptionItem
-            icon="settings-outline"
-            text={t('profile.settings')}
-            onPress={() => navigation.navigate('Settings')}
-          />
         </View>
 
-        <TouchableOpacity style={styles.logoutButton}>
+        <TouchableOpacity onPress={logoff} style={styles.logoutButton}>
           <Text style={styles.logoutButtonText}>{t('profile.logout')}</Text>
         </TouchableOpacity>
+        <TouchableOpacity  onPress={deleteAccount} style={styles.deleteButton}>
+          <Text style={styles.deleteButtonText} >{t('profile.delete_account')}</Text>
+        </TouchableOpacity>
+
 
         <Modal
           visible={showLanguageModal}
@@ -221,8 +259,22 @@ const styles = StyleSheet.create({
     borderRadius: theme.roundness,
     alignItems: 'center',
   },
+  deleteButton: {
+    marginTop: theme.spacing.xl,
+    marginHorizontal: theme.spacing.lg,
+    borderColor: theme.colors.error,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.roundness,
+    borderWidth:1,
+    alignItems: 'center',
+  },
   logoutButtonText: {
     color: theme.colors.surface,
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.fontWeights.bold,
+  },
+  deleteButtonText: {
+    color: theme.colors.error,
     fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.fontWeights.bold,
   },

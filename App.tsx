@@ -98,11 +98,11 @@ export default function App() {
 
   return (
     <I18nextProvider i18n={i18n}>
-      <SafeAreaProvider >
+      <SafeAreaProvider style={{backgroundColor:'transparent'}} >
         <View style={{
     flex: 1,
     paddingTop: Platform.OS === 'android' ?0 : 0,
-    backgroundColor: theme.colors.background,
+backgroundColor:'transparent'
   }} onLayout={onLayoutRootView}>
           <StatusBar barStyle="dark-content" backgroundColor={theme.colors.background} />
         <NavigationContainer ref={navigationRef}>

@@ -106,7 +106,7 @@ const ConductorServiceHistoryScreen: React.FC = () => {
     return (
     <TouchableOpacity
       style={styles.serviceItem}
-      onPress={() => navigation.navigate('TicketScreen', { serviceId: item.id })}
+      onPress={() => navigation.navigate('TicketScreen', { serviceId: item.id ,service: item})}
     >
     <View   style={{flex:1}}   >
         <Text style={styles.serviceType}>{item.service?.name || t('serviceHistory.unknownService')}</Text>

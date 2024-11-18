@@ -1,24 +1,25 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useUser } from '../UserContext';
+import { FAUCON_ADDRESS, FAUCON_EMAIL, FAUCON_LOCATION, FAUCON_PHONE, FAUCON_WHATSAPP } from '../../config';
 
 const SupportScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const {logout} = useUser();
   const contactMethods = [
-    { icon: 'call-outline', title: t('support.phone'), value: '+212 5 22 34 56 78', action: () => Linking.openURL('tel:+212522345678') },
-    { icon: 'mail-outline', title: t('support.email'), value: 'support@fleetapp.com', action: () => Linking.openURL('mailto:support@fleetapp.com') },
-    { icon: 'logo-whatsapp', title: t('support.whatsapp'), value: '+212 6 12 34 56 78', action: () => Linking.openURL('https://wa.me/212612345678') },
-    { icon: 'location-outline', title: t('support.address'), value: t('support.officeAddress'), action: () => Linking.openURL('https://maps.google.com/?q=Casablanca+Morocco') },
+    { icon: 'call-outline', title: t('support.phone'), value: FAUCON_PHONE, action: () => Linking.openURL('tel:'+FAUCON_PHONE.replace(' ','')) },
+    { icon: 'mail-outline', title: t('support.email'), value: FAUCON_EMAIL, action: () => Linking.openURL('mailto:'+FAUCON_EMAIL) },
+    { icon: 'logo-whatsapp', title: t('support.whatsapp'), value: FAUCON_WHATSAPP, action: () => Linking.openURL('https://wa.me/'+FAUCON_WHATSAPP.replace(' ','').replace('+','')) },
+    { icon: 'location-outline', title: t('support.address'), value:FAUCON_ADDRESS, action: () => Linking.openURL('https://maps.google.com?q=loc:'+FAUCON_LOCATION) },
   ];
   return (
     <>
-       <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+       <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={styles.backButton}>
         <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
       </TouchableOpacity>
       
@@ -33,7 +34,7 @@ const SupportScreen: React.FC = () => {
         {contactMethods.map((method, index) => (
           <TouchableOpacity key={index} style={styles.contactItem} onPress={method.action}>
             <View style={styles.iconContainer}>
-              <Ionicons name={method.icon} size={24} color={theme.colors.primary} />
+              <Ionicons name={method.icon} size={24} color="white" />
             </View>
             <View style={styles.contactInfo}>
               <Text style={styles.contactTitle}>{method.title}</Text>
@@ -42,13 +43,6 @@ const SupportScreen: React.FC = () => {
             <Ionicons name="chevron-forward" size={24} color={theme.colors.textSecondary} />
           </TouchableOpacity>
         ))}
-      </View>
-
-      <View style={styles.faqSection}>
-        <Text style={styles.faqTitle}>{t('support.faqTitle')}</Text>
-        <TouchableOpacity style={styles.faqButton}>
-          <Text style={styles.faqButtonText}>{t('support.viewFaq')}</Text>
-        </TouchableOpacity>
       </View>
     </ScrollView>
     </>
@@ -92,7 +86,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.colors.primaryLight,
+    backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: theme.spacing.md,

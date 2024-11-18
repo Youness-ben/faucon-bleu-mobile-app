@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, ScrollView,Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, ScrollView, Image, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, RouteProp, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
@@ -9,24 +9,30 @@ import api from '../api';
 import { STORAGE_URL } from '../../config';
 
 type RootStackParamList = {
-  OrderService: { serviceType: string; serviceId: number };
+  Services: { vehicleId?: number };
+  OrderService: { serviceType: string; serviceId: number; vehicleId?: number  ,vehicle?: any };
 };
 
-type ServicesScreenNavigationProp = StackNavigationProp<RootStackParamList, 'OrderService'>;
+type ServicesScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Services'>;
+type ServicesScreenRouteProp = RouteProp<RootStackParamList, 'Services'>;
 
 interface Service {
   id: number;
   name: string;
   description: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: string;
   category: string | null;
   long_description: string;
-  price: number;
+  estimated_duration: number;
+  estimated_duration_unite: string;
 }
 
 const ServicesScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<ServicesScreenNavigationProp>();
+  const route = useRoute<ServicesScreenRouteProp>();
+  const { vehicleId } = route.params || {};
+
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,22 +60,31 @@ const ServicesScreen: React.FC = () => {
 
   const categories = Array.from(new Set(services.map(service => service.category || t('services.uncategorized'))));
   
- 
   const renderServiceItem = ({ item }: { item: Service }) => (
     <View style={styles.serviceItem}>
       <TouchableOpacity
         style={styles.serviceButton}
-        onPress={() => navigation.navigate('OrderService', { serviceType: item.name, serviceId: item.id })}
+        onPress={() => navigation.navigate('OrderService', { 
+          serviceType: item.name, 
+          serviceId: item.id,
+          vehicleId: vehicleId 
+        })}
       >
         <View style={styles.serviceIcon}>
-          <Image source={{ uri: `${STORAGE_URL}/${item.icon}` }} 
-          defaultSource={require('../../assets/logo.png')}
-          style={{width:24}} height={24} />
-
+          <Image 
+            source={{ uri: `${STORAGE_URL}/${item.icon}` }} 
+            defaultSource={require('../../assets/logo.png')}
+            style={{width: 24, height: 24,resizeMode:'contain'}} 
+          />
         </View>
         <View style={styles.serviceInfo}>
           <Text style={styles.serviceName}>{item.name}</Text>
-          <Text style={styles.servicePrice}>{t('services.estimatedDuration', { duration: item.estimated_duration, unite: item.estimated_duration_unite })}</Text>
+          <Text style={styles.servicePrice}>
+            {t('services.estimatedDuration', { 
+              duration: item.estimated_duration, 
+              unite: item.estimated_duration_unite 
+            })}
+          </Text>
         </View>
         <Ionicons name="chevron-forward" size={24} color={theme.colors.primary} />
       </TouchableOpacity>
@@ -136,6 +151,7 @@ const ServicesScreen: React.FC = () => {
               <Text style={styles.modalTitle}>{selectedService?.name}</Text>
               <Text style={styles.modalDescription}>{selectedService?.description}</Text>
               <Text style={styles.modalLongDescription}>{selectedService?.long_description}</Text>
+              <Text style={styles.servicePrice}>{t('services.estimatedDuration', { duration: selectedService?.estimated_duration, unite: selectedService?.estimated_duration_unite })}</Text>
             </ScrollView>
             <TouchableOpacity
               style={styles.modalCloseButton}
@@ -240,7 +256,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.sm,
     fontWeight: theme.typography.fontWeights.bold,
     color: theme.colors.primary,
-    marginTop: theme.spacing.xs,
+  
   },
   infoButton: {
     padding: theme.spacing.sm,
@@ -272,13 +288,7 @@ const styles = StyleSheet.create({
   modalLongDescription: {
     fontSize: theme.typography.sizes.sm,
     color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.md,
-  },
-  modalPrice: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.primary,
-    marginBottom: theme.spacing.lg,
+
   },
   modalCloseButton: {
     alignSelf: 'flex-end',

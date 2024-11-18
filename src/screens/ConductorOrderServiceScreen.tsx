@@ -82,7 +82,7 @@ const ConductorOrderServiceScreen: React.FC = () => {
         scheduled_at:  selectedDate.getFullYear()+"-"+(selectedDate.getMonth()+1)+"-"+selectedDate.getDate()+" 00:00:00",
       };
       const resp =  await api.post('/vehicle/confirm-service', orderData);
-      navigation.navigate('TicketScreen', { serviceId : resp.data.id });
+      navigation.navigate('TicketScreen', { serviceId : resp.data.id ,service : resp.data });
     } catch (err) {
       console.error('Error confirming service:', err);
       Alert.alert(t('orderService.error'), t('orderService.confirmError'));

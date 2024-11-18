@@ -14,6 +14,7 @@ type RootStackParamList = {
   OrderService: { vehicleId: number };
   ServiceHistory: { vehicleId: number };
   Fleet: undefined;
+  Services: { vehicleId: number; vehicule: Vehicle };
 };
 
 type VehicleDetailScreenRouteProp = RouteProp<RootStackParamList, 'VehicleDetail'>;
@@ -90,6 +91,7 @@ const VehicleDetailScreen: React.FC = () => {
   const [editedVehicle, setEditedVehicle] = useState<Vehicle | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [toast, setToast] = useState<ToastProps>({ visible: false, message: '', type: 'success' });
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ visible: true, message, type });
@@ -176,7 +178,7 @@ const VehicleDetailScreen: React.FC = () => {
 
     setIsLoading(true);
     try {
-      await api.post(`/client/vehicles/${vehicleId}/reset-password`, { new_password: newPassword });
+      await api.post(`/client/vehicles/${vehicleId}/reset-password`, { conductor_password: newPassword });
       showToast(t('vehicleDetail.passwordResetSuccess'), 'success');
       setNewPassword('');
     } catch (err) {
@@ -185,6 +187,11 @@ const VehicleDetailScreen: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setEditedVehicle(vehicle);
   };
 
   if (isLoading) {
@@ -205,16 +212,14 @@ const VehicleDetailScreen: React.FC = () => {
       </View>
     );
   }
-  const handleGoBack = () => {
-    navigation.goBack();
-  };
+
   return (
     <View style={styles.container}>
       <ScrollView>
         <View style={styles.header}>
-        <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="white" />
-        </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="white" />
+          </TouchableOpacity>
           <View style={styles.brandLogoContainer}>
             <Image
               source={{ uri: `${STORAGE_URL}/${vehicle.logo_url}` }}
@@ -226,7 +231,36 @@ const VehicleDetailScreen: React.FC = () => {
             <Text style={styles.vehicleName}>{`${vehicle.brand_name} ${vehicle.model}`}</Text>
             <Text style={styles.licensePlate}>{vehicle.plate_number}</Text>
           </View>
+          <View style={styles.headerButtons}>
+            <TouchableOpacity onPress={handleEdit} style={[styles.headerButton,{backgroundColor:"#FFF"}]}>
+              <Ionicons name="pencil-outline" size={23} color={theme.colors.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleDelete} style={[styles.headerButton,{backgroundColor:"#ba2014"}]}>
+              <Ionicons name="trash-outline" size={24} color="white" />
+            </TouchableOpacity>
+          </View>
         </View>
+
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => navigation.navigate('Services', { vehicleId: vehicle.id, vehicule: vehicle })}
+          >
+            <Ionicons name="construct-outline" size={24} color="white" />
+            <Text style={styles.buttonText}>{t('vehicleDetail.orderService')}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.button, styles.secondaryButton]}
+            onPress={() => navigation.navigate('ServiceHistory', { vehicleId: vehicle.id })}
+          >
+            <Ionicons name="time-outline" size={24} color={theme.colors.primary} />
+            <Text style={[styles.buttonText, styles.secondaryButtonText]}>
+              {t('vehicleDetail.serviceHistory')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.infoCard}>
           <Text style={styles.sectionTitle}>{t('vehicleDetail.details')}</Text>
           <View style={styles.detailsGrid}>
@@ -292,57 +326,46 @@ const VehicleDetailScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.buttonContainer}>
-          {isEditing ? (
-            <TouchableOpacity style={styles.button} onPress={handleSave}>
+        {isEditing && (
+          <View style={styles.editButtonsContainer}>
+            <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={handleSave}>
               <Ionicons name="save-outline" size={24} color="white" />
               <Text style={styles.buttonText}>{t('vehicleDetail.save')}</Text>
             </TouchableOpacity>
-          ) : (
-            <TouchableOpacity style={styles.button} onPress={handleEdit}>
-              <Ionicons name="create-outline" size={24} color="white" />
-              <Text style={styles.buttonText}>{t('vehicleDetail.edit')}</Text>
+            <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={handleCancel}>
+              <Ionicons name="close-outline" size={24} color={theme.colors.primary} />
+              <Text style={[styles.buttonText, styles.cancelButtonText]}>{t('common.cancel')}</Text>
             </TouchableOpacity>
-          )}
-          <TouchableOpacity style={[styles.button, styles.deleteButton]} onPress={handleDelete}>
-            <Ionicons name="trash-outline" size={24} color="white" />
-            <Text style={styles.buttonText}>{t('vehicleDetail.delete')}</Text>
-          </TouchableOpacity>
-        </View>
+          </View>
+        )}
 
-        <View style={styles.passwordResetContainer}>
-          <Text style={styles.sectionTitle}>{t('vehicleDetail.resetConductorPassword')}</Text>
-          <TextInput
-            style={styles.input}
-            value={newPassword}
-            onChangeText={setNewPassword}
-            placeholder={t('vehicleDetail.enterNewPassword')}
-            secureTextEntry
+        <TouchableOpacity 
+          style={styles.accordionHeader} 
+          onPress={() => setShowPasswordReset(!showPasswordReset)}
+        >
+          <Text style={styles.accordionTitle}>{t('vehicleDetail.resetConductorPassword')}</Text>
+          <Ionicons 
+            name={showPasswordReset ? 'chevron-up-outline' : 'chevron-down-outline'} 
+            size={24} 
+            color={theme.colors.primary} 
           />
-          <TouchableOpacity style={styles.button} onPress={handleResetPassword}>
-            <Ionicons name="key-outline" size={24} color="white" />
-            <Text style={styles.buttonText}>{t('vehicleDetail.resetPassword')}</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => navigation.navigate('OrderService', { vehicleId: vehicle.id })}
-          >
-            <Ionicons name="construct-outline" size={24} color="white" />
-            <Text style={styles.buttonText}>{t('vehicleDetail.orderService')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.button, styles.secondaryButton]}
-            onPress={() => navigation.navigate('ServiceHistory', { vehicleId: vehicle.id })}
-          >
-            <Ionicons name="time-outline" size={24} color={theme.colors.primary} />
-            <Text style={[styles.buttonText, styles.secondaryButtonText]}>
-              {t('vehicleDetail.serviceHistory')}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        </TouchableOpacity>
+        
+        {showPasswordReset && (
+          <View style={styles.passwordResetContainer}>
+            <TextInput
+              style={styles.input}
+              value={newPassword}
+              onChangeText={setNewPassword}
+              placeholder={t('vehicleDetail.enterNewPassword')}
+              secureTextEntry
+            />
+            <TouchableOpacity style={styles.button} onPress={handleResetPassword}>
+              <Ionicons name="key-outline" size={24} color="white" />
+              <Text style={styles.buttonText}>{t('vehicleDetail.resetPassword')}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
       <Toast visible={toast.visible} message={toast.message} type={toast.type} />
     </View>
@@ -353,7 +376,7 @@ const DetailItem: React.FC<{ icon: string; label: string; value: string }> = ({ 
   <View style={styles.detailItem}>
     <Ionicons name={icon} size={24} color={theme.colors.primary} style={styles.detailIcon} />
     <View>
-      <Text  style={styles.detailLabel}>{label}</Text>
+      <Text style={styles.detailLabel}>{label}</Text>
       <Text style={styles.detailValue}>{value}</Text>
     </View>
   </View>
@@ -426,7 +449,7 @@ const styles = StyleSheet.create({
   brandLogo: {
     width: '80%',
     height: '80%',
-    resizeMode: 'stretch'
+    resizeMode: 'contain'
   },
   headerTextContainer: {
     flex: 1,
@@ -569,10 +592,51 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
   },
-
   backButton: {
     padding: theme.spacing.sm,
     marginRight: theme.spacing.md,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    marginVertical:'auto',
+    position: 'absolute',
+    top: theme.spacing.xl,
+    right: theme.spacing.md,
+  },
+  headerButton: {
+    marginLeft: theme.spacing.sm,
+    padding:8,
+    borderRadius:10
+  },
+  editButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: theme.spacing.lg,
+  },
+  saveButton: {
+    flex: 1,
+    marginRight: theme.spacing.sm,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+  },
+  cancelButtonText: {
+    color: theme.colors.primary,
+  },
+  accordionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    padding: theme.spacing.md
+  },
+  accordionTitle: {
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.fontWeights.bold,
+    color: theme.colors.text,
   },
 });
 

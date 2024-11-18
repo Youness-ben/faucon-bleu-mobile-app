@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.colors.primary + '20', // 20% opacity
+    backgroundColor: theme.colors.primary + '20', 
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: theme.spacing.md,
@@ -289,6 +289,7 @@ const styles = StyleSheet.create({
   iconImage: {
     width: 24,
     height: 24,
+    resizeMode:'contain',
   },
   serviceInfo: {
     flex: 1,

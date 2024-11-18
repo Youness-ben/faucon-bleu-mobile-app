@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Dimensions, ListRenderItem, Animated, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
@@ -11,11 +11,16 @@ import { STORAGE_URL } from '../../config';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { format } from 'date-fns';
+import LottieView from 'lottie-react-native';
 
 type RootStackParamList = {
   ServiceHistory: undefined;
   VehicleDetail: { vehicleId: number };
   OrderService: { serviceType: string };
+  Services: undefined;
+  Support: undefined;
+  TicketScreen: { serviceId: number };
 };
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList>;
@@ -23,8 +28,17 @@ type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 interface Service {
   id: number;
   service_type: string;
-  scheduled_date: string;
+  scheduled_at: string;
   status: string;
+  service: {
+    name: string;
+    icon: string;
+  };
+  vehicle?: {
+    brand_name: string;
+    model: string;
+    plate_number: string;
+  };
 }
 
 interface Banner {
@@ -65,7 +79,7 @@ const ErrorView: React.FC<{ onRetry: () => void }> = ({ onRetry }) => {
   return (
     <View style={styles.errorContainer}>
       <Text style={styles.errorTitle}>{t('error.title')}</Text>
-      <Text  style={styles.errorText}>{t('error.fetchFailed')}</Text>
+      <Text style={styles.errorText}>{t('error.fetchFailed')}</Text>
       <TouchableOpacity style={styles.retryButton} onPress={onRetry}>
         <Ionicons name="refresh-outline" size={24} color="white" style={styles.retryIcon} />
         <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
@@ -90,6 +104,7 @@ const HomeScreen: React.FC = () => {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const flatListRef = useRef<FlatList>(null);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -111,10 +126,26 @@ const HomeScreen: React.FC = () => {
     }
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [fetchData])
+  );
+
   useEffect(() => {
-    fetchData();
     registerForPushNotificationsAsync();
-  }, [fetchData]);
+  }, []);
+
+  useEffect(() => {
+    const scrollInterval = setInterval(() => {
+      if (banners.length > 1) {
+        const nextSlide = (activeSlide + 1) % banners.length;
+        flatListRef.current?.scrollToIndex({ index: nextSlide, animated: true });
+      }
+    }, 5000); // Change banner every 5 seconds
+
+    return () => clearInterval(scrollInterval);
+  }, [activeSlide, banners.length]);
 
   const registerForPushNotificationsAsync = async () => {
     let token;
@@ -153,14 +184,16 @@ const HomeScreen: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status?: Service['status']) => {
     switch (status) {
       case 'completed':
         return theme.colors.success;
-      case 'scheduled':
+      case 'pending':
         return theme.colors.warning;
       case 'in_progress':
         return theme.colors.info;
+      case 'cancelled':
+        return theme.colors.error;
       default:
         return theme.colors.text;
     }
@@ -172,11 +205,14 @@ const HomeScreen: React.FC = () => {
         <Placeholder style={{ width: SCREEN_WIDTH, height: 200 }} />
       ) : (
         <FlatList
+          ref={flatListRef}
           data={banners}
           renderItem={({ item }) => (
             <View style={styles.adBannerItem}>
-              <Image source={{ uri: `${STORAGE_URL}/${item.image_path}` }} style={styles.adBannerImage}
-              defaultSource={require('../../assets/logo.png') }
+              <Image 
+                source={{ uri: `${STORAGE_URL}/${item.image_path}` }} 
+                style={styles.adBannerImage}
+                defaultSource={require('../../assets/logo.png')}
               />
             </View>
           )}
@@ -212,6 +248,10 @@ const HomeScreen: React.FC = () => {
       <TouchableOpacity style={styles.quickActionButton} onPress={() => navigation.navigate('Services')}>
         <Ionicons name="flash-outline" size={24} color={theme.colors.primary} />
         <Text style={styles.quickActionText}>{t('home.quickService')}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.quickActionButton} onPress={() => navigation.navigate('Support')}>
+        <Ionicons name="call-outline" size={24} color={theme.colors.primary} />
+        <Text style={styles.quickActionText}>{t('home.callSupport')}</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.quickActionButton} onPress={() => navigation.navigate('ServiceHistory')}>
         <Ionicons name="time-outline" size={24} color={theme.colors.primary} />
@@ -257,18 +297,30 @@ const HomeScreen: React.FC = () => {
   const renderServiceItem: ListRenderItem<Service> = useCallback(({ item }) => (
     <TouchableOpacity 
       style={styles.serviceItem}
-      onPress={() => navigation.navigate('OrderService', { Service: item })}
+      onPress={() => navigation.navigate('TicketScreen', { serviceId: item.id , service: item })}
     >
       <View style={styles.serviceIcon}>
-        <Ionicons name="construct-outline" size={32} color={theme.colors.primary} />
+          <Image 
+            source={{ uri: `${STORAGE_URL}/${item.service.icon}` }} 
+            defaultSource={require('../../assets/logo.png')}
+            style={{width: 24, height: 24, resizeMode:'contain'}} 
+          />
       </View>
       <View style={styles.serviceInfo}>
         <Text style={styles.serviceType}>{item.service.name}</Text>
-        <Text style={styles.serviceDate}>{item.scheduled_at}</Text>
+        <View style={{flexDirection:'row', marginVertical:5}}>
+          <Text style={styles.serviceDetails}>
+            {item.vehicle ? `${item.vehicle.brand_name || ''} ${item.vehicle.model || ''}`.trim() : t('serviceHistory.unknownVehicle')}
+          </Text>
+          <Text style={styles.servicePlate}>
+            {item?.vehicle?.plate_number}
+          </Text>
+        </View>
+        <Text style={styles.serviceDate}>{item.scheduled_at ? format(new Date(item.scheduled_at), 'MM/dd/yyyy') : 'N/A'}</Text>
       </View>
-      <Text style={[styles.serviceStatus, { color: getStatusColor(item.status) }]}>{item.status}</Text>
+      <Text style={[styles.serviceStatus, { color: getStatusColor(item.status) }]}>{t(`serviceStatus.${item.status}`)}</Text>
     </TouchableOpacity>
-  ), [navigation]);
+  ), [navigation, t]);
 
   const renderServices = useCallback(() => (
     <View style={styles.sectionContainer}>
@@ -283,7 +335,15 @@ const HomeScreen: React.FC = () => {
           ))}
         </View>
       ) : services.length === 0 ? (
-        <EmptyState message={t('home.noUpcomingServices')} icon="calendar-outline" />
+        <>
+          <LottieView
+            autoPlay={true}
+            speed={3}
+            style={{width:150, height:undefined, aspectRatio:1, marginHorizontal:'auto'}}
+            source={require("../../assets/emptybag.json")}
+          />
+          <Text style={styles.noServicesText}>{t('conductorHome.noUpcomingServices')}</Text>
+        </>
       ) : (
         <>
           <FlatList
@@ -429,13 +489,24 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary + '20',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: theme.spacing.sm,
+    marginRight: theme.spacing.md,
   },
   serviceInfo: {
     flex: 1,
   },
   serviceType: {
     fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.fontWeights.medium,
+    color: theme.colors.text,
+  },
+  servicePlate: {
+    marginStart: 10,
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.fontWeights.medium,
+    color: theme.colors.primary,
+  },
+  serviceDetails: {
+    fontSize: theme.typography.sizes.sm,
     fontWeight: theme.typography.fontWeights.medium,
     color: theme.colors.text,
   },
@@ -507,6 +578,12 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.md,
     color: theme.colors.textSecondary,
     textAlign: 'center',
+  },
+  noServicesText: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    marginTop: theme.spacing.md,
   },
 });
 

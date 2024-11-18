@@ -1,5 +1,17 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Animated, Dimensions } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  FlatList, 
+  TouchableOpacity, 
+  Image, 
+  ActivityIndicator, 
+  RefreshControl, 
+  Animated, 
+  Dimensions,
+  TextInput
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -89,8 +101,9 @@ const FleetScreen: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const fetchVehicles = useCallback(async (page: number, refresh: boolean = false) => {
+  const fetchVehicles = useCallback(async (page: number, refresh: boolean = false, search: string = '') => {
     if (refresh) {
       setIsRefreshing(true);
     } else if (page === 1) {
@@ -101,7 +114,7 @@ const FleetScreen: React.FC = () => {
     setError(null);
 
     try {
-      const response = await api.get<PaginatedResponse>(`/client/vehicles/list?page=${page}&per_page=${ITEMS_PER_PAGE}`);
+      const response = await api.get<PaginatedResponse>(`/client/vehicles/list?page=${page}&per_page=${ITEMS_PER_PAGE}&search=${search}`);
       if (response && response.data && Array.isArray(response.data.data)) {
         const newVehicles = response.data.data;
 
@@ -124,23 +137,28 @@ const FleetScreen: React.FC = () => {
   
   useFocusEffect(
     useCallback(() => {
-      fetchVehicles(1, true);
-    }, [fetchVehicles])
+      fetchVehicles(1, true, searchQuery);
+    }, [fetchVehicles, searchQuery])
   );
 
   const handleRefresh = useCallback(() => {
-    fetchVehicles(1, true);
-  }, [fetchVehicles]);
+    fetchVehicles(1, true, searchQuery);
+  }, [fetchVehicles, searchQuery]);
 
   const handleLoadMore = useCallback(() => {
     if (currentPage < lastPage && !isLoading && !isLoadingMore) {
-      fetchVehicles(currentPage + 1);
+      fetchVehicles(currentPage + 1, false, searchQuery);
     }
-  }, [currentPage, lastPage, isLoading, isLoadingMore, fetchVehicles]);
+  }, [currentPage, lastPage, isLoading, isLoadingMore, fetchVehicles, searchQuery]);
 
   const handleAddVehicle = useCallback(() => {
     navigation.navigate('AddVehicle');
   }, [navigation]);
+
+  const handleSearch = useCallback((text: string) => {
+    setSearchQuery(text);
+    fetchVehicles(1, true, text);
+  }, [fetchVehicles]);
 
   const renderVehicleItem = useCallback(({ item }: { item: Vehicle }) => (
     <TouchableOpacity
@@ -224,6 +242,15 @@ const FleetScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{t('fleet.title')}</Text>
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={24} color={theme.colors.primary} style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder={t('fleet.searchPlaceholder')}
+          value={searchQuery}
+          onChangeText={handleSearch}
+        />
+      </View>
       {renderContent}
       {vehicles && vehicles.length > 0 && (
         <TouchableOpacity
@@ -376,6 +403,24 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: theme.typography.sizes.lg,
     fontWeight: theme.typography.fontWeights.bold,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: theme.roundness,
+    marginBottom: theme.spacing.md,
+    paddingHorizontal: theme.spacing.sm,
+    ...theme.elevation.small,
+  },
+  searchIcon: {
+    marginRight: theme.spacing.sm,
+  },
+  searchInput: {
+    flex: 1,
+    height: 40,
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text,
   },
 });
 

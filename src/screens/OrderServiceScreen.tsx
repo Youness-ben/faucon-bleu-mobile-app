@@ -9,7 +9,7 @@ import { theme } from '../styles/theme';
 import api from '../api';
 
 type RootStackParamList = {
-  OrderService: { serviceType: string; serviceId: number };
+  OrderService: { serviceType: string; serviceId: number; vehicleId?: number; vehicle?: any };
 };
 
 type OrderServiceScreenRouteProp = RouteProp<RootStackParamList, 'OrderService'>;
@@ -20,6 +20,9 @@ interface Vehicle {
   brand_name: string;
   model: string;
   plate_number: string;
+  year?: number;
+  color?: string;
+  vin?: string;
 }
 
 interface Service {
@@ -27,6 +30,7 @@ interface Service {
   name: string;
   description: string;
   estimated_duration: number;
+  estimated_duration_unite: string;
   base_price: number;
 }
 
@@ -34,15 +38,13 @@ const OrderServiceScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<OrderServiceScreenNavigationProp>();
   const route = useRoute<OrderServiceScreenRouteProp>();
-  const { serviceId } = route.params;
+  const { serviceId, vehicleId, vehicle } = route.params;
 
-  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(vehicle || null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedTime, setSelectedTime] = useState(new Date());
-  const [showTimePicker, setShowTimePicker] = useState(false);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [servicePrice, setServicePrice] = useState(null);
+  const [servicePrice, setServicePrice] = useState<number | null>(null);
   const [service, setService] = useState<Service | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,27 +54,60 @@ const OrderServiceScreen: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [vehiclesResponse, serviceResponse] = await Promise.all([
+      const [vehicleResponse, vehiclesResponse, serviceResponse] = await Promise.all([
+        vehicleId ? api.get(`/client/vehicles/${vehicleId}`) :{data:[]},
         api.get('/client/vehicles'),
         api.get(`/client/services/${serviceId}`),
       ]);
+      
+      if (vehicleId) {
+        setSelectedVehicle(vehicleResponse.data);
+      } 
       setVehicles(vehiclesResponse.data);
       setService(serviceResponse.data);
+
+      if (vehicleId) {
+        const priceResponse = await api.post('/client/vehicles/client-service-prices', {
+          vehicle: vehicleId,
+          service: serviceId
+        });
+        setServicePrice(priceResponse.data || serviceResponse.data.base_price);
+      }
     } catch (err) {
       console.error('Error fetching data:', err);
       setError(t('services.fetchError'));
     } finally {
       setIsLoading(false);
     }
-  }, [serviceId, t]);
+  }, [serviceId, vehicleId, t]);
 
-   useFocusEffect(
+  useFocusEffect(
     useCallback(() => {
       fetchData();
     }, [fetchData])
   );
- 
- const renderHeader = () => (
+
+  useEffect(() => {
+    if (selectedVehicle && service) {
+      fetchServicePrice(selectedVehicle.id, service.id);
+    }
+  }, [selectedVehicle, service]);
+
+  const fetchServicePrice = async (vehicleId: number, serviceId: number) => {
+    try {
+      const response = await api.post('/client/vehicles/client-service-prices', {
+        vehicle: vehicleId,
+        service: serviceId
+      });
+
+      setServicePrice(response.data || service?.base_price);
+    } catch (err) {
+      console.log("Error fetching service price:", err);
+    }
+  };
+
+
+  const renderHeader = () => (
     <View style={styles.header}>
       <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
         <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
@@ -83,17 +118,17 @@ const OrderServiceScreen: React.FC = () => {
       <View style={styles.headerRight} />
     </View>
   );
+
   const handleDateChange = (event: any, selectedDate?: Date) => {
     const currentDate = selectedDate || new Date();
     setShowDatePicker(false);
     setSelectedDate(currentDate);
   };
 
-
   const handleSubmit = async () => {
     if (!selectedVehicle || !service) return;
 
-    const scheduledAt =  selectedDate.getFullYear()+"-"+(selectedDate.getMonth()+1)+"-"+selectedDate.getDate()+" 00:00:00";
+    const scheduledAt = `${selectedDate.getFullYear()}-${selectedDate.getMonth() + 1}-${selectedDate.getDate()} 00:00:00`;
 
     const orderData = {
       vehicle_id: selectedVehicle.id,
@@ -104,7 +139,7 @@ const OrderServiceScreen: React.FC = () => {
     try {
       const response = await api.post('/client/service-orders', orderData);
       console.log('Order submitted:', response.data);
-      navigation.navigate("ServiceHistory");
+      navigation.navigate("TicketScreen", { serviceId: response.data.id });
     } catch (error) {
       console.error('Error submitting order:', error);
       setError(t('services.submitError'));
@@ -116,22 +151,14 @@ const OrderServiceScreen: React.FC = () => {
       style={styles.vehicleItem}
       onPress={async () => {
         setSelectedVehicle(item);
-        //FETCH PRICE
-        try{
-        // setServicePrice(null);
-
-        const response = await api.post(`/client/vehicles/client-service-prices?`,{
-          vehicle : item.id ,
-          service : service?.id
-        });
-          if(response.data){
-            setServicePrice(response.data);
-          }else
-            setServicePrice(service?.base_price);
-
-        }catch(err){
-        console.log("-ses",err);
-
+        try {
+          const response = await api.post('/client/vehicles/client-service-prices', {
+            vehicle: item.id,
+            service: service?.id
+          });
+          setServicePrice(response.data || service?.base_price);
+        } catch (err) {
+          console.log("Error fetching service price:", err);
         }
         setShowVehicleModal(false);
       }}
@@ -140,6 +167,23 @@ const OrderServiceScreen: React.FC = () => {
       <Text style={styles.vehicleLicensePlate}>{item.plate_number}</Text>
     </TouchableOpacity>
   );
+
+  const renderVehicleDetails = () => {
+    if (!selectedVehicle) return null;
+
+    return (
+      <View style={styles.section}>
+        <View style={styles.vehicleDetailHeader}>
+          <Text style={styles.sectionTitle}>{t('vehicleDetail.details')}</Text>
+          <TouchableOpacity onPress={() => setSelectedVehicle(null)} style={styles.clearButton}>
+            <Ionicons name="close-circle-outline" size={24} color={theme.colors.primary} />
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.vehicleDetailItem}>{selectedVehicle.brand_name} {selectedVehicle.model}</Text>
+        <Text style={styles.vehicleDetailItem}>{selectedVehicle.plate_number}</Text>
+      </View>
+    );
+  };
 
   if (isLoading) {
     return (
@@ -170,95 +214,98 @@ const OrderServiceScreen: React.FC = () => {
     <SafeAreaView style={styles.safeArea}>
       {renderHeader()}
       <ScrollView style={styles.container}>
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('services.serviceDetails')}</Text>
-        <Text style={styles.serviceType}>{service.name}</Text>
-        <Text style={styles.serviceDescription}>{service.description}</Text>
-        <Text style={styles.serviceDuration}>
-          {t('services.estimatedDuration', { duration: service.estimated_duration, unite: service.estimated_duration_unite  })}
-        </Text>
-        {servicePrice &&
-        <Text style={styles.servicePrice}>
-          {t('services.servicePrice')} {servicePrice} MAD
-        </Text>}
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('services.selectVehicle')}</Text>
-        <TouchableOpacity
-          style={styles.vehicleSelector}
-          onPress={() => setShowVehicleModal(true)}
-        >
-          <Text style={styles.vehicleSelectorText}>
-            {selectedVehicle
-              ? `${selectedVehicle.brand_name} ${selectedVehicle.model}`
-              : t('services.selectVehiclePrompt')}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t('services.serviceDetails')}</Text>
+          <Text style={styles.serviceType}>{service.name}</Text>
+          <Text style={styles.serviceDescription}>{service.description}</Text>
+          <Text style={styles.serviceDuration}>
+            {t('services.estimatedDuration', { duration: service.estimated_duration, unite: service.estimated_duration_unite })}
           </Text>
-          <Ionicons name="chevron-down" size={24} color={theme.colors.primary} />
-        </TouchableOpacity>
-      </View>
+          {servicePrice && (
+            <Text style={styles.servicePrice}>
+              {t('services.servicePrice')} {servicePrice} MAD
+            </Text>
+          )}
+        </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('services.serviceDate')}</Text>
-        <TouchableOpacity style={styles.dateTimeButton} onPress={() => setShowDatePicker(true)}>
-          <Text style={styles.dateTimeButtonText}>
-            {selectedDate.toLocaleDateString()}
-          </Text>
-          <Ionicons name="calendar-outline" size={24} color={theme.colors.primary} />
-        </TouchableOpacity>
-        {showDatePicker && (
-          <DateTimePicker
-            value={selectedDate}
-            mode="date"
-            display="default"
-            onChange={handleDateChange}
-          />
-        )}
-      </View>
-
-  
-      <TouchableOpacity
-        style={[
-          styles.submitButton,
-          (!selectedVehicle || !selectedDate || !selectedTime) && styles.submitButtonDisabled,
-        ]}
-        onPress={handleSubmit}
-        disabled={!selectedVehicle || !selectedDate || !selectedTime}
-      >
-        <Text style={styles.submitButtonText}>{t('services.confirmOrder')}</Text>
-      </TouchableOpacity>
-
-      <Modal
-        visible={showVehicleModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowVehicleModal(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>{t('services.selectVehicle')}</Text>
-            <FlatList
-              data={vehicles}
-              renderItem={renderVehicleItem}
-              keyExtractor={(item) => item.id.toString()}
-              style={styles.vehicleList}
-            />
+        {selectedVehicle ? renderVehicleDetails() : (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t('services.selectVehicle')}</Text>
             <TouchableOpacity
-              style={styles.modalCloseButton}
-              onPress={() => setShowVehicleModal(false)}
+              style={styles.vehicleSelector}
+              onPress={() => setShowVehicleModal(true)}
             >
-              <Text style={styles.modalCloseButtonText}>{t('common.close')}</Text>
+              <Text style={styles.vehicleSelectorText}>
+                {t('services.selectVehiclePrompt')}
+              </Text>
+              <Ionicons name="chevron-down" size={24} color={theme.colors.primary} />
             </TouchableOpacity>
           </View>
+        )}
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t('services.serviceDate')}</Text>
+          <TouchableOpacity style={styles.dateTimeButton} onPress={() => setShowDatePicker(true)}>
+            <Text style={styles.dateTimeButtonText}>
+              {selectedDate.toLocaleDateString()}
+            </Text>
+            <Ionicons name="calendar-outline" size={24} color={theme.colors.primary} />
+          </TouchableOpacity>
+          {showDatePicker && (
+            <DateTimePicker
+              value={selectedDate}
+              mode="date"
+              display="default"
+              onChange={handleDateChange}
+            />
+          )}
         </View>
-      </Modal>
-      
-    </ScrollView>  
-      </SafeAreaView>
+
+        <TouchableOpacity
+          style={[
+            styles.submitButton,
+            (!selectedVehicle || !selectedDate) && styles.submitButtonDisabled,
+          ]}
+          onPress={handleSubmit}
+          disabled={!selectedVehicle || !selectedDate}
+        >
+          <Text style={styles.submitButtonText}>{t('services.confirmOrder')}</Text>
+        </TouchableOpacity>
+
+        <Modal
+          visible={showVehicleModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowVehicleModal(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>{t('services.selectVehicle')}</Text>
+              <FlatList
+                data={vehicles}
+                renderItem={renderVehicleItem}
+                keyExtractor={(item) => item.id.toString()}
+                style={styles.vehicleList}
+              />
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => setShowVehicleModal(false)}
+              >
+                <Text style={styles.modalCloseButtonText}>{t('common.close')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      </ScrollView>  
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
@@ -292,11 +339,23 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.fontWeights.bold,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.background,
+  },
+  backButton: {
+    padding: theme.spacing.sm,
+  },
   title: {
-    fontSize: theme.typography.sizes.xxl,
+    fontSize: theme.typography.sizes.xl,
     fontWeight: theme.typography.fontWeights.bold,
     color: theme.colors.primary,
-    padding: theme.spacing.md,
+  },
+  headerRight: {
+    width: 40,
   },
   section: {
     backgroundColor: 'white',
@@ -415,29 +474,20 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.fontWeights.medium,
-  }
-  
-  ,  safeArea: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: theme.spacing.md,
-    backgroundColor: theme.colors.background,
-  },
-  backButton: {
-    padding: theme.spacing.sm,
-  },
-  headerTitle: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.fontWeights.bold,
+  vehicleDetailItem: {
+    fontSize: theme.typography.sizes.md,
     color: theme.colors.text,
+    marginBottom: theme.spacing.xs,
   },
-  headerRight: {
-    width: 40, // To balance the back button on the left
+  vehicleDetailHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+  },
+  clearButton: {
+    padding: theme.spacing.xs,
   },
 });
 
