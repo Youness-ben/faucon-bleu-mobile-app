@@ -501,7 +501,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
           opacity: headerHeight,
         }
       ]}>
-        <Text style={styles.headerDetailText}>{t('ticket.carInfo')}:{service?.vehicle?.vehicle_name} </Text>
+        <Text style={styles.headerDetailText}>{t('ticket.carInfo')}:<Text style={{fontWeight : 'bold'}}>{`${service.vehicle.brand_name || ''} ${service.vehicle.model || ''}`}</Text>  </Text>
         <Text style={styles.headerDetailText}>{t('ticket.serviceType')}: <Text style={{fontWeight : 'bold'}}>{service?.service?.name}</Text></Text>
         <Text style={styles.headerDetailText}>{t('ticket.date')}: <Text style={{fontWeight : 'bold'}}>{format(service?.scheduled_at,'dd/MM/yyyy')}</Text></Text>
         <Text style={[styles.headerDetailText]}>{t('ticket.status')}:  <Text style={{color :getStatusColor(service?.status)}}>{t(`serviceStatus.${service?.status}`)}</Text></Text>
@@ -533,23 +533,57 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
           { opacity: fadeAnim }
         ]}>
           <View style={styles.messageContent}>
+
+
             {item.sender_type !== user.type && (
               <View style={styles.senderInfo}>
                 <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{item.sender_type[0].toUpperCase()}</Text>
+                   { item.sender_type=='client' && (
+
+                      <Image
+                      source={{ uri:  user?.avatar? `${STORAGE_URL}/${user?.avatar}`  :'https://via.placeholder.com/150'  }}
+                      style={styles.avatar}
+                      />
+                      )}
+
+                          { item.sender_type=='vehicle' && (
+
+                          <Image
+                          source={require("../../assets/car.png")}
+                          style={styles.avatar}
+                          />
+                          )}
+
+                  { item.sender_type=='agent' && (
+                    
+                    <Image
+                    source={require("../../assets/faucon_bleu.png")}
+                    style={styles.avatar}
+                    />
+                    )}
                 </View>
                 <Text style={styles.senderName}>
                   {item.sender_type === 'vehicle' ? t('common.conductor') : (item.sender_type === 'client' ? t('common.client') : 'Faucon Bleu')}
                 </Text>
               </View>
             )}
-            {item.sender_type === user.type && (
-              <View style={styles.senderInfo}>
-                  <Image
-                    source={{ uri:  user?.avatar? `${STORAGE_URL}/${user?.avatar}`  :'https://via.placeholder.com/150'  }}
-                    style={styles.avatar}
-                  />
 
+            {(item.sender_type === user.type )&& (
+              <View style={styles.senderInfo}>
+              { user.type=='client' && (
+
+              <Image
+              source={{ uri:  user?.avatar? `${STORAGE_URL}/${user?.avatar}`  :'https://via.placeholder.com/150'  }}
+              style={styles.avatar}
+              />
+              )}
+              { user.type=='vehicle' && (
+
+              <Image
+              source={require("../../assets/car.png")}
+              style={styles.avatar}
+              />
+              )}
                 <Text style={styles.senderName}>
                   {item.sender_type === 'vehicle' ? t('common.conductor') : (item.sender_type === 'client' ? user?.last_name+" "+user?.first_name : 'Faucon Bleu')}
                 </Text>
@@ -1013,7 +1047,6 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: theme.spacing.xs,
