@@ -5,6 +5,10 @@ import api from './api';
 interface User {
   id: number;
   email?: string;
+  avatar?: string;
+  phone?: string;
+  last_name?: string;
+  first_name?: string;
   plate_number?: string;
   type: 'client' | 'vehicle';
 }
@@ -41,7 +45,7 @@ export const UserProvider: React.FC = ({ children }) => {
       const newUser: User = {
         id: userData.id,
         type: userType,
-        ...(userType === 'client' ? { email: userData.email } : { plate_number: userData.plate_number }),
+        ...(userType === 'client' ? { email: userData.email, last_name: userData.last_name, first_name: userData.first_name, avatar: userData.avatar } : { plate_number: userData.plate_number }),
       };
 
       setUser(newUser);

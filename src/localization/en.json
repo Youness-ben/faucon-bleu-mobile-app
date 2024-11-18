@@ -270,5 +270,12 @@
     "whatsapp": "Whatsapp",
     "address": "Address",
     "downloadInvoice": "Download invoice"
+  },
+  "ticket": {
+    "inputPlaceholder": "Tape your message",
+    "carInfo": "Vehicle",
+    "serviceType": "Service",
+    "Date": "Date",
+    "Status": "Status"
   }
 }

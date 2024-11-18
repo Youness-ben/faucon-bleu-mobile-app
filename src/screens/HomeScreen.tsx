@@ -316,7 +316,7 @@ const HomeScreen: React.FC = () => {
             {item?.vehicle?.plate_number}
           </Text>
         </View>
-        <Text style={styles.serviceDate}>{item.scheduled_at ? format(new Date(item.scheduled_at), 'MM/dd/yyyy') : 'N/A'}</Text>
+        <Text style={styles.serviceDate}>{item.scheduled_at ? format(new Date(item.scheduled_at), 'dd/MM/yyyy') : 'N/A'}</Text>
       </View>
       <Text style={[styles.serviceStatus, { color: getStatusColor(item.status) }]}>{t(`serviceStatus.${item.status}`)}</Text>
     </TouchableOpacity>

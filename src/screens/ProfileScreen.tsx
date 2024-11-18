@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../styles/theme';
 import { useUser } from '../UserContext';
+import { STORAGE_URL } from '../../config';
 
 type RootStackParamList = {
   EditProfile: undefined;
@@ -23,9 +24,10 @@ export default function Component() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const {logout} = useUser();
+  const {logout,user} = useUser();
 
   useEffect(() => {
+    console.log(user);
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 1000,
@@ -105,11 +107,11 @@ const logoff = () => {
       <ScrollView>
         <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
           <Image
-            source={{ uri: 'https://api.dabablane.icamob.ma/faucon-demo/hydro.png' }}
+            source={{ uri:  user?.avatar? `${STORAGE_URL}/${user?.avatar}`  :'https://via.placeholder.com/150'  }}
             style={styles.avatar}
           />
-          <Text style={styles.name}>Youssef Tougani</Text>
-          <Text style={styles.email}>youssef.touga@hydromac.ma</Text>
+          <Text style={styles.name}>{user?.last_name+" "+user?.first_name}</Text>
+          <Text style={styles.email}>{user?.email}</Text>
         </Animated.View>
 
         <View style={styles.section}>

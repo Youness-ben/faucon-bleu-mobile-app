@@ -17,6 +17,7 @@ import {
   ActivityIndicator,
   Modal,
   Dimensions,
+  ImageBackground,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -104,10 +105,9 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
   const [notificationSound, setNotificationSound] = React.useState<Audio.Sound | null>(null);
 
   const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
-  const headerHeight = useRef(new Animated.Value(60)).current;
+  const headerHeight = useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
-    console.log(service);
     async function loadSound() {
       const { sound } = await Audio.Sound.createAsync(require('../../assets/ping.mp3'));
       setNotificationSound(sound);
@@ -153,7 +153,6 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
     if (echo) {
 
       const channelName = `chat.${serviceId}`;
-      // Subscribe to the private channel
        const sub = echo.private(channelName)
         .listen('NewMessageSent', async (event: any) => {
           playNotificationSound();
@@ -264,7 +263,6 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
       });
 
       if (!result.canceled) {
-        console.log(result.assets);
         setPreviewUri(result?.assets[0]?.uri);
         setPreviewType('file');
         setPreviewName(result?.assets[0]?.name);
@@ -368,14 +366,12 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
         {},
         (downloadProgress) => {
           const progress = downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite;
-          console.log(`Download progress: ${progress * 100}%`);
         }
       );
 
       const { uri: downloadedUri } = await downloadResumable.downloadAsync();
       
       if (downloadedUri) {
-        console.log(`File downloaded to: ${downloadedUri}`);
         Alert.alert('Success', `File downloaded successfully`,
           [  { text: 'Cancel', style: 'cancel' },
           {
@@ -415,9 +411,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
   };
 
   const onPlaybackStatusUpdate = (status: Audio.PlaybackStatus, messageId: string) => {
-    console.log('running');
     if (status.isLoaded) {
-      console.log('running 1');
       setIsAudioLoading(null);
       setAudioProgress(prev => ({
         ...prev,
@@ -426,13 +420,11 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
           duration: status.durationMillis || 0,
         },
       }));
-      console.log('running 2');
 
       setAudioPosition( status.positionMillis);
       if (status.didJustFinish) {
         setIsPlaying(false);
         setCurrentlyPlayingId(null);
-      console.log('running 2');
 
       }
     }
@@ -459,16 +451,32 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+ 
   const toggleHeader = () => {
     setIsHeaderExpanded(!isHeaderExpanded);
     Animated.spring(headerHeight, {
-      toValue: isHeaderExpanded ? 60 : 200,
+      toValue: isHeaderExpanded ? 0 : 1,
       useNativeDriver: false,
     }).start();
   };
 
+  const getStatusColor = (status?: string) => {
+    switch (status) {
+      case 'completed':
+        return theme.colors.success;
+      case 'pending':
+        return theme.colors.warning;
+      case 'in_progress':
+        return theme.colors.info;
+      case 'cancelled':
+        return theme.colors.error;
+      default:
+        return theme.colors.text;
+    }
+  };
+
   const renderHeader = () => (
-    <Animated.View style={[styles.header, { height: headerHeight }]}>
+    <View style={styles.headerContainer}>
       <View style={styles.headerTopRow}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
@@ -483,15 +491,24 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
         </TouchableOpacity>
         <View style={styles.moreButton} />
       </View>
-      {isHeaderExpanded && (
-        <View style={styles.headerDetails}>
-          <Text style={styles.headerDetailText}>{t('service.carInfo')}: {service}</Text>
-          <Text style={styles.headerDetailText}>{t('service.serviceType')}: Oil Change</Text>
-          <Text style={styles.headerDetailText}>{t('service.status')}: In Progress</Text>
-        </View>
-      )}
-    </Animated.View>
+      <Animated.View style={[
+        styles.headerDetails,
+        {
+          maxHeight: headerHeight.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, 200],
+          }),
+          opacity: headerHeight,
+        }
+      ]}>
+        <Text style={styles.headerDetailText}>{t('ticket.carInfo')}:{service?.vehicle?.vehicle_name} </Text>
+        <Text style={styles.headerDetailText}>{t('ticket.serviceType')}: <Text style={{fontWeight : 'bold'}}>{service?.service?.name}</Text></Text>
+        <Text style={styles.headerDetailText}>{t('ticket.date')}: <Text style={{fontWeight : 'bold'}}>{format(service?.scheduled_at,'dd/MM/yyyy')}</Text></Text>
+        <Text style={[styles.headerDetailText]}>{t('ticket.status')}:  <Text style={{color :getStatusColor(service?.status)}}>{t(`serviceStatus.${service?.status}`)}</Text></Text>
+      </Animated.View>
+    </View>
   );
+
 
   const renderMessage = ({ item }: { item: Message })  => {
     const messageDate = new Date(item.created_at);
@@ -506,27 +523,37 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
     const timeDisplay = format(messageDate, 'HH:mm');
   
     return (
-    <View style={[
-      styles.messageWrapper,
-      item.sender_type === user.type ? styles.currentUserMessageWrapper : styles.otherUserMessageWrapper
+      <View style={[
+        styles.messageWrapper,
+        item.sender_type === user.type ? styles.currentUserMessageWrapper : styles.otherUserMessageWrapper
       ]}>
         <Animated.View style={[
           styles.messageContainer,
           item.sender_type === user.type ? styles.currentUserMessage : styles.otherUserMessage,
           { opacity: fadeAnim }
         ]}>
-          {item.sender_type !== user.type && (
-            <View style={styles.avatarContainer}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{item.sender_type[0].toUpperCase()}</Text>
-              </View>
-            </View>
-          )}
           <View style={styles.messageContent}>
             {item.sender_type !== user.type && (
-              <Text style={styles.senderName}>
-                {item.sender_type === 'vehicle' ? t('common.conductor') : (item.sender_type === 'client' ? t('common.client') : 'Faucon Bleu')}
-              </Text>
+              <View style={styles.senderInfo}>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{item.sender_type[0].toUpperCase()}</Text>
+                </View>
+                <Text style={styles.senderName}>
+                  {item.sender_type === 'vehicle' ? t('common.conductor') : (item.sender_type === 'client' ? t('common.client') : 'Faucon Bleu')}
+                </Text>
+              </View>
+            )}
+            {item.sender_type === user.type && (
+              <View style={styles.senderInfo}>
+                  <Image
+                    source={{ uri:  user?.avatar? `${STORAGE_URL}/${user?.avatar}`  :'https://via.placeholder.com/150'  }}
+                    style={styles.avatar}
+                  />
+
+                <Text style={styles.senderName}>
+                  {item.sender_type === 'vehicle' ? t('common.conductor') : (item.sender_type === 'client' ? user?.last_name+" "+user?.first_name : 'Faucon Bleu')}
+                </Text>
+              </View>
             )}
             {item.message_type === 'text' && <Text style={styles.messageText}>{item.content}</Text>}
             {item.message_type === 'image' && (
@@ -611,14 +638,15 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
                 <Text style={styles.openMapText}>Open in Maps</Text>
               </TouchableOpacity>
             )}
-          </View>
-        </Animated.View>      
+                
         <Text style={[
             styles.timestamp,
             item.sender_type === user.type ? styles.timestampRight : styles.timestampLeft
           ]}>
           {`${dateDisplay} ${timeDisplay}`}
         </Text>
+          </View>
+        </Animated.View>  
     </View>
   );
 }
@@ -848,6 +876,11 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
         keyboardVerticalOffset={Platform.OS === "ios" ? 40 : 30}
       >
         {renderHeader()}
+        <ImageBackground 
+      source={require('../../assets/pattern_opac.png')} 
+      style={styles.backgroundImage}
+      resizeMode="repeat"
+    >
         <FlatList
           ref={flatListRef}
           data={messages}
@@ -856,6 +889,8 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
           contentContainerStyle={styles.messageList}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
         />
+        
+      </ImageBackground>
         {renderInputArea()}
       {isFabOpen && (
         <View style={styles.fabMenu}>
@@ -879,6 +914,11 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
 }
 
 const styles = StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
   safeArea: {
     flex: 1,
     backgroundColor: theme.colors.background,
@@ -886,24 +926,43 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
+ 
+  headerContainer: {
     backgroundColor: theme.colors.background,
-    overflow: 'hidden',
+    zIndex: 1,
   },
   headerTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: theme.spacing.md,
-    height: 90,
     shadowColor: '#000', 
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
-  
     elevation: 4,
     backgroundColor: '#fff',
-
+  },
+  headerDetails: {
+    position: 'absolute',
+    top: 80,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    padding: theme.spacing.md,
+    borderBottomLeftRadius: theme.roundness,
+    borderBottomRightRadius: theme.roundness,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    overflow: 'hidden',
+  },
+  headerDetailText: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.sm,
   },
   backButton: {
     padding: theme.spacing.sm,
@@ -923,17 +982,8 @@ const styles = StyleSheet.create({
   moreButton: {
     padding: theme.spacing.sm,
   },
-  headerDetails: {
-    padding: theme.spacing.md,
-  },
-  headerDetailText: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.sm,
-  },
-  moreButton: {
-    padding: theme.spacing.sm,
-  },
+
+
   messageList: {
     padding: theme.spacing.md,
   },
@@ -943,32 +993,48 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     marginRight: theme.spacing.sm,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: theme.colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    color: theme.colors.surface,
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.fontWeights.bold,
-  },
-  messageContent: {
+  },  messageContent: {
     flex: 1,
     padding: theme.spacing.md,
     borderRadius: theme.roundness * 2,
-    maxWidth: '80%',
     backgroundColor: theme.colors.background,
     shadowColor: theme.colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
-  },  messageWrapper: {
+  },
+  senderInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  avatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: theme.spacing.xs,
+  },
+  avatarText: {
+    color: theme.colors.surface,
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.fontWeights.bold,
+  },
+  avatarImg: {
+
+    width:24,
+    height:24
+  },
+  senderName: {
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.fontWeights.bold,
+    color: theme.colors.muted,
+  },
+  
+  messageWrapper: {
     marginBottom: theme.spacing.md,
   },
   currentUserMessageWrapper: {
@@ -977,18 +1043,14 @@ const styles = StyleSheet.create({
   otherUserMessageWrapper: {
     alignItems: 'flex-start',
   },
-  timestamp: {
-    fontSize: theme.typography.sizes.xs,
-    color: theme.colors.muted,
-    marginTop: theme.spacing.xxs,
-  },
+
   timestampRight: {
     alignSelf: 'flex-end',
-    marginRight: theme.spacing.sm,
+    marginTop: theme.spacing.md,
   },
   timestampLeft: {
     alignSelf: 'flex-start',
-    marginLeft: theme.spacing.sm,
+    marginTop: theme.spacing.md,
   },
   currentUserMessage: {
     alignSelf: 'flex-end',
@@ -998,20 +1060,15 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     marginRight: '20%',
   },
-  senderName: {
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: theme.typography.fontWeights.bold,
-    marginBottom: theme.spacing.xs,
-    color: theme.colors.muted,
-  },
   messageText: {
     fontSize: theme.typography.sizes.md,
     color: theme.colors.text,
   },
   timestamp: {
     fontSize: theme.typography.sizes.xs,
-    color: theme.colors.muted,
+    color: "#545352",
     alignSelf: 'flex-end',
+    padding:5,
     marginTop: theme.spacing.xs,
   },
   inputContainer: {
@@ -1019,8 +1076,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: theme.spacing.sm,
     backgroundColor: theme.colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+    borderRadius:20
   },
   input: {
     flex: 1,
