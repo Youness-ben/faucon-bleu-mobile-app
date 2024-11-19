@@ -231,14 +231,6 @@ const VehicleDetailScreen: React.FC = () => {
             <Text style={styles.vehicleName}>{`${vehicle.brand_name} ${vehicle.model}`}</Text>
             <Text style={styles.licensePlate}>{vehicle.plate_number}</Text>
           </View>
-          <View style={styles.headerButtons}>
-            <TouchableOpacity onPress={handleEdit} style={[styles.headerButton,{backgroundColor:"#FFF"}]}>
-              <Ionicons name="pencil-outline" size={23} color={theme.colors.primary} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleDelete} style={[styles.headerButton,{backgroundColor:"#ba2014"}]}>
-              <Ionicons name="trash-outline" size={24} color="white" />
-            </TouchableOpacity>
-          </View>
         </View>
 
         <View style={styles.buttonContainer}>
@@ -262,7 +254,17 @@ const VehicleDetailScreen: React.FC = () => {
         </View>
 
         <View style={styles.infoCard}>
-          <Text style={styles.sectionTitle}>{t('vehicleDetail.details')}</Text>
+          <View style={styles.infoCardHeader}>
+            <Text style={styles.sectionTitle}>{t('vehicleDetail.details')}</Text>
+            <View style={styles.headerButtons}>
+              <TouchableOpacity onPress={handleEdit} style={[styles.headerButton, styles.editButton]}>
+                <Ionicons name="pencil-outline" size={20} color={theme.colors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleDelete} style={[styles.headerButton, styles.deleteButton]}>
+                <Ionicons name="trash-outline" size={20} color="white" />
+              </TouchableOpacity>
+            </View>
+          </View>
           <View style={styles.detailsGrid}>
             <DetailItem icon="calendar-outline" label={t('vehicleDetail.year')} value={vehicle.year.toString()} />
             <DetailItem icon="car-outline" label={t('vehicleDetail.make')} value={vehicle.brand_name} />
@@ -470,11 +472,16 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
     ...theme.elevation.medium,
   },
+  infoCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
   sectionTitle: {
     fontSize: theme.typography.sizes.lg,
     fontWeight: theme.typography.fontWeights.bold,
     color: theme.colors.text,
-    marginBottom: theme.spacing.md,
   },
   detailsGrid: {
     flexDirection: 'row',
@@ -547,6 +554,19 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     color: theme.colors.primary,
   },
+  headerButtons: {
+    flexDirection: 'row',
+  },
+  headerButton: {
+    marginLeft: theme.spacing.sm,
+    padding: 8,
+    borderRadius: 10,
+  },
+  editButton: {
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+  },
   deleteButton: {
     backgroundColor: theme.colors.error,
   },
@@ -596,18 +616,6 @@ const styles = StyleSheet.create({
     padding: theme.spacing.sm,
     marginRight: theme.spacing.md,
   },
-  headerButtons: {
-    flexDirection: 'row',
-    marginVertical:'auto',
-    position: 'absolute',
-    top: theme.spacing.xl,
-    right: theme.spacing.md,
-  },
-  headerButton: {
-    marginLeft: theme.spacing.sm,
-    padding:8,
-    borderRadius:10
-  },
   editButtonsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -631,7 +639,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: 'white',
-    padding: theme.spacing.md
+    padding: theme.spacing.md,
+    marginHorizontal: theme.spacing.md,
+    marginTop: theme.spacing.md,
+    borderRadius: theme.roundness,
+    ...theme.elevation.small,
   },
   accordionTitle: {
     fontSize: theme.typography.sizes.md,

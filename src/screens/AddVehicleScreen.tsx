@@ -21,20 +21,27 @@ interface Brand {
   name: string;
 }
 
+interface Model {
+  id: number;
+  modele: string;
+  annee: string;
+}
+
 const AddVehicleScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<AddVehicleScreenNavigationProp>();
   const [brandId, setBrandId] = useState<number | null>(null);
   const [brands, setBrands] = useState<Brand[]>([]);
-  const [model, setModel] = useState('');
+  const [selectedModel, setSelectedModel] = useState<Model | null>(null);
+  const [models, setModels] = useState<Model[]>([]);
   const [plateNumber, setPlateNumber] = useState('');
-  const [year, setYear] = useState('');
   const [vin_number, setVin] = useState('');
   const [kilometers, setMileage] = useState('');
   const [fuelType, setFuelType] = useState('');
   const [transmission, setTransmission] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingBrands, setIsFetchingBrands] = useState(true);
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
   const [conductorPassword, setConductorPassword] = useState('');
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' | 'info' }>({
     visible: false,
@@ -63,8 +70,29 @@ const AddVehicleScreen: React.FC = () => {
     fetchBrands();
   }, [t]);
 
+  useEffect(() => {
+    const fetchModels = async () => {
+      if (brandId) {
+        setIsFetchingModels(true);
+        try {
+          const response = await api.get(`/client/brands/${brandId}/models`);
+          setModels(response.data);
+        } catch (error) {
+          console.error('Error fetching models:', error);
+          showToast(t('addVehicle.modelsFetchFailed'), 'error');
+        } finally {
+          setIsFetchingModels(false);
+        }
+      } else {
+        setModels([]);
+      }
+    };
+
+    fetchModels();
+  }, [brandId, t]);
+
   const handleSubmit = async () => {
-    if (!brandId || !model || !plateNumber || !year || !vin_number || !kilometers || !fuelType || !transmission || !conductorPassword) {
+    if (!brandId || !selectedModel || !plateNumber || !vin_number || !kilometers || !fuelType || !transmission || !conductorPassword) {
       showToast(t('addVehicle.fillAllFields'), 'error');
       return;
     }
@@ -72,11 +100,12 @@ const AddVehicleScreen: React.FC = () => {
     setIsLoading(true);
 
     try {
+
       const response = await api.post('/client/vehicles', {
         brand_id: brandId,
-        model,
+        model: selectedModel.modele,
+        year: selectedModel.annee,
         plate_number: plateNumber,
-        year: parseInt(year),
         vin_number,
         kilometers: parseInt(kilometers),
         fuel_type: fuelType,
@@ -91,11 +120,15 @@ const AddVehicleScreen: React.FC = () => {
         throw new Error('Unexpected response status');
       }
     } catch (error) {
-      console.error('Error adding vehicle:', error.response.data);
+      console.error('Error adding vehicle:', error.response?.data || error.message);
       showToast(t('addVehicle.addFailed'), 'error');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleGoBack = () => {
+    navigation.goBack();
   };
 
   if (isFetchingBrands) {
@@ -106,28 +139,26 @@ const AddVehicleScreen: React.FC = () => {
     );
   }
 
-  
-  const handleGoBack = () => {
-    navigation.goBack();
-  };
-
   return (
     <View style={styles.container}>
       <ScrollView>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
-        </TouchableOpacity>
-        <Text style={styles.title}>{t('addVehicle.title')}</Text>
-        <View />
-      </View>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
+          </TouchableOpacity>
+          <Text style={styles.title}>{t('addVehicle.title')}</Text>
+          <View />
+        </View>
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>{t('addVehicle.brand')}</Text>
           <View style={styles.pickerContainer}>
             <Picker
               selectedValue={brandId}
-              onValueChange={(itemValue) => setBrandId(itemValue)}
+              onValueChange={(itemValue) => {
+                setBrandId(itemValue);
+                setSelectedModel(null);
+              }}
               style={styles.picker}
             >
               <Picker.Item label={t('addVehicle.selectBrand')} value={null} />
@@ -140,12 +171,19 @@ const AddVehicleScreen: React.FC = () => {
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>{t('addVehicle.model')}</Text>
-          <TextInput
-            style={styles.input}
-            value={model}
-            onChangeText={setModel}
-            placeholder={t('addVehicle.enterModel')}
-          />
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={selectedModel?.id}
+              onValueChange={(itemValue) => setSelectedModel(models.find(model => model.id === itemValue) || null)}              style={styles.picker}
+              enabled={!isFetchingModels}
+            >
+              <Picker.Item label={t('addVehicle.selectModel')} value={null} />
+              {models.map((model) => (
+                <Picker.Item key={model.id} label={`${model.modele} (${model.annee})`} value={model.id} />
+              ))}
+            </Picker>
+          </View>
+          {isFetchingModels && <ActivityIndicator size="small" color={theme.colors.primary} />}
         </View>
 
         <View style={styles.formGroup}>
@@ -155,17 +193,6 @@ const AddVehicleScreen: React.FC = () => {
             value={plateNumber}
             onChangeText={setPlateNumber}
             placeholder={t('addVehicle.enterPlateNumber')}
-          />
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>{t('addVehicle.year')}</Text>
-          <TextInput
-            style={styles.input}
-            value={year}
-            onChangeText={setYear}
-            placeholder={t('addVehicle.enterYear')}
-            keyboardType="numeric"
           />
         </View>
 
@@ -258,12 +285,11 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    
     justifyContent: 'space-between',
-    paddingBottom:40
+    paddingBottom: 40
   },
   backButton: {
-    marginVertical:"auto"
+    marginVertical: "auto"
   },
   loadingContainer: {
     flex: 1,
@@ -271,12 +297,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: theme.colors.background,
   },
-
   title: {
     fontSize: theme.typography.sizes.xl,
     fontWeight: theme.typography.fontWeights.bold,
     color: theme.colors.primary,
-
   },
   formGroup: {
     marginBottom: theme.spacing.md,
