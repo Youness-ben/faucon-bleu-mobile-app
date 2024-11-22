@@ -139,7 +139,7 @@ const OrderServiceScreen: React.FC = () => {
     try {
       const response = await api.post('/client/service-orders', orderData);
       console.log('Order submitted:', response.data);
-      navigation.navigate("TicketScreen", { serviceId: response.data.id });
+      navigation.navigate("TicketScreen", { serviceId: response.data.id,service :  response.data });
     } catch (error) {
       console.error('Error submitting order:', error);
       setError(t('services.submitError'));
