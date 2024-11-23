@@ -475,22 +475,24 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
     }
   };
 
-  const renderHeader = () => (
+const renderHeader = () => (
     <View style={styles.headerContainer}>
-      <View style={styles.headerTopRow}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={toggleHeader} style={styles.headerContent}>
-          <Text style={styles.headerTitle}>{"Chat"}</Text>
-           <Ionicons 
-            name={isHeaderExpanded ? "chevron-up" : "chevron-down"} 
-            size={20} 
-            color={theme.colors.text} 
-          /> 
-        </TouchableOpacity>
-        <View style={styles.moreButton} />
-      </View>
+      <LinearGradient colors={['#028dd0', '#01579B']} style={styles.headerGradient}>
+        <View style={styles.headerTopRow}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={toggleHeader} style={styles.headerContent}>
+            <Text style={styles.headerTitle}>{t('ticket.chat')}</Text>
+            <Ionicons 
+              name={isHeaderExpanded ? "chevron-up" : "chevron-down"} 
+              size={20} 
+              color="#FFFFFF" 
+            />
+          </TouchableOpacity>
+          <View style={styles.moreButton} />
+        </View>
+      </LinearGradient>
       <Animated.View style={[
         styles.headerDetails,
         {
@@ -501,13 +503,14 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
           opacity: headerHeight,
         }
       ]}>
-        <Text style={styles.headerDetailText}>{t('ticket.carInfo')}:<Text style={{fontWeight : 'bold'}}>{`${service.vehicle.brand_name || ''} ${service.vehicle.model || ''}`}</Text>  </Text>
-        <Text style={styles.headerDetailText}>{t('ticket.serviceType')}: <Text style={{fontWeight : 'bold'}}>{service?.service?.name}</Text></Text>
-        <Text style={styles.headerDetailText}>{t('ticket.date')}: <Text style={{fontWeight : 'bold'}}>{format(service?.scheduled_at,'dd/MM/yyyy')}</Text></Text>
-        <Text style={[styles.headerDetailText]}>{t('ticket.status')}:  <Text style={{color :getStatusColor(service?.status)}}>{t(`serviceStatus.${service?.status}`)}</Text></Text>
+        <Text style={styles.headerDetailText}>{t('ticket.carInfo')}: <Text style={styles.headerDetailBold}>{`${service.vehicle.brand_name || ''} ${service.vehicle.model || ''}`}</Text></Text>
+        <Text style={styles.headerDetailText}>{t('ticket.serviceType')}: <Text style={styles.headerDetailBold}>{service?.service?.name}</Text></Text>
+        <Text style={styles.headerDetailText}>{t('ticket.date')}: <Text style={styles.headerDetailBold}>{format(service?.scheduled_at, 'dd/MM/yyyy')}</Text></Text>
+        <Text style={styles.headerDetailText}>{t('ticket.status')}: <Text style={[styles.headerDetailBold, { color: getStatusColor(service?.status) }]}>{t(`serviceStatus.${service?.status}`)}</Text></Text>
       </Animated.View>
     </View>
   );
+
 
 
   const renderMessage = ({ item }: { item: Message })  => {
@@ -714,22 +717,22 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
       ) : (
         <>
           <TouchableOpacity style={styles.attachButton} onPress={() => setIsFabOpen(!isFabOpen)}>
-            <Ionicons name="add" size={24} color={theme.colors.primary} />
+            <Ionicons name="add" size={24} color="#028dd0" />
           </TouchableOpacity>
           <TextInput
             style={styles.input}
             value={inputText}
             onChangeText={setInputText}
             placeholder={t('ticket.inputPlaceholder')}
-            placeholderTextColor={theme.colors.placeholder}
+            placeholderTextColor="#A0A0A0"
           />
           {inputText.trim() ? (
             <TouchableOpacity onPress={sendTextMessage} style={styles.sendButton}>
-              <Ionicons name="send" size={24} color={theme.colors.primary} />
+              <Ionicons name="send" size={24} color="#028dd0" />
             </TouchableOpacity>
           ) : (
             <TouchableOpacity onPress={startRecording} style={styles.micButton}>
-              <Ionicons name="mic" size={24} color={theme.colors.primary} />
+              <Ionicons name="mic" size={24} color="#028dd0" />
             </TouchableOpacity>
           )}
         </>
@@ -903,7 +906,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+   <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView 
         style={styles.container} 
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -911,20 +914,19 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
       >
         {renderHeader()}
         <ImageBackground 
-      source={require('../../assets/pattern_opac.png')} 
-      style={styles.backgroundImage}
-      resizeMode="repeat"
-    >
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          renderItem={renderMessage}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.messageList}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-        />
-        
-      </ImageBackground>
+          source={require('../../assets/pattern_opac.png')} 
+          style={styles.backgroundImage}
+          resizeMode="repeat"
+        >
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            renderItem={renderMessage}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.messageList}
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          />
+        </ImageBackground>
         {renderInputArea()}
       {isFabOpen && (
         <View style={styles.fabMenu}>
@@ -1335,5 +1337,83 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.sm,
     color: theme.colors.text,
     fontSize: theme.typography.sizes.md,
+  },
+
+  headerContainer: {
+    backgroundColor: '#FFFFFF',
+    zIndex: 1,
+  },
+  headerGradient: {
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+  },
+  headerContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginRight: 8,
+  },
+  backButton: {
+    padding: 8,
+  },
+  moreButton: {
+    padding: 8,
+  },
+  headerDetails: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  headerDetailText: {
+    fontSize: 14,
+    color: '#333333',
+    marginBottom: 8,
+  },
+  headerDetailBold: {
+    fontWeight: 'bold',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5EA',
+  },
+  attachButton: {
+    padding: 8,
+  },
+  input: {
+    flex: 1,
+    marginHorizontal: 8,
+    padding: 12,
+    backgroundColor: '#F2F2F7',
+    borderRadius: 20,
+    color: '#333333',
+    fontSize: 16,
+  },
+  sendButton: {
+    padding: 8,
+  },
+  micButton: {
+    padding: 8,
   },
 });

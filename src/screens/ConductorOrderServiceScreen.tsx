@@ -5,6 +5,7 @@ import { RouteProp, useFocusEffect, useNavigation, useRoute } from '@react-navig
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../styles/theme';
 import api from '../api';
 
@@ -62,16 +63,15 @@ const ConductorOrderServiceScreen: React.FC = () => {
   };
 
   const renderHeader = () => (
-    <View style={styles.header}>
+    <LinearGradient colors={['#028dd0', '#01579B']} style={styles.header}>
       <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-        <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
+        <Ionicons name="arrow-back" size={24} color="white" />
       </TouchableOpacity>
-      
-      <Text style={styles.title}>{t('services.orderService')}</Text>
-
+      <Text style={styles.headerTitle}>{t('services.orderService')}</Text>
       <View style={styles.headerRight} />
-    </View>
+    </LinearGradient>
   );
+
   const handleConfirmOrder = async () => {
     if (!service) return;
 
@@ -79,10 +79,10 @@ const ConductorOrderServiceScreen: React.FC = () => {
     try {
       const orderData = {
         service_id: service.id,
-        scheduled_at:  selectedDate.getFullYear()+"-"+(selectedDate.getMonth()+1)+"-"+selectedDate.getDate()+" 00:00:00",
+        scheduled_at: `${selectedDate.getFullYear()}-${selectedDate.getMonth() + 1}-${selectedDate.getDate()} 00:00:00`,
       };
-      const resp =  await api.post('/vehicle/confirm-service', orderData);
-      navigation.navigate('TicketScreen', { serviceId : resp.data.id ,service : resp.data });
+      const resp = await api.post('/vehicle/confirm-service', orderData);
+      navigation.navigate('TicketScreen', { serviceId: resp.data.id, service: resp.data });
     } catch (err) {
       console.error('Error confirming service:', err);
       Alert.alert(t('orderService.error'), t('orderService.confirmError'));
@@ -95,9 +95,9 @@ const ConductorOrderServiceScreen: React.FC = () => {
     return (
       <SafeAreaView style={styles.safeArea}>
         {renderHeader()}
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-      </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
       </SafeAreaView>
     );
   }
@@ -106,12 +106,13 @@ const ConductorOrderServiceScreen: React.FC = () => {
     return (
       <SafeAreaView style={styles.safeArea}>
         {renderHeader()}
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>{error || t('orderService.unknownError')}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={fetchServiceDetails}>
-          <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color={theme.colors.error} />
+          <Text style={styles.errorText}>{error || t('orderService.unknownError')}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={fetchServiceDetails}>
+            <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     );
   }
@@ -119,52 +120,75 @@ const ConductorOrderServiceScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       {renderHeader()}
-    <ScrollView style={styles.container}>
-      
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('orderService.serviceDetails')}</Text>
-        <Text style={styles.serviceName}>{service.name}</Text>
-        <Text style={styles.serviceDescription}>{service.description}</Text>
-        <Text style={styles.serviceDuration}>
-          {t('services.estimatedDuration', { duration: service.estimated_duration, unite: service.estimated_duration_unite  })}
-        </Text>
+      <ScrollView style={styles.container}>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t('orderService.serviceDetails')}</Text>
+          <Text style={styles.serviceName}>{service.name}</Text>
+          <Text style={styles.serviceDescription}>{service.description}</Text>
+          <View style={styles.detailRow}>
+            <Ionicons name="time-outline" size={20} color={theme.colors.primary} />
+            <Text style={styles.serviceDuration}>
+              {t('services.estimatedDuration', { duration: service.estimated_duration, unite: service.estimated_duration_unite })}
+            </Text>
+          </View>
+        </View>
 
-      </View>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t('orderService.serviceDate')}</Text>
+          <TouchableOpacity style={styles.dateTimeButton} onPress={() => setShowDatePicker(true)}>
+            <Text style={styles.dateTimeButtonText}>
+              {selectedDate.toLocaleDateString()}
+            </Text>
+            <Ionicons name="calendar-outline" size={24} color={theme.colors.primary} />
+          </TouchableOpacity>
+          {showDatePicker && (
+            <DateTimePicker
+              value={selectedDate}
+              mode="date"
+              display="default"
+              onChange={handleDateChange}
+              minimumDate={new Date()}
+            />
+          )}
+        </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>{t('orderService.serviceDate')}</Text>
-        <TouchableOpacity style={styles.dateTimeButton} onPress={() => setShowDatePicker(true)}>
-          <Text style={styles.dateTimeButtonText}>
-            {selectedDate.toLocaleDateString()}
-          </Text>
-          <Ionicons name="calendar-outline" size={24} color={theme.colors.primary} />
+        <TouchableOpacity
+          style={styles.confirmButton}
+          onPress={handleConfirmOrder}
+        >
+          <Text style={styles.confirmButtonText}>{t('orderService.confirmService')}</Text>
         </TouchableOpacity>
-        {showDatePicker && (
-          <DateTimePicker
-            value={selectedDate}
-            mode="date"
-            display="default"
-            onChange={handleDateChange}
-            minimumDate={new Date()}
-          />
-        )}
-      </View>
-
-      <TouchableOpacity
-        style={styles.confirmButton}
-        onPress={handleConfirmOrder}
-      >
-        <Text style={styles.confirmButtonText}>{t('orderService.confirmService')}</Text>
-      </TouchableOpacity>
-    </ScrollView>
+      </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: theme.spacing.md,
+    paddingTop: theme.spacing.lg,
+  },
+  backButton: {
+    padding: theme.spacing.sm,
+  },
+  headerTitle: {
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.fontWeights.bold,
+    color: 'white',
+  },
+  headerRight: {
+    width: 40,
   },
   loadingContainer: {
     flex: 1,
@@ -183,11 +207,12 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.lg,
     color: theme.colors.error,
     textAlign: 'center',
-    marginBottom: theme.spacing.md,
+    marginVertical: theme.spacing.md,
   },
   retryButton: {
     backgroundColor: theme.colors.primary,
-    padding: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
     borderRadius: theme.roundness,
   },
   retryButtonText: {
@@ -195,45 +220,40 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.fontWeights.bold,
   },
-  title: {
-    fontSize: theme.typography.sizes.xxl,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.primary,
-    padding: theme.spacing.md,
-  },
   section: {
     backgroundColor: 'white',
     borderRadius: theme.roundness,
     margin: theme.spacing.md,
-    padding: theme.spacing.md,
-    ...theme.elevation.small,
+    padding: theme.spacing.lg,
+    ...theme.elevation.medium,
   },
   sectionTitle: {
     fontSize: theme.typography.sizes.lg,
     fontWeight: theme.typography.fontWeights.bold,
     color: theme.colors.text,
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
   },
   serviceName: {
     fontSize: theme.typography.sizes.xl,
     fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.text,
+    color: theme.colors.primary,
     marginBottom: theme.spacing.sm,
   },
   serviceDescription: {
     fontSize: theme.typography.sizes.md,
     color: theme.colors.textSecondary,
     marginBottom: theme.spacing.md,
+    lineHeight: 22,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.xs,
   },
   serviceDuration: {
     fontSize: theme.typography.sizes.md,
     color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.xs,
-  },
-  servicePrice: {
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.primary,
+    marginLeft: theme.spacing.sm,
   },
   dateTimeButton: {
     flexDirection: 'row',
@@ -241,7 +261,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: theme.colors.secondary + '20',
     borderRadius: theme.roundness,
-    padding: theme.spacing.sm,
+    padding: theme.spacing.md,
+    marginTop: theme.spacing.sm,
   },
   dateTimeButtonText: {
     fontSize: theme.typography.sizes.md,
@@ -253,34 +274,14 @@ const styles = StyleSheet.create({
     margin: theme.spacing.md,
     padding: theme.spacing.md,
     alignItems: 'center',
+    ...theme.elevation.small,
   },
   confirmButtonText: {
     color: 'white',
     fontSize: theme.typography.sizes.lg,
     fontWeight: theme.typography.fontWeights.bold,
   },
-    safeArea: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: theme.spacing.md,
-    backgroundColor: theme.colors.background,
-  },
-  backButton: {
-    padding: theme.spacing.sm,
-  },
-  headerTitle: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.text,
-  },
-  headerRight: {
-    width: 40, // To balance the back button on the left
-  },
 });
 
 export default ConductorOrderServiceScreen;
+

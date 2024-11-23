@@ -63,6 +63,7 @@ export default function ConductorServicesScreen() {
       const response = await api.get('vehicle/available-services', {
         params: { page: pageNumber, per_page: ITEMS_PER_PAGE }
       });
+      console.log(response.data);
       if (pageNumber === 1 || refresh) {
         setServices(response.data.data);
       } else {
@@ -106,7 +107,7 @@ export default function ConductorServicesScreen() {
   const renderServiceItem = ({ item }: { item: Service }) => (
     <TouchableOpacity
       style={styles.serviceItem}
-      onPress={() => navigation.navigate('OrderService', { serviceType: item.name, serviceId: item.id })}
+      onPress={() => navigation.navigate('ConductorOrderServiceScreen', { serviceType: item.name, serviceId: item.id })}
     >
       <View style={styles.serviceIcon}>
         <Image 

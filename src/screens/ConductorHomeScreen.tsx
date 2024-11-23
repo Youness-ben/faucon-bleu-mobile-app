@@ -197,13 +197,7 @@ const ConductorHomeScreen: React.FC = () => {
               style={styles.adBannerImage}
               defaultSource={require('../../assets/logo.png')}
             />
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.7)']}
-              style={styles.bannerGradient}
-            >
-              <Text style={styles.bannerTitle}>{item.title}</Text>
-              <Text style={styles.bannerDescription}>{item.description}</Text>
-            </LinearGradient>
+
           </View>
         )}
         keyExtractor={(item) => item.id.toString()}
