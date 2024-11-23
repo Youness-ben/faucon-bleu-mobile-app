@@ -32,7 +32,7 @@
     "fetchError": "Error fetching data",
     "unknownError": "An unknown error occurred",
     "vehicleDetails": "Vehicle Details",
-    "year": "Year",
+    "year": "Engine",
     "kilometers": "Kilometers",
     "fuelType": "Fuel Type",
     "transmission": "Transmission",
@@ -77,6 +77,8 @@
   },
   "orderService": {
     "title": "Order Service",
+    "selectVehicle":"Select a vehicle",
+    "changeVehicle":"Change the selected vehicle",
     "serviceDetails": "Service Details",
     "serviceDate": "Service Date",
     "estimatedDuration": "Estimated Duration: {{duration}} {{unite}}",
@@ -160,11 +162,12 @@
     "brand": "Brand",
     "selectBrand": "Select Brand",
     "model": "Model",
-    "enterModel": "Enter Model",
+    "selectModel": "Select Model",
     "plateNumber": "Plate Number",
     "enterPlateNumber": "Enter Plate Number",
-    "year": "Year",
-    "enterYear": "Enter Year",
+    "year": "Engine",
+    "modelAndYear": "Model and engine",
+    "selectYear": "Select Engine",
     "vin": "VIN",
     "enterVin": "Enter VIN",
     "mileage": "Mileage",
@@ -189,7 +192,7 @@
   },
   "vehicleDetail": {
     "details": "Vehicle Details",
-    "year": "Year",
+    "year": "Engine",
     "make": "Make",
     "model": "Model",
     "kilometers": "Kilometers",
@@ -246,6 +249,7 @@
     "changePhoto": "Change Photo",
     "firstName": "First Name",
     "lastName": "Last Name",
+    "title": "Edit Profile",
     "namePlaceholder": "Enter your name",
     "email": "Email",
     "emailPlaceholder": "Enter your email",
@@ -255,6 +259,7 @@
   },
   "invoices": {
     "title": "Invoices",
+    "searchPlaceholder": "Search for an invoice",
     "status": {
       "paid": "Paid",
       "pending": "Pending",
@@ -276,6 +281,7 @@
     "carInfo": "Vehicle",
     "serviceType": "Service",
     "Date": "Date",
+    "chat": "Chat",
     "Status": "Status"
   }
 }

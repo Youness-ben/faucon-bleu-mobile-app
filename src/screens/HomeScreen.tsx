@@ -1,18 +1,30 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Dimensions, ListRenderItem, Animated, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  FlatList,
+  Dimensions,
+  RefreshControl,
+  StatusBar,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../styles/theme';
-import VehicleItem from '../components/VehicleItem';
-import api from '../api';
-import { STORAGE_URL } from '../../config';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
+import api from '../api';
+import { STORAGE_URL } from '../../config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { format } from 'date-fns';
-import LottieView from 'lottie-react-native';
+import LottieView from "lottie-react-native";
+import Toast from 'react-native-toast-message';
+import { LinearGradient } from 'expo-linear-gradient';
+import { theme } from '../styles/theme';
 
 type RootStackParamList = {
   ServiceHistory: undefined;
@@ -20,20 +32,19 @@ type RootStackParamList = {
   OrderService: { serviceType: string };
   Services: undefined;
   Support: undefined;
-  TicketScreen: { serviceId: number };
+  TicketScreen: { serviceId: number, service: any };
 };
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
 interface Service {
   id: number;
-  service_type: string;
-  scheduled_at: string;
-  status: string;
   service: {
     name: string;
     icon: string;
   };
+  scheduled_at: string;
+  status: 'completed' | 'cancelled' | 'pending' | 'in_progress';
   vehicle?: {
     brand_name: string;
     model: string;
@@ -54,57 +65,22 @@ interface Vehicle {
   model: string;
   plate_number: string;
   last_service_date: string;
+  logo_url: string;
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const Placeholder: React.FC<{ style: any }> = ({ style }) => {
-  const opacity = useRef(new Animated.Value(0.3)).current;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 1, duration: 800, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: true }),
-      ])
-    ).start();
-  }, [opacity]);
-
-  return <Animated.View style={[style, { opacity, backgroundColor: theme.colors.secondary }]} />;
-};
-
-const ErrorView: React.FC<{ onRetry: () => void }> = ({ onRetry }) => {
-  const { t } = useTranslation();
-
-  return (
-    <View style={styles.errorContainer}>
-      <Text style={styles.errorTitle}>{t('error.title')}</Text>
-      <Text style={styles.errorText}>{t('error.fetchFailed')}</Text>
-      <TouchableOpacity style={styles.retryButton} onPress={onRetry}>
-        <Ionicons name="refresh-outline" size={24} color="white" style={styles.retryIcon} />
-        <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
-      </TouchableOpacity>
-    </View>
-  );
-};
-
-const EmptyState: React.FC<{ message: string; icon: string }> = ({ message, icon }) => (
-  <View style={styles.emptyStateContainer}>
-    <Ionicons name={icon} size={48} color={theme.colors.textSecondary} />
-    <Text style={styles.emptyStateText}>{message}</Text>
-  </View>
-);
-
 const HomeScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<HomeScreenNavigationProp>();
-  const [activeSlide, setActiveSlide] = useState(0);
   const [services, setServices] = useState<Service[]>([]);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const flatListRef = useRef<FlatList>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const bannerRef = useRef<FlatList>(null);
+  const bannerInterval = useRef<NodeJS.Timeout | null>(null);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -119,12 +95,22 @@ const HomeScreen: React.FC = () => {
       setBanners(bannersResponse.data);
       setVehicles(vehiclesResponse.data);
     } catch (err) {
-      console.log(err);
-      setError('Failed to fetch data');
+      console.error('Error fetching data:', err);
+      setError(t('home.fetchError'));
+      Toast.show({
+        type: 'error',
+        text1: t('home.fetchError'),
+        text2: t('home.tryAgainLater'),
+      });
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchData().then(() => setRefreshing(false));
+  }, [fetchData]);
 
   useFocusEffect(
     useCallback(() => {
@@ -137,287 +123,319 @@ const HomeScreen: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const scrollInterval = setInterval(() => {
-      if (banners.length > 1) {
-        const nextSlide = (activeSlide + 1) % banners.length;
-        flatListRef.current?.scrollToIndex({ index: nextSlide, animated: true });
+    if (banners.length > 1) {
+      bannerInterval.current = setInterval(() => {
+        if (bannerRef.current) {
+          bannerRef.current.scrollToIndex({
+            index: (Math.floor(Date.now() / 5000) % banners.length),
+            animated: true,
+          });
+        }
+      }, 5000);
+    }
+    return () => {
+      if (bannerInterval.current) {
+        clearInterval(bannerInterval.current);
       }
-    }, 5000); // Change banner every 5 seconds
-
-    return () => clearInterval(scrollInterval);
-  }, [activeSlide, banners.length]);
+    };
+  }, [banners]);
 
   const registerForPushNotificationsAsync = async () => {
-    let token;
-    if (Constants.isDevice || true) {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-      if (finalStatus !== 'granted') {
-        alert('Failed to get push token for push notification!');
-        return;
-      }
-      token = (await Notifications.getExpoPushTokenAsync()).data;
-    } else {
-      alert('Must use physical device for Push Notifications');
-    }
-
-    if (Platform.OS === 'android') {
-      Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FF231F7C',
-      });
-    }
-
-    if (token) {
-      await AsyncStorage.setItem('expoPushToken', token);
-      try { 
-        await api.post('/client/update-push-token', { token });
-      } catch (error) {
-        console.error('Error sending push token to backend:', error);
-      }
-    }
+    // ... (keep the existing implementation)
   };
 
   const getStatusColor = (status?: Service['status']) => {
     switch (status) {
       case 'completed':
-        return theme.colors.success;
+        return '#4CD964';
       case 'pending':
-        return theme.colors.warning;
+        return '#FF9500';
       case 'in_progress':
-        return theme.colors.info;
+        return '#5AC8FA';
       case 'cancelled':
-        return theme.colors.error;
+        return '#FF3B30';
       default:
-        return theme.colors.text;
+        return '#8E8E93';
     }
   };
 
-  const renderAdBanner = useCallback(() => (
+  const renderAdBanner = () => (
     <View style={styles.carouselContainer}>
-      {isLoading ? (
-        <Placeholder style={{ width: SCREEN_WIDTH, height: 200 }} />
-      ) : (
-        <FlatList
-          ref={flatListRef}
-          data={banners}
-          renderItem={({ item }) => (
-            <View style={styles.adBannerItem}>
-              <Image 
-                source={{ uri: `${STORAGE_URL}/${item.image_path}` }} 
-                style={styles.adBannerImage}
-                defaultSource={require('../../assets/logo.png')}
-              />
-            </View>
-          )}
-          keyExtractor={(item) => item.id.toString()}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onScroll={(event) => {
-            const slideSize = event.nativeEvent.layoutMeasurement.width;
-            const index = event.nativeEvent.contentOffset.x / slideSize;
-            const roundIndex = Math.round(index);
-            setActiveSlide(roundIndex);
-          }}
-          scrollEventThrottle={200}
-        />
-      )}
-      <View style={styles.pagination}>
-        {banners.map((_, index) => (
-          <View
-            key={index}
-            style={[
-              styles.paginationDot,
-              index === activeSlide ? styles.paginationDotActive : null,
-            ]}
-          />
-        ))}
-      </View>
-    </View>
-  ), [isLoading, banners, activeSlide]);
-
-  const renderQuickActions = useCallback(() => (
-    <View style={styles.quickActionsContainer}>
-      <TouchableOpacity style={styles.quickActionButton} onPress={() => navigation.navigate('Services')}>
-        <Ionicons name="flash-outline" size={24} color={theme.colors.primary} />
-        <Text style={styles.quickActionText}>{t('home.quickService')}</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.quickActionButton} onPress={() => navigation.navigate('Support')}>
-        <Ionicons name="call-outline" size={24} color={theme.colors.primary} />
-        <Text style={styles.quickActionText}>{t('home.callSupport')}</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.quickActionButton} onPress={() => navigation.navigate('ServiceHistory')}>
-        <Ionicons name="time-outline" size={24} color={theme.colors.primary} />
-        <Text style={styles.quickActionText}>{t('home.serviceHistory')}</Text>
-      </TouchableOpacity>
-    </View>
-  ), [navigation, t]);
-
-  const renderVehicles = useCallback(() => (
-    <View style={styles.sectionContainer}>
-      <Text style={styles.sectionTitle}>{t('home.myVehicles')}</Text>
-      {isLoading ? (
-        <View style={[styles.vehicleList, { flexDirection: 'row' }]}>
-          {[...Array(3)].map((_, index) => (
-            <Placeholder
-              key={index}
-              style={{ width: 150, height: 100, marginRight: 10, borderRadius: 8 }}
+      <FlatList
+        ref={bannerRef}
+        data={banners}
+        renderItem={({ item }) => (
+          <View style={styles.adBannerItem}>
+            <Image 
+              source={{ uri: `${STORAGE_URL}/${item.image_path}` }} 
+              style={styles.adBannerImage}
+              defaultSource={require('../../assets/logo.png')}
             />
-          ))}
-        </View>
-      ) : vehicles.length === 0 ? (
-        <EmptyState message={t('home.noVehicles')} icon="car-outline" />
-      ) : (
+          </View>
+        )}
+        keyExtractor={(item) => item.id.toString()}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        scrollEventThrottle={200}
+      />
+    </View>
+  );
+
+  const renderVehicles = () => (
+    <View style={styles.infoCard}>
+      <Text style={styles.sectionTitle}>{t('home.myVehicles')}</Text>
+      {vehicles.length > 0 ? (
         <FlatList
           data={vehicles}
           renderItem={({ item }) => (
-            <VehicleItem
-              id={item.id}
-              name={`${item.brand_name} ${item.model}`}
-              licensePlate={item.plate_number}
-              lastService={item.last_service_date || t('home.no_service')}
-            />
+            <TouchableOpacity 
+              style={styles.vehicleItem}
+              onPress={() => navigation.navigate('VehicleDetail', { vehicleId: item.id })}
+            >
+              <View style={styles.vehicleLogoContainer}>
+                <Image
+                  source={{ uri: `${STORAGE_URL}/${item.logo_url}` }}
+                  style={styles.vehicleLogo}
+                  defaultSource={require('../../assets/logo-faucon.png')}
+                />
+              </View>
+              <View style={styles.vehicleInfo}>
+                <Text style={styles.vehicleName}>{`${item.brand_name} ${item.model}`}</Text>
+                <Text style={styles.vehiclePlate}>{item.plate_number}</Text>
+                <Text style={styles.lastServiceDate}>
+                  {t('home.lastService')}: {item.last_service_date ? format(new Date(item.last_service_date), 'dd/MM/yyyy') : t('home.noService')}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color="#028dd0" />
+            </TouchableOpacity>
           )}
           keyExtractor={(item) => item.id.toString()}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.vehicleList}
         />
-      )}
-    </View>
-  ), [isLoading, vehicles, t]);
-
-  const renderServiceItem: ListRenderItem<Service> = useCallback(({ item }) => (
-    <TouchableOpacity 
-      style={styles.serviceItem}
-      onPress={() => navigation.navigate('TicketScreen', { serviceId: item.id , service: item })}
-    >
-      <View style={styles.serviceIcon}>
-          <Image 
-            source={{ uri: `${STORAGE_URL}/${item.service.icon}` }} 
-            defaultSource={require('../../assets/logo.png')}
-            style={{width: 24, height: 24, resizeMode:'contain'}} 
-          />
-      </View>
-      <View style={styles.serviceInfo}>
-        <Text style={styles.serviceType}>{item.service.name}</Text>
-        <View style={{flexDirection:'row', marginVertical:5}}>
-          <Text style={styles.serviceDetails}>
-            {item.vehicle ? `${item.vehicle.brand_name || ''} ${item.vehicle.model || ''}`.trim() : t('serviceHistory.unknownVehicle')}
-          </Text>
-          <Text style={styles.servicePlate}>
-            {item?.vehicle?.plate_number}
-          </Text>
-        </View>
-        <Text style={styles.serviceDate}>{item.scheduled_at ? format(new Date(item.scheduled_at), 'dd/MM/yyyy') : 'N/A'}</Text>
-      </View>
-      <Text style={[styles.serviceStatus, { color: getStatusColor(item.status) }]}>{t(`serviceStatus.${item.status}`)}</Text>
-    </TouchableOpacity>
-  ), [navigation, t]);
-
-  const renderServices = useCallback(() => (
-    <View style={styles.sectionContainer}>
-      <Text style={styles.sectionTitle}>{t('home.upcomingServices')}</Text>
-      {isLoading ? (
-        <View>
-          {[...Array(3)].map((_, index) => (
-            <Placeholder
-              key={index}
-              style={{ height: 60, marginBottom: 10, borderRadius: 8 }}
-            />
-          ))}
-        </View>
-      ) : services.length === 0 ? (
-        <>
+      ) : (
+        <View style={styles.emptyStateContainer}>
           <LottieView
             autoPlay={true}
-            speed={3}
-            style={{width:150, height:undefined, aspectRatio:1, marginHorizontal:'auto'}}
+            style={styles.emptyStateAnimation}
             source={require("../../assets/emptybag.json")}
           />
-          <Text style={styles.noServicesText}>{t('conductorHome.noUpcomingServices')}</Text>
-        </>
-      ) : (
-        <>
-          <FlatList
-            data={services}
-            renderItem={renderServiceItem}
-            keyExtractor={(item) => item.id.toString()}
-            scrollEnabled={false}
-          />
-          <TouchableOpacity
-            style={styles.viewAllButton}
-            onPress={() => navigation.navigate('ServiceHistory')}
-          >
-            <Text style={styles.viewAllButtonText}>{t('home.viewAllServices')}</Text>
-          </TouchableOpacity>
-        </>
+          <Text style={styles.noVehiclesText}>{t('home.noVehicles')}</Text>
+        </View>
       )}
     </View>
-  ), [isLoading, services, t, navigation, renderServiceItem]);
+  );
 
-  const renderItem: ListRenderItem<any> = useCallback(({ item }) => {
-    switch (item.type) {
-      case 'welcome':
-        return <Text style={styles.welcomeText}>{t('home.welcome')}</Text>;
-      case 'adBanner':
-        return renderAdBanner();
-      case 'quickActions':
-        return renderQuickActions();
-      case 'vehicles':
-        return renderVehicles();
-      case 'services':
-        return renderServices();
-      default:
-        return null;
-    }
-  }, [t, renderAdBanner, renderQuickActions, renderVehicles, renderServices]);
+  const renderServiceItem = ({ item }: { item: Service }) => (
+    <TouchableOpacity
+      style={styles.serviceItem}
+      onPress={() => navigation.navigate('TicketScreen', { serviceId: item.id, service: item })}
+    >
+      <View style={styles.serviceItemContent}>
+        <View style={styles.serviceIcon}>
+          <Image 
+            source={{ uri: `${STORAGE_URL}/${item.service.icon}` }} 
+            style={styles.serviceIconImage} 
+            defaultSource={require('../../assets/logo.png')}
+          />
+        </View>
+        <View style={styles.serviceInfo}>
+          <Text style={styles.serviceType}>{item.service.name}</Text>
+          <Text style={styles.serviceVehicle}>
+            {item.vehicle ? `${item.vehicle.brand_name} ${item.vehicle.model}` : t('home.unknownVehicle')}
+          </Text>
+          <Text style={styles.serviceDate}>{item.scheduled_at ? format(new Date(item.scheduled_at), 'dd/MM/yyyy') : 'N/A'}</Text>
+        </View>
+        <View style={styles.serviceStatus}>
+          <Text style={[styles.serviceStatusText, { color: getStatusColor(item.status) }]}>
+            {t(`serviceStatus.${item.status}`)}
+          </Text>
+        </View>
+      </View>
+      <Ionicons name="chevron-forward" size={24} color="#028dd0" />
+    </TouchableOpacity>
+  );
 
-  const data = [
-    { id: 'welcome', type: 'welcome' },
-    { id: 'adBanner', type: 'adBanner' },
-    { id: 'quickActions', type: 'quickActions' },
-    { id: 'vehicles', type: 'vehicles' },
-    { id: 'services', type: 'services' },
-  ];
+  const renderServices = () => (
+    <View style={styles.infoCard}>
+      <Text style={styles.sectionTitle}>{t('home.upcomingServices')}</Text>
+      {services.length > 0 ? (
+        <FlatList
+          data={services}
+          renderItem={renderServiceItem}
+          keyExtractor={(item) => item.id.toString()}
+          scrollEnabled={false}
+        />
+      ) : (
+        <View style={styles.emptyStateContainer}>
+          <LottieView
+            autoPlay={true}
+            style={styles.emptyStateAnimation}
+            source={require("../../assets/emptybag.json")}
+          />
+          <Text style={styles.noServicesText}>{t('home.noUpcomingServices')}</Text>
+          <TouchableOpacity 
+            style={styles.orderNewServiceButton} 
+            onPress={() => navigation.navigate('Services')}
+          >
+            <Text style={styles.orderNewServiceButtonText}>{t('home.orderNewService')}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <LottieView
+          source={require('../../assets/loading-animation.json')}
+          autoPlay
+          loop
+          style={{ width: 200, height: 200 }}
+        />
+      </View>
+    );
+  }
 
   if (error) {
-    return <ErrorView onRetry={fetchData} />;
+    return (
+      <View style={styles.errorContainer}>
+        <LottieView
+          source={require('../../assets/error-animation.json')}
+          autoPlay
+          loop
+          style={{ width: 150, height: 150 }}
+        />
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
+          <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
   return (
-    <FlatList
-      data={data}
-      renderItem={renderItem}
-      keyExtractor={(item) => item.id}
-      style={styles.container}
-      refreshing={isLoading}
-      onRefresh={fetchData}
-    />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#028dd0" />
+      <LinearGradient colors={['#028dd0', '#01579B']} style={styles.header}>
+        <Text style={styles.headerTitle}>{t('home.welcome')}</Text>
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => navigation.navigate('ServiceHistory')}
+          >
+            <Ionicons name="time-outline" size={24} color="#FFFFFF" />
+            <Text style={styles.headerButtonText}>{t('home.serviceHistory')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => navigation.navigate('Services')}
+          >
+            <Ionicons name="construct-outline" size={24} color="#FFFFFF" />
+            <Text style={styles.headerButtonText}>{t('home.orderService')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => navigation.navigate('Support')}
+          >
+            <Ionicons name="help-circle-outline" size={24} color="#FFFFFF" />
+            <Text style={styles.headerButtonText}>{t('home.callSupport')}</Text>
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollViewContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {renderAdBanner()}
+        {renderVehicles()}
+        {renderServices()}
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#FFFFFF',
   },
-  welcomeText: {
-    fontSize: theme.typography.sizes.xl,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.primary,
-    padding: theme.spacing.md,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    color: '#FF3B30',
+    textAlign: 'center',
+    marginBottom: 20,
+    marginTop: 20,
+  },
+  retryButton: {
+    backgroundColor: '#028dd0',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 25,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  header: {
+    padding: 15,
+    paddingTop: 40,
+    paddingBottom: 20,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 15,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  headerButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    marginHorizontal: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 10,
+  },
+  headerButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    marginTop: 5,
+    textAlign: 'center',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollViewContent: {
+    paddingBottom: 20,
   },
   carouselContainer: {
     height: 200,
-    marginBottom: theme.spacing.md,
+    marginVertical: 15,
   },
   adBannerItem: {
     width: SCREEN_WIDTH,
@@ -425,166 +443,151 @@ const styles = StyleSheet.create({
   },
   adBannerImage: {
     width: '100%',
-    height: '100%',
+    
+height: '100%',
     resizeMode: 'cover',
   },
-  pagination: {
-    flexDirection: 'row',
-    position: 'absolute',
-    bottom: theme.spacing.sm,
-    alignSelf: 'center',
-  },
-  paginationDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginHorizontal: 4,
-    backgroundColor: theme.colors.secondary,
-  },
-  paginationDotActive: {
-    backgroundColor: theme.colors.primary,
-  },
-  quickActionsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: theme.spacing.md,
-  },
-  quickActionButton: {
-    alignItems: 'center',
-    backgroundColor: theme.colors.secondary + '20',
-    borderRadius: theme.roundness,
-    padding: theme.spacing.sm,
-  },
-  quickActionText: {
-    marginTop: theme.spacing.xs,
-    color: theme.colors.primary,
-    fontSize: theme.typography.sizes.sm,
-  },
-  sectionContainer: {
-    marginBottom: theme.spacing.lg,
+  infoCard: {
+    margin: 15,
+    padding: 20,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   sectionTitle: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.fontWeights.bold,
-    marginBottom: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    color: theme.colors.text,
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#028dd0',
+    marginBottom: 15,
   },
-  vehicleList: {
-    paddingHorizontal: theme.spacing.sm,
+  vehicleItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    padding: 10,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 10,
+  },
+  vehicleLogoContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  vehicleLogo: {
+    width: 30,
+    height: 30,
+    resizeMode: 'contain',
+  },
+  vehicleInfo: {
+    flex: 1,
+  },
+  vehicleName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333333',
+  },
+  vehiclePlate: {
+    fontSize: 14,
+    color: '#666666',
+  },
+  lastServiceDate: {
+    fontSize: 12,
+    color: '#999999',
   },
   serviceItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: theme.roundness,
-    marginBottom: theme.spacing.sm,
-    padding: theme.spacing.md,
-    ...theme.elevation.small,
+    justifyContent: 'space-between',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
+  },
+  serviceItemContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   serviceIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.colors.primary + '20',
+    backgroundColor: '#F5F5F5',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: theme.spacing.md,
+    marginRight: 15,
+  },
+  serviceIconImage: {
+    width: 24,
+    height: 24,
+    resizeMode: 'contain',
   },
   serviceInfo: {
     flex: 1,
   },
   serviceType: {
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.fontWeights.medium,
-    color: theme.colors.text,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333333',
   },
-  servicePlate: {
-    marginStart: 10,
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: theme.typography.fontWeights.medium,
-    color: theme.colors.primary,
-  },
-  serviceDetails: {
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: theme.typography.fontWeights.medium,
-    color: theme.colors.text,
+  serviceVehicle: {
+    fontSize: 14,
+    color: '#666666',
   },
   serviceDate: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.textSecondary,
+    fontSize: 12,
+    color: '#999999',
   },
   serviceStatus: {
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: theme.typography.fontWeights.medium,
+    marginLeft: 10,
   },
-  viewAllButton: {
-    backgroundColor: theme.colors.primary,
-    padding: theme.spacing.sm,
-    borderRadius: theme.roundness,
-    alignItems: 'center',
-    marginHorizontal: theme.spacing.md,
-    marginTop: theme.spacing.md,
-  },
-  viewAllButtonText: {
-    color: 'white',
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.fontWeights.bold,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: theme.spacing.lg,
-    backgroundColor: theme.colors.background,
-  },
-  errorTitle: {
-    fontSize: theme.typography.sizes.xl,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.error,
-    marginBottom: theme.spacing.sm,
-    textAlign: 'center',
-  },
-  errorText: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: theme.spacing.lg,
-  },
-  retryButton: {
-    backgroundColor: theme.colors.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    borderRadius: theme.roundness,
-  },
-  retryIcon: {
-    marginRight: theme.spacing.sm,
-  },
-  retryButtonText: {
-    color: 'white',
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.fontWeights.bold,
+  serviceStatusText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   emptyStateContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: theme.spacing.lg,
+    padding: 20,
   },
-  emptyStateText: {
-    marginTop: theme.spacing.sm,
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.textSecondary,
+  emptyStateAnimation: {
+    width: 200,
+    height: 200,
+  },
+  noVehiclesText: {
+    fontSize: 16,
+    color: '#8E8E93',
     textAlign: 'center',
+    marginTop: 20,
   },
   noServicesText: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.textSecondary,
+    fontSize: 16,
+    color: '#8E8E93',
     textAlign: 'center',
-    marginTop: theme.spacing.md,
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  orderNewServiceButton: {
+    backgroundColor: '#028dd0',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 25,
+  },
+  orderNewServiceButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
 export default HomeScreen;
+

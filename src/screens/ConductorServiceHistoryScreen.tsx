@@ -60,7 +60,7 @@ const ConductorServiceHistoryScreen: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
-  const fetchServiceHistory = useCallback(async (pageNumber: number, refresh = false) => {
+  const fetchServiceHistory = useCallback(async (pageNumber: number, refresh = false, newFilter = filter) => {
     if (pageNumber === 1) {
       setIsLoading(true);
     }
@@ -68,10 +68,10 @@ const ConductorServiceHistoryScreen: React.FC = () => {
     try {
       const response = await api.get('vehicle/service-history', {
         params: { 
-          filter, 
+          filter: newFilter, 
           sort_by: sortBy, 
           sort_direction: sortDirection,
-          status: filter, 
+          status: newFilter !== 'all' ? newFilter : undefined, 
           page: pageNumber, 
           per_page: ITEMS_PER_PAGE 
         },
@@ -96,22 +96,22 @@ const ConductorServiceHistoryScreen: React.FC = () => {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [filter, sortBy, sortDirection, t]);
+  }, [sortBy, sortDirection, t]);
 
   useFocusEffect(
     useCallback(() => {
-      fetchServiceHistory(1);
-    }, [fetchServiceHistory])
+      fetchServiceHistory(1, true, filter);
+    }, [fetchServiceHistory, filter])
   );
 
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
-    fetchServiceHistory(1, true);
-  }, [fetchServiceHistory]);
+    fetchServiceHistory(1, true, filter);
+  }, [fetchServiceHistory, filter]);
 
   const loadMore = () => {
     if (hasMore && !isLoading) {
-      fetchServiceHistory(page + 1);
+      fetchServiceHistory(page + 1, false, filter);
     }
   };
 
@@ -279,69 +279,69 @@ const ConductorServiceHistoryScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#028dd0" />
-      <LinearGradient colors={['#028dd0', '#01579B']} style={styles.header}>
-        <Text style={styles.title}>{t('serviceHistory.title')}</Text>
-        <View style={styles.filterContainer}>
-          <TouchableOpacity
-            style={styles.filterButton}
-            onPress={() => setShowFilterModal(true)}
-          >
-            <Ionicons name="filter" size={24} color="#FFFFFF" />
-            <Text style={styles.filterButtonText}>{t('serviceHistory.filter')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.filterButton}
-            onPress={() => setShowSortModal(true)}
-          >
-            <Ionicons name="swap-vertical" size={24} color="#FFFFFF" />
-            <Text style={styles.filterButtonText}>{t('serviceHistory.sort')}</Text>
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
-      {serviceRecords.length === 0 ? (
-        <View style={styles.emptyStateContainer}>
-          <LottieView
-            source={require('../../assets/empty-state-animation.json')}
-            autoPlay
-            loop
-            style={{ width: 200, height: 200 }}
-          />
-          <Text style={styles.emptyStateText}>{t('serviceHistory.noRecords')}</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={serviceRecords}
-          style={{paddingTop:20}}
-          renderItem={renderServiceItem}
-          keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.listContent}
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.1}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={handleRefresh}
-              colors={['#028dd0']}
-            />
-          }
-          ListFooterComponent={() => (
-            hasMore ? (
-              <View style={styles.loadingMore}>
-                <LottieView
-                  source={require('../../assets/loading-animation.json')}
-                  autoPlay
-                  loop
-                  style={{ width: 50, height: 50 }}
-                />
-              </View>
-            ) : null
-          )}
+    <StatusBar barStyle="light-content" backgroundColor="#028dd0" />
+    <LinearGradient colors={['#028dd0', '#01579B']} style={styles.header}>
+      <Text style={styles.title}>{t('serviceHistory.title')}</Text>
+      <View style={styles.filterContainer}>
+        <TouchableOpacity
+          style={styles.filterButton}
+          onPress={() => setShowFilterModal(true)}
+        >
+          <Ionicons name="filter" size={24} color="#FFFFFF" />
+          <Text style={styles.filterButtonText}>{t('serviceHistory.filter')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.filterButton}
+          onPress={() => setShowSortModal(true)}
+        >
+          <Ionicons name="swap-vertical" size={24} color="#FFFFFF" />
+          <Text style={styles.filterButtonText}>{t('serviceHistory.sort')}</Text>
+        </TouchableOpacity>
+      </View>
+    </LinearGradient>
+    {serviceRecords.length === 0 ? (
+      <View style={styles.emptyStateContainer}>
+        <LottieView
+          source={require('../../assets/empty-state-animation.json')}
+          autoPlay
+          loop
+          style={{ width: 200, height: 200 }}
         />
-      )}
-      <FilterModal />
-      <SortModal />
-    </View>
+        <Text style={styles.emptyStateText}>{t('serviceHistory.noRecords')}</Text>
+      </View>
+    ) : (
+      <FlatList
+        data={serviceRecords}
+        style={{paddingTop:20}}
+        renderItem={renderServiceItem}
+        keyExtractor={(item) => item.id.toString()}
+        contentContainerStyle={styles.listContent}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.1}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            colors={['#028dd0']}
+          />
+        }
+        ListFooterComponent={() => (
+          hasMore ? (
+            <View style={styles.loadingMore}>
+              <LottieView
+                source={require('../../assets/loading-animation.json')}
+                autoPlay
+                loop
+                style={{ width: 50, height: 50 }}
+              />
+            </View>
+          ) : null
+        )}
+      />
+    )}
+    <FilterModal />
+    <SortModal />
+  </View>
   );
 };
 

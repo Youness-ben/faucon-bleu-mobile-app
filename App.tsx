@@ -34,7 +34,13 @@ export default function App() {
   useEffect(() => {
     async function prepare() {
       try {
-        await Font.loadAsync(Ionicons.font);
+        await Font.loadAsync({
+          ...Ionicons.font,
+          'Poppins-Regular': require('./assets/fonts/Poppins-Regular.ttf'),
+          'Poppins-Bold': require('./assets/fonts/Poppins-Bold.ttf'),
+          'Poppins-SemiBold': require('./assets/fonts/Poppins-SemiBold.ttf'),
+
+        });
         await registerForPushNotificationsAsync();
         await new Promise(resolve => setTimeout(resolve, 1000));
       } catch (e) {
@@ -44,6 +50,7 @@ export default function App() {
       }
     }
 
+    prepare();
     prepare();
 
     notificationListener.current = Notifications.addNotificationReceivedListener(notification => {

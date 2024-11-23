@@ -38,6 +38,7 @@ import { MAPBOX_TOKEN, STORAGE_URL } from '../../config';
 import { WebView } from 'react-native-webview';
 import Slider from '@react-native-community/slider';
 import initializeEcho from '../echo';
+import { LinearGradient } from 'expo-linear-gradient';
 
 type RootStackParamList = {
   TicketScreen: { serviceId: string,service ?: any  };
@@ -387,32 +388,50 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
       Alert.alert('Error', 'Failed to download file. Please try again.');
     }
   };
-
   const playAudio = async (uri: string, messageId: string) => {
     try {
       setIsAudioLoading(messageId);
+      
+      // Unload the previous sound if it exists
       if (sound) {
         await sound.unloadAsync();
       }
+
+      // Create and load the new sound
       const { sound: newSound } = await Audio.Sound.createAsync(
         { uri },
-        { shouldPlay: true, positionMillis:  0 },
-         
+        { shouldPlay: false }, // Don't start playing immediately
+        onPlaybackStatusUpdate
       );
-      newSound.setOnPlaybackStatusUpdate((status)=>{onPlaybackStatusUpdate(status,messageId)});
+
       setSound(newSound);
+
+      // Set up the audio progress for this message
+      setAudioProgress(prev => ({
+        ...prev,
+        [messageId]: {
+          position: 0,
+          duration: 0,
+        },
+      }));
+
+      // Start playing the audio
+      await newSound.playAsync();
+
       setIsPlaying(true);
       setCurrentlyPlayingId(messageId);
     } catch (error) {
       console.error('Error playing audio:', error);
       Alert.alert('Error', 'Failed to play audio. Please try again.');
+    } finally {
       setIsAudioLoading(null);
     }
   };
 
-  const onPlaybackStatusUpdate = (status: Audio.PlaybackStatus, messageId: string) => {
+  const onPlaybackStatusUpdate = (status: Audio.PlaybackStatus) => {
     if (status.isLoaded) {
       setIsAudioLoading(null);
+      const messageId = currentlyPlayingId as string;
       setAudioProgress(prev => ({
         ...prev,
         [messageId]: {
@@ -421,14 +440,15 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
         },
       }));
 
-      setAudioPosition( status.positionMillis);
+      setAudioPosition(status.positionMillis);
+
       if (status.didJustFinish) {
         setIsPlaying(false);
         setCurrentlyPlayingId(null);
-
       }
     }
   };
+
   const seekAudio = async (messageId: string, position: number) => {
     if (sound && currentlyPlayingId === messageId) {
       await sound.setPositionAsync(position);
@@ -475,9 +495,15 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
     }
   };
 
-const renderHeader = () => (
+
+  const renderHeader = () => (
     <View style={styles.headerContainer}>
-      <LinearGradient colors={['#028dd0', '#01579B']} style={styles.headerGradient}>
+      <LinearGradient 
+        colors={['#028dd0', '#01579B']} 
+        start={{x: 0, y: 0}} 
+        end={{x: 1, y: 0}} 
+        style={styles.headerGradient}
+      >
         <View style={styles.headerTopRow}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
@@ -492,27 +518,24 @@ const renderHeader = () => (
           </TouchableOpacity>
           <View style={styles.moreButton} />
         </View>
+        <Animated.View style={[
+          styles.headerDetails,
+          {
+            maxHeight: headerHeight.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, 200],
+            }),
+            opacity: headerHeight,
+          }
+        ]}>
+          <Text style={styles.headerDetailText}>{t('ticket.carInfo')}: <Text style={styles.headerDetailBold}>{`${service.vehicle.brand_name || ''} ${service.vehicle.model || ''}`}</Text></Text>
+          <Text style={styles.headerDetailText}>{t('ticket.serviceType')}: <Text style={styles.headerDetailBold}>{service?.service?.name}</Text></Text>
+          <Text style={styles.headerDetailText}>{t('ticket.date')}: <Text style={styles.headerDetailBold}>{format(new Date(service?.scheduled_at), 'dd/MM/yyyy')}</Text></Text>
+          <Text style={styles.headerDetailText}>{t('ticket.status')}: <Text style={[styles.headerDetailBold, { color: getStatusColor(service?.status) }]}>{t(`serviceStatus.${service?.status}`)}</Text></Text>
+        </Animated.View>
       </LinearGradient>
-      <Animated.View style={[
-        styles.headerDetails,
-        {
-          maxHeight: headerHeight.interpolate({
-            inputRange: [0, 1],
-            outputRange: [0, 200],
-          }),
-          opacity: headerHeight,
-        }
-      ]}>
-        <Text style={styles.headerDetailText}>{t('ticket.carInfo')}: <Text style={styles.headerDetailBold}>{`${service.vehicle.brand_name || ''} ${service.vehicle.model || ''}`}</Text></Text>
-        <Text style={styles.headerDetailText}>{t('ticket.serviceType')}: <Text style={styles.headerDetailBold}>{service?.service?.name}</Text></Text>
-        <Text style={styles.headerDetailText}>{t('ticket.date')}: <Text style={styles.headerDetailBold}>{format(service?.scheduled_at, 'dd/MM/yyyy')}</Text></Text>
-        <Text style={styles.headerDetailText}>{t('ticket.status')}: <Text style={[styles.headerDetailBold, { color: getStatusColor(service?.status) }]}>{t(`serviceStatus.${service?.status}`)}</Text></Text>
-      </Animated.View>
     </View>
   );
-
-
-
   const renderMessage = ({ item }: { item: Message })  => {
     const messageDate = new Date(item.created_at);
     let dateDisplay = format(messageDate, 'MM/dd/yyyy');
@@ -688,57 +711,71 @@ const renderHeader = () => (
   );
 }
 
-  const renderInputArea = () => (
-    <View style={styles.inputContainer}>
-      {isRecordingUIVisible ? (
-        <View style={styles.recordingContainer}>
-          {isRecording ? (
-            <>
-              <Text style={styles.recordingDuration}>{formatDuration(recordingDuration * 1000)}</Text>
-              <TouchableOpacity onPress={stopRecording} style={styles.stopRecordingButton}>
-                <Ionicons name="stop" size={24} color={theme.colors.error} />
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              <TouchableOpacity onPress={() => playAudio(audioUri!, 'preview')} style={styles.playButton}>
-                <Ionicons name={isPlaying ? "pause" : "play"} size={24} color={theme.colors.primary} />
-              </TouchableOpacity>
-              <Text style={styles.recordingDuration}>{formatDuration(recordingDuration * 1000)}</Text>
-              <TouchableOpacity onPress={sendRecordedAudio} style={styles.sendRecordingButton}>
-                <Ionicons name="send" size={24} color={theme.colors.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={cancelRecording} style={styles.cancelRecordingButton}>
-                <Ionicons name="close" size={24} color={theme.colors.error} />
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
-      ) : (
-        <>
-          <TouchableOpacity style={styles.attachButton} onPress={() => setIsFabOpen(!isFabOpen)}>
-            <Ionicons name="add" size={24} color="#028dd0" />
-          </TouchableOpacity>
-          <TextInput
-            style={styles.input}
-            value={inputText}
-            onChangeText={setInputText}
-            placeholder={t('ticket.inputPlaceholder')}
-            placeholderTextColor="#A0A0A0"
-          />
-          {inputText.trim() ? (
-            <TouchableOpacity onPress={sendTextMessage} style={styles.sendButton}>
+const renderInputArea = () => (
+  <View style={styles.inputContainer}>
+    {isRecordingUIVisible ? (
+      <View style={styles.recordingContainer}>
+        {isRecording ? (
+          <>
+            <Text style={styles.recordingDuration}>{formatDuration(recordingDuration * 1000)}</Text>
+            <TouchableOpacity onPress={stopRecording} style={styles.stopRecordingButton}>
+              <Ionicons name="stop" size={24} color="#FF3B30" />
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <TouchableOpacity onPress={() => playAudio(audioUri!, 'preview')} style={styles.playButton}>
+              <Ionicons name={isPlaying ? "pause" : "play"} size={24} color="#028dd0" />
+            </TouchableOpacity>
+            <Text style={styles.recordingDuration}>{formatDuration(recordingDuration * 1000)}</Text>
+            <TouchableOpacity onPress={sendRecordedAudio} style={styles.sendRecordingButton}>
               <Ionicons name="send" size={24} color="#028dd0" />
             </TouchableOpacity>
-          ) : (
-            <TouchableOpacity onPress={startRecording} style={styles.micButton}>
-              <Ionicons name="mic" size={24} color="#028dd0" />
+            <TouchableOpacity onPress={cancelRecording} style={styles.cancelRecordingButton}>
+              <Ionicons name="close" size={24} color="#FF3B30" />
             </TouchableOpacity>
-          )}
-        </>
-      )}
-    </View>
-  );
+          </>
+        )}
+      </View>
+    ) : (
+      <View style={styles.inputWrapper}>
+        <TouchableOpacity style={styles.attachButton} onPress={() => setIsFabOpen(!isFabOpen)}>
+          <Ionicons name="add-circle-outline" size={24} color="#028dd0" />
+        </TouchableOpacity>
+        <TextInput
+          style={styles.input}
+          value={inputText}
+          onChangeText={setInputText}
+          placeholder={t('ticket.inputPlaceholder')}
+          placeholderTextColor="#A0A0A0"
+        />
+        {inputText.trim() ? (
+          <TouchableOpacity onPress={sendTextMessage} style={styles.sendButton}>
+            <Ionicons name="send" size={24} color="#028dd0" />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity onPress={startRecording} style={styles.micButton}>
+            <Ionicons name="mic" size={24} color="#028dd0" />
+          </TouchableOpacity>
+        )}
+      </View>
+    )}
+  </View>
+);
+
+const renderFabMenu = () => (
+  <View style={styles.fabMenu}>
+    <TouchableOpacity onPress={pickImage} style={styles.fabMenuItem}>
+      <Ionicons name="image-outline" size={24} color="#FFFFFF" />
+    </TouchableOpacity>
+    <TouchableOpacity onPress={pickDocument} style={styles.fabMenuItem}>
+      <Ionicons name="document-outline" size={24} color="#FFFFFF" />
+    </TouchableOpacity>
+    <TouchableOpacity onPress={openLocationPicker} style={styles.fabMenuItem}>
+      <Ionicons name="location-outline" size={24} color="#FFFFFF" />
+    </TouchableOpacity>
+  </View>
+);
 
   const renderPreview = () => {
     if (!previewUri) return null;
@@ -928,19 +965,8 @@ const renderHeader = () => (
           />
         </ImageBackground>
         {renderInputArea()}
-      {isFabOpen && (
-        <View style={styles.fabMenu}>
-          <TouchableOpacity onPress={pickImage} style={styles.fabMenuItem}>
-            <Ionicons name="image-outline" size={24} color={theme.colors.surface} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={pickDocument} style={styles.fabMenuItem}>
-            <Ionicons name="document-outline" size={24} color={theme.colors.surface} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={openLocationPicker} style={styles.fabMenuItem}>
-            <Ionicons name="location-outline" size={24} color={theme.colors.surface} />
-          </TouchableOpacity>
-        </View>
-      )}
+        {isFabOpen && renderFabMenu()}
+
       {renderPreview()}
       {renderFilePreview()}
       {renderLocationPicker()}
@@ -962,46 +988,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
- 
+  
   headerContainer: {
-    backgroundColor: theme.colors.background,
     zIndex: 1,
+  },
+  headerGradient: {
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   headerTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: theme.spacing.md,
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-    backgroundColor: '#fff',
-  },
-  headerDetails: {
-    position: 'absolute',
-    top: 80,
-    left: 0,
-    right: 0,
-    backgroundColor: '#fff',
-    padding: theme.spacing.md,
-    borderBottomLeftRadius: theme.roundness,
-    borderBottomRightRadius: theme.roundness,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    overflow: 'hidden',
-  },
-  headerDetailText: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.sm,
-  },
-  backButton: {
-    padding: theme.spacing.sm,
+    padding: 16,
+    paddingTop: Platform.OS === 'ios' ? 50 : 20,
   },
   headerContent: {
     flex: 1,
@@ -1010,13 +1010,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.text,
-    marginRight: theme.spacing.sm,
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginRight: 8,
+  },
+  backButton: {
+    padding: 8,
   },
   moreButton: {
-    padding: theme.spacing.sm,
+    padding: 8,
+    width: 40,
+  },
+  headerDetails: {
+    padding: 16,
+    paddingTop: 0,
+  },
+  headerDetailText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  headerDetailBold: {
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
 
 
@@ -1106,30 +1123,93 @@ const styles = StyleSheet.create({
     padding:5,
     marginTop: theme.spacing.xs,
   },
+  
+  
+  
+  
   inputContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+  },
+  inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: theme.spacing.sm,
-    backgroundColor: theme.colors.surface,
-    borderRadius:20
+    backgroundColor: '#F5F5F5',
+    borderRadius: 25,
+    paddingHorizontal: 12,
   },
   input: {
     flex: 1,
-    marginHorizontal: theme.spacing.sm,
-    padding: theme.spacing.sm,
-    backgroundColor: theme.colors.background,
-    borderRadius: theme.roundness,
-    color: theme.colors.text,
+    color: '#333333',
+    fontSize: 16,
+    paddingVertical: 10,
+    marginHorizontal: 8,
   },
   attachButton: {
-    padding: theme.spacing.sm,
+    padding: 8,
   },
   sendButton: {
-    padding: theme.spacing.sm,
+    padding: 8,
   },
   micButton: {
-    padding: theme.spacing.sm,
+    padding: 8,
   },
+  recordingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 25,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  recordingDuration: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 16,
+    color: '#333333',
+  },
+  stopRecordingButton: {
+    padding: 8,
+  },
+  playButton: {
+    padding: 8,
+  },
+  sendRecordingButton: {
+    padding: 8,
+  },
+  cancelRecordingButton: {
+    padding: 8,
+  },
+  fabMenu: {
+    position: 'absolute',
+    bottom: 80,
+    right: 20,
+    flexDirection: 'row',
+  },
+  fabMenuItem: {
+    backgroundColor: '#028dd0',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 10,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+
+
+
+  
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -1252,46 +1332,6 @@ const styles = StyleSheet.create({
     color: theme.colors.surface,
     fontWeight: theme.typography.fontWeights.bold,
   },
-  fabMenu: {
-    position: 'absolute',
-    bottom: 80,
-    right: 20,
-    flexDirection: 'row',
-  },
-  fabMenuItem: {
-    backgroundColor: theme.colors.primary,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: theme.spacing.sm,
-  },
-  recordingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.background,
-    padding: theme.spacing.sm,
-    borderRadius: theme.roundness,
-  },
-  recordingDuration: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text,
-  },
-  stopRecordingButton: {
-    padding: theme.spacing.sm,
-  },
-  playButton: {
-    padding: theme.spacing.sm,
-  },
-  sendRecordingButton: {
-    padding: theme.spacing.sm,
-  },
-  cancelRecordingButton: {
-    padding: theme.spacing.sm,
-  },
   fullScreenPreview: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.9)',
@@ -1337,83 +1377,5 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.sm,
     color: theme.colors.text,
     fontSize: theme.typography.sizes.md,
-  },
-
-  headerContainer: {
-    backgroundColor: '#FFFFFF',
-    zIndex: 1,
-  },
-  headerGradient: {
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  headerTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-  },
-  headerContent: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginRight: 8,
-  },
-  backButton: {
-    padding: 8,
-  },
-  moreButton: {
-    padding: 8,
-  },
-  headerDetails: {
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  headerDetailText: {
-    fontSize: 14,
-    color: '#333333',
-    marginBottom: 8,
-  },
-  headerDetailBold: {
-    fontWeight: 'bold',
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E5E5EA',
-  },
-  attachButton: {
-    padding: 8,
-  },
-  input: {
-    flex: 1,
-    marginHorizontal: 8,
-    padding: 12,
-    backgroundColor: '#F2F2F7',
-    borderRadius: 20,
-    color: '#333333',
-    fontSize: 16,
-  },
-  sendButton: {
-    padding: 8,
-  },
-  micButton: {
-    padding: 8,
   },
 });

@@ -10,12 +10,15 @@ import {
   RefreshControl, 
   Animated, 
   Dimensions,
-  TextInput
+  TextInput,
+  StatusBar
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
+import LottieView from 'lottie-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../styles/theme';
 import api from '../api';
 import { STORAGE_URL } from '../../config';
@@ -48,7 +51,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SkeletonItem: React.FC = () => {
   const opacity = useRef(new Animated.Value(0.3)).current;
 
-  const startAnimation = useCallback(() => {
+  useEffect(() => {
     Animated.loop(
       Animated.sequence([
         Animated.timing(opacity, { toValue: 1, duration: 500, useNativeDriver: true }),
@@ -57,12 +60,8 @@ const SkeletonItem: React.FC = () => {
     ).start();
   }, [opacity]);
 
-  useEffect(() => {
-    startAnimation();
-  }, [startAnimation]);
-
   return (
-    <Animated.View style={[styles.vehicleItem, { opacity }]}>
+    <Animated.View style={[styles.vehicleCard, { opacity }]}>
       <View style={[styles.vehicleLogo, styles.skeleton]} />
       <View style={styles.vehicleInfo}>
         <View style={[styles.skeletonText, { width: '70%' }]} />
@@ -77,9 +76,12 @@ const EmptyState: React.FC<{ onAddVehicle: () => void }> = ({ onAddVehicle }) =>
 
   return (
     <View style={styles.emptyStateContainer}>
-      <View style={styles.emptyStateIconContainer}>
-        <Ionicons name="car-sport-outline" size={80} color={theme.colors.primary} />
-      </View>
+      <LottieView
+        source={require('../../assets/empty-state-animation.json')}
+        autoPlay
+        loop
+        style={styles.emptyStateAnimation}
+      />
       <Text style={styles.emptyStateTitle}>{t('fleet.emptyStateTitle')}</Text>
       <Text style={styles.emptyStateDescription}>{t('fleet.emptyStateDescription')}</Text>
       <TouchableOpacity style={styles.emptyStateButton} onPress={onAddVehicle}>
@@ -122,7 +124,6 @@ const FleetScreen: React.FC = () => {
         setCurrentPage(response.data.current_page);
         setLastPage(response.data.last_page);
       } else {
-        console.log(response.data);
         throw new Error('Invalid response format');
       }
     } catch (err) {
@@ -162,20 +163,22 @@ const FleetScreen: React.FC = () => {
 
   const renderVehicleItem = useCallback(({ item }: { item: Vehicle }) => (
     <TouchableOpacity
-      style={styles.vehicleItem}
+      style={styles.vehicleCard}
       onPress={() => navigation.navigate('VehicleDetail', { vehicleId: item.id })}
     >
-      <Image 
-        source={{ uri: `${STORAGE_URL}/${item.logo_url}` }} 
-        style={styles.vehicleLogo} 
-        defaultSource={require('../../assets/logo-faucon.png')}
-        onError={(e) => console.log('Image loading error:', e.nativeEvent.error)}
-      />
+      <View style={styles.vehicleIcon}>
+        <Image 
+          source={{ uri: `${STORAGE_URL}/${item.logo_url}` }} 
+          style={styles.iconImage} 
+          defaultSource={require('../../assets/logo-faucon.png')}
+        />
+      </View>
       <View style={styles.vehicleInfo}>
-        <Text style={styles.vehicleName}>{`${item.brand_name} ${item.model}`}<Text style={{fontSize:12 , marginLeft:20}}>  {item.year}</Text></Text>
+        <Text style={styles.vehicleName}>{`${item.brand_name} ${item.model}`}</Text>
+        <Text style={styles.vehicleYear}>{item.year}</Text>
         <Text style={styles.vehicleLicensePlate}>{item.plate_number}</Text>
       </View>
-      <Ionicons name="chevron-forward" size={24} color={theme.colors.primary} />
+      <Ionicons name="chevron-forward" size={24} color="#028dd0" />
     </TouchableOpacity>
   ), [navigation]);
 
@@ -203,6 +206,12 @@ const FleetScreen: React.FC = () => {
     if (error) {
       return (
         <View style={styles.centerContainer}>
+          <LottieView
+            source={require('../../assets/error-animation.json')}
+            autoPlay
+            loop
+            style={styles.errorAnimation}
+          />
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity style={styles.retryButton} onPress={() => fetchVehicles(1, true)}>
             <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
@@ -226,6 +235,7 @@ const FleetScreen: React.FC = () => {
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
             colors={[theme.colors.primary]}
+            tintColor={theme.colors.primary}
           />
         }
         onEndReached={handleLoadMore}
@@ -241,12 +251,16 @@ const FleetScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{t('fleet.title')}</Text>
+      <StatusBar barStyle="light-content" backgroundColor="#028dd0" />
+      <LinearGradient colors={['#028dd0', '#01579B']} style={styles.header}>
+        <Text style={styles.title}>{t('fleet.title')}</Text>
+      </LinearGradient>
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={24} color={theme.colors.primary} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
           placeholder={t('fleet.searchPlaceholder')}
+          placeholderTextColor="#A0A0A0"
           value={searchQuery}
           onChangeText={handleSearch}
         />
@@ -257,8 +271,7 @@ const FleetScreen: React.FC = () => {
           style={styles.addButton}
           onPress={handleAddVehicle}
         >
-          <Ionicons name="add" size={24} color="white" />
-          <Text style={styles.addButtonText}>{t('fleet.addVehicle')}</Text>
+          <Ionicons name="add" size={24} color="#FFFFFF" />
         </TouchableOpacity>
       )}
     </View>
@@ -268,160 +281,187 @@ const FleetScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: theme.spacing.md,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#FFFFFF',
+  },
+  header: {
+    paddingTop: 40,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.background,
-  },
-  title: {
-    fontSize: theme.typography.sizes.xxl,
-    fontWeight: theme.typography.fontWeights.bold,
-    marginBottom: theme.spacing.lg,
-    color: theme.colors.primary,
   },
   listContent: {
-    paddingBottom: theme.spacing.xl,
+    paddingHorizontal: 20,
+    paddingBottom: 80,
   },
-  vehicleItem: {
+  vehicleCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'white',
-    borderRadius: theme.roundness,
-    marginBottom: theme.spacing.md,
-    padding: theme.spacing.md,
-    ...theme.elevation.small,
+    borderRadius: 10,
+    marginVertical: 10,
+    padding: 15,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
-  vehicleLogo: {
+  vehicleIcon: {
     width: 50,
     height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(2, 141, 208, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  iconImage: {
+    width: 30,
+    height: 30,
     resizeMode: 'contain',
-    marginRight: theme.spacing.md,
   },
   vehicleInfo: {
     flex: 1,
   },
   vehicleName: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.fontWeights.medium,
-    color: theme.colors.text,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1C1C1E',
+    marginBottom: 5,
+  },
+  vehicleYear: {
+    fontSize: 14,
+    color: '#8E8E93',
+    marginBottom: 5,
   },
   vehicleLicensePlate: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#028dd0',
   },
   addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.primary,
-    padding: theme.spacing.md,
-    borderRadius: theme.roundness,
     position: 'absolute',
-    bottom: theme.spacing.lg,
-    left: theme.spacing.lg,
-    right: theme.spacing.lg,
-  },
-  addButtonText: {
-    color: 'white',
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.fontWeights.bold,
-    marginLeft: theme.spacing.sm,
+    right: 20,
+    bottom: 20,
+    backgroundColor: theme.colors.primary,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...theme.elevation.medium,
   },
   errorText: {
-    fontSize: theme.typography.sizes.lg,
+    fontSize: 18,
     color: theme.colors.error,
     textAlign: 'center',
-    marginBottom: theme.spacing.md,
+    marginBottom: 20,
+    fontFamily: 'Poppins-Regular',
   },
   retryButton: {
     backgroundColor: theme.colors.primary,
-    padding: theme.spacing.sm,
-    borderRadius: theme.roundness,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 25,
   },
   retryButtonText: {
-    color: 'white',
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.fontWeights.bold,
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
   },
   footerLoader: {
     alignItems: 'center',
-    paddingVertical: theme.spacing.md,
+    paddingVertical: 20,
   },
   skeleton: {
-    backgroundColor: theme.colors.secondary,
+    backgroundColor: '#F0F0F0',
   },
   skeletonText: {
     height: 16,
-    backgroundColor: theme.colors.secondary,
+    backgroundColor: '#F0F0F0',
     borderRadius: 4,
   },
   emptyStateContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.lg,
+    paddingHorizontal: 20,
   },
-  emptyStateIconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: theme.colors.secondary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: theme.spacing.xl,
+  emptyStateAnimation: {
+    width: 200,
+    height: 200,
   },
   emptyStateTitle: {
-    fontSize: theme.typography.sizes.xl,
-    fontWeight: theme.typography.fontWeights.bold,
+    fontSize: 24,
+    fontWeight: 'bold',
     color: theme.colors.primary,
     textAlign: 'center',
-    marginBottom: theme.spacing.md,
+    marginBottom: 10,
+    fontFamily: 'Poppins-Bold',
   },
   emptyStateDescription: {
-    fontSize: theme.typography.sizes.md,
+    fontSize: 16,
     color: theme.colors.textSecondary,
     textAlign: 'center',
-    marginBottom: theme.spacing.xl,
+    marginBottom: 20,
+    fontFamily: 'Poppins-Regular',
   },
   emptyStateButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.primary,
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
-    borderRadius: theme.roundness,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 25,
   },
   emptyStateButtonIcon: {
-    marginRight: theme.spacing.sm,
+    marginRight: 10,
   },
   emptyStateButtonText: {
-    color: 'white',
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.fontWeights.bold,
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: theme.roundness,
-    marginBottom: theme.spacing.md,
-    paddingHorizontal: theme.spacing.sm,
-    ...theme.elevation.small,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 25,
+    marginHorizontal: 20,
+    marginVertical: 10,
+    paddingHorizontal: 15,
   },
   searchIcon: {
-    marginRight: theme.spacing.sm,
+    marginRight: 10,
   },
   searchInput: {
     flex: 1,
     height: 40,
-    fontSize: theme.typography.sizes.md,
+    fontSize: 16,
     color: theme.colors.text,
+    fontFamily: 'Poppins-Regular',
+  },
+  errorAnimation: {
+    width: 150,
+    height: 150,
+    marginBottom: 20,
   },
 });
 
 export default FleetScreen;
+

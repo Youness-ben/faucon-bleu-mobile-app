@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, StatusBar, SafeAreaView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Picker } from '@react-native-picker/picker';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { theme } from '../styles/theme';
 import api from '../api';
-import Toast from '../components/Toast';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import Toast from 'react-native-toast-message';
 
 type RootStackParamList = {
   Fleet: undefined;
@@ -24,7 +25,7 @@ interface Brand {
 interface Model {
   id: number;
   modele: string;
-  annee: string;
+  annees: string[];
 }
 
 const AddVehicleScreen: React.FC = () => {
@@ -33,6 +34,7 @@ const AddVehicleScreen: React.FC = () => {
   const [brandId, setBrandId] = useState<number | null>(null);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
+  const [selectedYear, setSelectedYear] = useState<string | null>(null);
   const [models, setModels] = useState<Model[]>([]);
   const [plateNumber, setPlateNumber] = useState('');
   const [vin_number, setVin] = useState('');
@@ -43,16 +45,6 @@ const AddVehicleScreen: React.FC = () => {
   const [isFetchingBrands, setIsFetchingBrands] = useState(true);
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const [conductorPassword, setConductorPassword] = useState('');
-  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' | 'info' }>({
-    visible: false,
-    message: '',
-    type: 'info',
-  });
-
-  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
-    setToast({ visible: true, message, type });
-    setTimeout(() => setToast({ visible: false, message: '', type: 'info' }), 3000);
-  };
 
   useEffect(() => {
     const fetchBrands = async () => {
@@ -61,7 +53,11 @@ const AddVehicleScreen: React.FC = () => {
         setBrands(response.data);
       } catch (error) {
         console.error('Error fetching brands:', error);
-        showToast(t('addVehicle.brandsFetchFailed'), 'error');
+        Toast.show({
+          type: 'error',
+          text1: t('addVehicle.brandsFetchFailed'),
+          text2: t('addVehicle.tryAgainLater'),
+        });
       } finally {
         setIsFetchingBrands(false);
       }
@@ -76,10 +72,34 @@ const AddVehicleScreen: React.FC = () => {
         setIsFetchingModels(true);
         try {
           const response = await api.get(`/client/brands/${brandId}/models`);
-          setModels(response.data);
+          console.log('Raw data:', response.data);
+          
+          // Process the data
+          const processedModels = response.data.reduce((acc, item) => {
+            if (!acc[item.modele]) {
+              acc[item.modele] = {
+                id: item.id,
+                modele: item.modele,
+                annees: []
+              };
+            }
+            if (!acc[item.modele].annees.includes(item.annee)) {
+              acc[item.modele].annees.push(item.annee);
+            }
+            return acc;
+          }, {});
+
+          const modelArray = Object.values(processedModels);
+          console.log('Processed models:', modelArray);
+
+          setModels(modelArray);
         } catch (error) {
           console.error('Error fetching models:', error);
-          showToast(t('addVehicle.modelsFetchFailed'), 'error');
+          Toast.show({
+            type: 'error',
+            text1: t('addVehicle.modelsFetchFailed'),
+            text2: t('addVehicle.tryAgainLater'),
+          });
         } finally {
           setIsFetchingModels(false);
         }
@@ -92,19 +112,21 @@ const AddVehicleScreen: React.FC = () => {
   }, [brandId, t]);
 
   const handleSubmit = async () => {
-    if (!brandId || !selectedModel || !plateNumber || !vin_number || !kilometers || !fuelType || !transmission || !conductorPassword) {
-      showToast(t('addVehicle.fillAllFields'), 'error');
+    if (!brandId || !selectedModel || !selectedYear || !plateNumber || !vin_number || !kilometers || !fuelType || !transmission || !conductorPassword) {
+      Toast.show({
+        type: 'error',
+        text1: t('addVehicle.fillAllFields'),
+      });
       return;
     }
 
     setIsLoading(true);
 
     try {
-
       const response = await api.post('/client/vehicles', {
         brand_id: brandId,
         model: selectedModel.modele,
-        year: selectedModel.annee,
+        year: selectedYear,
         plate_number: plateNumber,
         vin_number,
         kilometers: parseInt(kilometers),
@@ -114,14 +136,21 @@ const AddVehicleScreen: React.FC = () => {
       });
 
       if (response.status === 201) {
-        showToast(t('addVehicle.vehicleAdded'), 'success');
+        Toast.show({
+          type: 'success',
+          text1: t('addVehicle.vehicleAdded'),
+        });
         navigation.navigate('VehicleDetail', { vehicleId: response.data.id });
       } else {
         throw new Error('Unexpected response status');
       }
     } catch (error) {
       console.error('Error adding vehicle:', error.response?.data || error.message);
-      showToast(t('addVehicle.addFailed'), 'error');
+      Toast.show({
+        type: 'error',
+        text1: t('addVehicle.addFailed'),
+        text2: t('addVehicle.tryAgainLater'),
+      });
     } finally {
       setIsLoading(false);
     }
@@ -140,207 +169,257 @@ const AddVehicleScreen: React.FC = () => {
   }
 
   return (
-    <View style={styles.container}>
-      <ScrollView>
-        <View style={styles.header}>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#028dd0" />
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.keyboardAvoidingView}
+      >
+        <LinearGradient colors={['#028dd0', '#01579B']} style={styles.header}>
           <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={styles.title}>{t('addVehicle.title')}</Text>
-          <View />
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>{t('addVehicle.brand')}</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={brandId}
-              onValueChange={(itemValue) => {
-                setBrandId(itemValue);
-                setSelectedModel(null);
-              }}
-              style={styles.picker}
-            >
-              <Picker.Item label={t('addVehicle.selectBrand')} value={null} />
-              {brands.map((brand) => (
-                <Picker.Item key={brand.id} label={brand.name} value={brand.id} />
-              ))}
-            </Picker>
+        </LinearGradient>
+        <ScrollView style={styles.content} contentContainerStyle={styles.scrollViewContent}>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>{t('addVehicle.brand')}</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={brandId}
+                onValueChange={(itemValue) => {
+                  setBrandId(itemValue);
+                  setSelectedModel(null);
+                  setSelectedYear(null);
+                }}
+                style={styles.picker}
+              >
+                <Picker.Item label={t('addVehicle.selectBrand')} value={null} />
+                {brands.map((brand) => (
+                  <Picker.Item key={brand.id} label={brand.name} value={brand.id} />
+                ))}
+              </Picker>
+            </View>
           </View>
-        </View>
 
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>{t('addVehicle.model')}</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={selectedModel?.id}
-              onValueChange={(itemValue) => setSelectedModel(models.find(model => model.id === itemValue) || null)}              style={styles.picker}
-              enabled={!isFetchingModels}
-            >
-              <Picker.Item label={t('addVehicle.selectModel')} value={null} />
-              {models.map((model) => (
-                <Picker.Item key={model.id} label={`${model.modele} (${model.annee})`} value={model.id} />
-              ))}
-            </Picker>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>{t('addVehicle.modelAndYear')}</Text>
+            <View style={styles.rowContainer}>
+              <View style={[styles.pickerContainer, styles.halfWidth]}>
+                <Picker
+                  selectedValue={selectedModel?.id}
+                  onValueChange={(itemValue) => {
+                    const model = models.find(m => m.id === itemValue) || null;
+                    setSelectedModel(model);
+                    setSelectedYear(null);
+                  }}
+                  style={styles.picker}
+                  enabled={!isFetchingModels}
+                >
+                  <Picker.Item label={t('addVehicle.selectModel')} value={null} />
+                  {models.map((model) => (
+                    <Picker.Item key={model.id} label={model.modele} value={model.id} />
+                  ))}
+                </Picker>
+              </View>
+              <View style={[styles.pickerContainer, styles.halfWidth]}>
+                <Picker
+                  selectedValue={selectedYear}
+                  onValueChange={(itemValue) => setSelectedYear(itemValue)}
+                  style={styles.picker}
+                  enabled={!!selectedModel}
+                >
+                  <Picker.Item label={t('addVehicle.selectYear')} value={null} />
+                  {selectedModel?.annees.map((year) => (
+                    <Picker.Item key={year} label={year} value={year} />
+                  ))}
+                </Picker>
+              </View>
+            </View>
+            {isFetchingModels && <ActivityIndicator size="small" color={theme.colors.primary} />}
           </View>
-          {isFetchingModels && <ActivityIndicator size="small" color={theme.colors.primary} />}
-        </View>
 
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>{t('addVehicle.plateNumber')}</Text>
-          <TextInput
-            style={styles.input}
-            value={plateNumber}
-            onChangeText={setPlateNumber}
-            placeholder={t('addVehicle.enterPlateNumber')}
-          />
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>{t('addVehicle.vin')}</Text>
-          <TextInput
-            style={styles.input}
-            value={vin_number}
-            onChangeText={setVin}
-            placeholder={t('addVehicle.enterVin')}
-          />
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>{t('addVehicle.mileage')}</Text>
-          <TextInput
-            style={styles.input}
-            value={kilometers}
-            onChangeText={setMileage}
-            placeholder={t('addVehicle.enterMileage')}
-            keyboardType="numeric"
-          />
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>{t('addVehicle.fuelType')}</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={fuelType}
-              onValueChange={(itemValue) => setFuelType(itemValue)}
-              style={styles.picker}
-            >
-              <Picker.Item label={t('addVehicle.selectFuelType')} value="" />
-              <Picker.Item label={t('addVehicle.gasoline')} value="gasoline" />
-              <Picker.Item label={t('addVehicle.diesel')} value="diesel" />
-              <Picker.Item label={t('addVehicle.electric')} value="electric" />
-              <Picker.Item label={t('addVehicle.hybrid')} value="hybrid" />
-            </Picker>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>{t('addVehicle.plateNumber')}</Text>
+            <TextInput
+              style={styles.input}
+              value={plateNumber}
+              onChangeText={setPlateNumber}
+              placeholder={t('addVehicle.enterPlateNumber')}
+            />
           </View>
-        </View>
 
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>{t('addVehicle.transmission')}</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={transmission}
-              onValueChange={(itemValue) => setTransmission(itemValue)}
-              style={styles.picker}
-            >
-              <Picker.Item label={t('addVehicle.selectTransmission')} value="" />
-              <Picker.Item label={t('addVehicle.manual')} value="manual" />
-              <Picker.Item label={t('addVehicle.automatic')} value="automatic" />
-            </Picker>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>{t('addVehicle.vin')}</Text>
+            <TextInput
+              style={styles.input}
+              value={vin_number}
+              onChangeText={setVin}
+              placeholder={t('addVehicle.enterVin')}
+            />
           </View>
-        </View>
 
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>{t('addVehicle.conductorPassword')}</Text>
-          <TextInput
-            style={styles.input}
-            value={conductorPassword}
-            onChangeText={setConductorPassword}
-            placeholder={t('addVehicle.enterConductorPassword')}
-            secureTextEntry
-          />
-        </View>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>{t('addVehicle.mileage')}</Text>
+            <TextInput
+              style={styles.input}
+              value={kilometers}
+              onChangeText={setMileage}
+              placeholder={t('addVehicle.enterMileage')}
+              keyboardType="numeric"
+            />
+          </View>
 
-        <TouchableOpacity
-          style={[styles.submitButton, isLoading && styles.disabledButton]}
-          onPress={handleSubmit}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text style={styles.submitButtonText}>{t('addVehicle.addVehicle')}</Text>
-          )}
-        </TouchableOpacity>
-      </ScrollView>
-      <Toast visible={toast.visible} message={toast.message} type={toast.type} />
-    </View>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>{t('addVehicle.fuelType')}</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={fuelType}
+                onValueChange={(itemValue) => setFuelType(itemValue)}
+                style={styles.picker}
+              >
+                <Picker.Item label={t('addVehicle.selectFuelType')} value="" />
+                <Picker.Item label={t('addVehicle.gasoline')} value="gasoline" />
+                <Picker.Item label={t('addVehicle.diesel')} value="diesel" />
+                <Picker.Item label={t('addVehicle.electric')} value="electric" />
+                <Picker.Item label={t('addVehicle.hybrid')} value="hybrid" />
+              </Picker>
+            </View>
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>{t('addVehicle.transmission')}</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={transmission}
+                onValueChange={(itemValue) => setTransmission(itemValue)}
+                style={styles.picker}
+              >
+                <Picker.Item label={t('addVehicle.selectTransmission')} value="" />
+                <Picker.Item label={t('addVehicle.manual')} value="manual" />
+                <Picker.Item label={t('addVehicle.automatic')} value="automatic" />
+              </Picker>
+            </View>
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>{t('addVehicle.conductorPassword')}</Text>
+            <TextInput
+              style={styles.input}
+              value={conductorPassword}
+              onChangeText={setConductorPassword}
+              placeholder={t('addVehicle.enterConductorPassword')}
+              secureTextEntry
+            />
+          </View>
+        </ScrollView>
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={[styles.submitButton, isLoading && styles.disabledButton]}
+            onPress={handleSubmit}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.submitButtonText}>{t('addVehicle.addVehicle')}</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: theme.spacing.lg,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#FFFFFF',
+  },
+  keyboardAvoidingView: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingBottom: 40
+    alignItems: 'center',
+    paddingTop: 40,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
   },
   backButton: {
-    marginVertical: "auto"
+    marginRight: 15,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontFamily: 'Poppins-Bold',
+  },
+  content: {
+    flex: 1,
+  },
+  scrollViewContent: {
+    padding: 20,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.background,
-  },
-  title: {
-    fontSize: theme.typography.sizes.xl,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.primary,
+    backgroundColor: '#FFFFFF',
   },
   formGroup: {
-    marginBottom: theme.spacing.md,
+    marginBottom: 20,
   },
   label: {
-    fontSize: theme.typography.sizes.md,
-    marginBottom: theme.spacing.sm,
+    fontSize: 16,
+    marginBottom: 5,
     color: theme.colors.text,
+    fontFamily: 'Poppins-Regular',
   },
   input: {
     borderWidth: 1,
     borderColor: theme.colors.border,
-    borderRadius: theme.roundness,
-    padding: theme.spacing.sm,
-    fontSize: theme.typography.sizes.md,
+    borderRadius: 10,
+    padding: 10,
+    fontSize: 16,
+    fontFamily: 'Poppins-Regular',
   },
   pickerContainer: {
     borderWidth: 1,
     borderColor: theme.colors.border,
-    borderRadius: theme.roundness,
+    borderRadius: 10,
     overflow: 'hidden',
   },
   picker: {
     height: 50,
   },
+  buttonContainer: {
+    padding: 20,
+    backgroundColor: '#FFFFFF',
+  },
   submitButton: {
     backgroundColor: theme.colors.primary,
-    padding: theme.spacing.md,
-    borderRadius: theme.roundness,
+    padding: 15,
+    borderRadius: 10,
     alignItems: 'center',
-    marginTop: theme.spacing.lg,
   },
   disabledButton: {
     opacity: 0.7,
   },
   submitButtonText: {
     color: 'white',
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.fontWeights.bold,
+    fontSize: 18,
+    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
+  },
+  rowContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  halfWidth: {
+    width: '48%', 
   },
 });
 
 export default AddVehicleScreen;
+

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, FlatList, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, FlatList, SafeAreaView, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { RouteProp, useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../styles/theme';
 import api from '../api';
 
@@ -55,7 +56,7 @@ const OrderServiceScreen: React.FC = () => {
     setError(null);
     try {
       const [vehicleResponse, vehiclesResponse, serviceResponse] = await Promise.all([
-        vehicleId ? api.get(`/client/vehicles/${vehicleId}`) :{data:[]},
+        vehicleId ? api.get(`/client/vehicles/${vehicleId}`) : { data: [] },
         api.get('/client/vehicles'),
         api.get(`/client/services/${serviceId}`),
       ]);
@@ -106,60 +107,51 @@ const OrderServiceScreen: React.FC = () => {
     }
   };
 
-
-  const renderHeader = () => (
-    <View style={styles.header}>
-      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-        <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
-      </TouchableOpacity>
-      
-      <Text style={styles.title}>{t('services.orderService')}</Text>
-
-      <View style={styles.headerRight} />
-    </View>
-  );
-
   const handleDateChange = (event: any, selectedDate?: Date) => {
     const currentDate = selectedDate || new Date();
     setShowDatePicker(false);
     setSelectedDate(currentDate);
   };
 
-  const handleSubmit = async () => {
-    if (!selectedVehicle || !service) return;
+  const handleConfirmOrder = async () => {
+    if (!selectedVehicle || !service) {
+      Alert.alert(t('orderService.error'), t('orderService.missingInfo'));
+      return;
+    }
 
-    const scheduledAt = `${selectedDate.getFullYear()}-${selectedDate.getMonth() + 1}-${selectedDate.getDate()} 00:00:00`;
-
-    const orderData = {
-      vehicle_id: selectedVehicle.id,
-      service_id: service.id,
-      scheduled_at: scheduledAt,
-    };
-
+    setIsLoading(true);
     try {
-      const response = await api.post('/client/service-orders', orderData);
-      console.log('Order submitted:', response.data);
-      navigation.navigate("TicketScreen", { serviceId: response.data.id,service :  response.data });
-    } catch (error) {
-      console.error('Error submitting order:', error);
-      setError(t('services.submitError'));
+      const orderData = {
+        vehicle_id: selectedVehicle.id,
+        service_id: service.id,
+        scheduled_at: `${selectedDate.getFullYear()}-${selectedDate.getMonth() + 1}-${selectedDate.getDate()} 00:00:00`,
+      };
+      const resp = await api.post('/client/service-orders', orderData);
+      navigation.navigate('TicketScreen', { serviceId: resp.data.id, service: resp.data });
+    } catch (err) {
+      console.error('Error confirming service:', err);
+      Alert.alert(t('orderService.error'), t('orderService.confirmError'));
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  const renderHeader = () => (
+    <LinearGradient colors={['#028dd0', '#01579B']} style={styles.header}>
+      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Ionicons name="arrow-back" size={24} color="white" />
+      </TouchableOpacity>
+      <Text style={styles.headerTitle}>{t('services.orderService')}</Text>
+      <View style={styles.headerRight} />
+    </LinearGradient>
+  );
 
   const renderVehicleItem = ({ item }: { item: Vehicle }) => (
     <TouchableOpacity
       style={styles.vehicleItem}
-      onPress={async () => {
+      onPress={() => {
         setSelectedVehicle(item);
-        try {
-          const response = await api.post('/client/vehicles/client-service-prices', {
-            vehicle: item.id,
-            service: service?.id
-          });
-          setServicePrice(response.data || service?.base_price);
-        } catch (err) {
-          console.log("Error fetching service price:", err);
-        }
+        fetchServicePrice(item.id, service?.id || 0);
         setShowVehicleModal(false);
       }}
     >
@@ -167,23 +159,6 @@ const OrderServiceScreen: React.FC = () => {
       <Text style={styles.vehicleLicensePlate}>{item.plate_number}</Text>
     </TouchableOpacity>
   );
-
-  const renderVehicleDetails = () => {
-    if (!selectedVehicle) return null;
-
-    return (
-      <View style={styles.section}>
-        <View style={styles.vehicleDetailHeader}>
-          <Text style={styles.sectionTitle}>{t('vehicleDetail.details')}</Text>
-          <TouchableOpacity onPress={() => setSelectedVehicle(null)} style={styles.clearButton}>
-            <Ionicons name="close-circle-outline" size={24} color={theme.colors.primary} />
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.vehicleDetailItem}>{selectedVehicle.brand_name} {selectedVehicle.model}</Text>
-        <Text style={styles.vehicleDetailItem}>{selectedVehicle.plate_number}</Text>
-      </View>
-    );
-  };
 
   if (isLoading) {
     return (
@@ -201,7 +176,8 @@ const OrderServiceScreen: React.FC = () => {
       <SafeAreaView style={styles.safeArea}>
         {renderHeader()}
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error || t('services.serviceNotFound')}</Text>
+          <Ionicons name="alert-circle-outline" size={48} color={theme.colors.error} />
+          <Text style={styles.errorText}>{error || t('orderService.unknownError')}</Text>
           <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
             <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
           </TouchableOpacity>
@@ -215,36 +191,43 @@ const OrderServiceScreen: React.FC = () => {
       {renderHeader()}
       <ScrollView style={styles.container}>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('services.serviceDetails')}</Text>
-          <Text style={styles.serviceType}>{service.name}</Text>
+          <Text style={styles.serviceName}>{service.name}</Text>
           <Text style={styles.serviceDescription}>{service.description}</Text>
-          <Text style={styles.serviceDuration}>
-            {t('services.estimatedDuration', { duration: service.estimated_duration, unite: service.estimated_duration_unite })}
-          </Text>
-          {servicePrice && (
-            <Text style={styles.servicePrice}>
-              {t('services.servicePrice')} {servicePrice} MAD
+          <View style={styles.detailRow}>
+            <Ionicons name="time-outline" size={20} color={theme.colors.primary} />
+            <Text style={styles.serviceDuration}>
+              {t('services.estimatedDuration', { duration: service.estimated_duration, unite: service.estimated_duration_unite })}
             </Text>
+          </View>
+          {servicePrice && (
+            <View style={styles.detailRow}>
+              <Ionicons name="pricetag-outline" size={20} color={theme.colors.primary} />
+              <Text style={styles.servicePrice}>
+                {t('services.servicePrice')} {servicePrice} MAD
+              </Text>
+            </View>
           )}
         </View>
 
-        {selectedVehicle ? renderVehicleDetails() : (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{t('services.selectVehicle')}</Text>
-            <TouchableOpacity
-              style={styles.vehicleSelector}
-              onPress={() => setShowVehicleModal(true)}
-            >
-              <Text style={styles.vehicleSelectorText}>
-                {t('services.selectVehiclePrompt')}
-              </Text>
-              <Ionicons name="chevron-down" size={24} color={theme.colors.primary} />
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t('orderService.selectVehicle')}</Text>
+          {selectedVehicle ? (
+            <View>
+              <Text style={styles.vehicleInfo}>{`${selectedVehicle.brand_name} ${selectedVehicle.model}`}</Text>
+              <Text style={styles.vehicleInfo}>{selectedVehicle.plate_number}</Text>
+              <TouchableOpacity style={styles.changeVehicleButton} onPress={() => setShowVehicleModal(true)}>
+                <Text style={styles.changeVehicleButtonText}>{t('orderService.changeVehicle')}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.selectVehicleButton} onPress={() => setShowVehicleModal(true)}>
+              <Text style={styles.selectVehicleButtonText}>{t('orderService.selectVehicle')}</Text>
             </TouchableOpacity>
-          </View>
-        )}
+          )}
+        </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('services.serviceDate')}</Text>
+          <Text style={styles.sectionTitle}>{t('orderService.serviceDate')}</Text>
           <TouchableOpacity style={styles.dateTimeButton} onPress={() => setShowDatePicker(true)}>
             <Text style={styles.dateTimeButtonText}>
               {selectedDate.toLocaleDateString()}
@@ -257,46 +240,43 @@ const OrderServiceScreen: React.FC = () => {
               mode="date"
               display="default"
               onChange={handleDateChange}
+              minimumDate={new Date()}
             />
           )}
         </View>
 
         <TouchableOpacity
-          style={[
-            styles.submitButton,
-            (!selectedVehicle || !selectedDate) && styles.submitButtonDisabled,
-          ]}
-          onPress={handleSubmit}
-          disabled={!selectedVehicle || !selectedDate}
+          style={styles.confirmButton}
+          onPress={handleConfirmOrder}
         >
-          <Text style={styles.submitButtonText}>{t('services.confirmOrder')}</Text>
+          <Text style={styles.confirmButtonText}>{t('orderService.confirmService')}</Text>
         </TouchableOpacity>
+      </ScrollView>
 
-        <Modal
-          visible={showVehicleModal}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setShowVehicleModal(false)}
-        >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>{t('services.selectVehicle')}</Text>
-              <FlatList
-                data={vehicles}
-                renderItem={renderVehicleItem}
-                keyExtractor={(item) => item.id.toString()}
-                style={styles.vehicleList}
-              />
-              <TouchableOpacity
-                style={styles.modalCloseButton}
-                onPress={() => setShowVehicleModal(false)}
-              >
-                <Text style={styles.modalCloseButtonText}>{t('common.close')}</Text>
-              </TouchableOpacity>
-            </View>
+      <Modal
+        visible={showVehicleModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowVehicleModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{t('orderService.selectVehicle')}</Text>
+            <FlatList
+              data={vehicles}
+              renderItem={renderVehicleItem}
+              keyExtractor={(item) => item.id.toString()}
+              style={styles.vehicleList}
+            />
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => setShowVehicleModal(false)}
+            >
+              <Text style={styles.modalCloseButtonText}>{t('common.close')}</Text>
+            </TouchableOpacity>
           </View>
-        </Modal>
-      </ScrollView>  
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -309,6 +289,24 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: theme.spacing.md,
+    paddingTop: theme.spacing.lg,
+  },
+  backButton: {
+    padding: theme.spacing.sm,
+  },
+  headerTitle: {
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.fontWeights.bold,
+    color: 'white',
+  },
+  headerRight: {
+    width: 40,
   },
   loadingContainer: {
     flex: 1,
@@ -327,11 +325,12 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.lg,
     color: theme.colors.error,
     textAlign: 'center',
-    marginBottom: theme.spacing.md,
+    marginVertical: theme.spacing.md,
   },
   retryButton: {
     backgroundColor: theme.colors.primary,
-    padding: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
     borderRadius: theme.roundness,
   },
   retryButtonText: {
@@ -339,69 +338,71 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.fontWeights.bold,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: theme.spacing.md,
-    backgroundColor: theme.colors.background,
-  },
-  backButton: {
-    padding: theme.spacing.sm,
-  },
-  title: {
-    fontSize: theme.typography.sizes.xl,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.primary,
-  },
-  headerRight: {
-    width: 40,
-  },
   section: {
     backgroundColor: 'white',
     borderRadius: theme.roundness,
     margin: theme.spacing.md,
-    padding: theme.spacing.md,
-    ...theme.elevation.small,
+    padding: theme.spacing.lg,
+    ...theme.elevation.medium,
   },
   sectionTitle: {
     fontSize: theme.typography.sizes.lg,
     fontWeight: theme.typography.fontWeights.bold,
     color: theme.colors.text,
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
   },
-  serviceType: {
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.fontWeights.medium,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.xs,
+  serviceName: {
+    fontSize: theme.typography.sizes.xl,
+    fontWeight: theme.typography.fontWeights.bold,
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.sm,
   },
   serviceDescription: {
     fontSize: theme.typography.sizes.md,
     color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.md,
+    lineHeight: 22,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: theme.spacing.xs,
   },
   serviceDuration: {
     fontSize: theme.typography.sizes.md,
     color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.xs,
+    marginLeft: theme.spacing.sm,
   },
   servicePrice: {
     fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.fontWeights.bold,
     color: theme.colors.primary,
+    marginLeft: theme.spacing.sm,
   },
-  vehicleSelector: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: theme.colors.secondary + '20',
-    borderRadius: theme.roundness,
-    padding: theme.spacing.sm,
-  },
-  vehicleSelectorText: {
+  vehicleInfo
+: {
     fontSize: theme.typography.sizes.md,
     color: theme.colors.text,
+    marginBottom: theme.spacing.xs,
+  },
+  changeVehicleButton: {
+    marginTop: theme.spacing.sm,
+  },
+  changeVehicleButtonText: {
+    color: theme.colors.primary,
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.fontWeights.medium,
+  },
+  selectVehicleButton: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.roundness,
+    padding: theme.spacing.sm,
+    alignItems: 'center',
+  },
+  selectVehicleButtonText: {
+    color: 'white',
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.fontWeights.medium,
   },
   dateTimeButton: {
     flexDirection: 'row',
@@ -409,32 +410,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: theme.colors.secondary + '20',
     borderRadius: theme.roundness,
-    padding: theme.spacing.sm,
+    padding: theme.spacing.md,
+    marginTop: theme.spacing.sm,
   },
   dateTimeButtonText: {
     fontSize: theme.typography.sizes.md,
     color: theme.colors.text,
   },
-  submitButton: {
+  confirmButton: {
     backgroundColor: theme.colors.primary,
     borderRadius: theme.roundness,
     margin: theme.spacing.md,
     padding: theme.spacing.md,
     alignItems: 'center',
+    ...theme.elevation.small,
   },
-  submitButtonDisabled: {
-    backgroundColor: theme.colors.disabled,
-  },
-  submitButtonText: {
+  confirmButtonText: {
     color: 'white',
     fontSize: theme.typography.sizes.lg,
     fontWeight: theme.typography.fontWeights.bold,
   },
-  modalContainer: {
+  modalOverlay: {
     flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
     backgroundColor: 'white',
@@ -475,20 +475,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.md,
     fontWeight: theme.typography.fontWeights.medium,
   },
-  vehicleDetailItem: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.xs,
-  },
-  vehicleDetailHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: theme.spacing.sm,
-  },
-  clearButton: {
-    padding: theme.spacing.xs,
-  },
 });
 
 export default OrderServiceScreen;
+

@@ -1,12 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Image, Alert, ActivityIndicator } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TextInput, 
+  TouchableOpacity, 
+  ScrollView, 
+  Image, 
+  Alert, 
+  ActivityIndicator,
+  StatusBar,
+  Platform
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../styles/theme';
 import * as ImagePicker from 'expo-image-picker';
 import api from '../api';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { MAIN_URL, STORAGE_URL } from '../../config';
+import { STORAGE_URL } from '../../config';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const EditProfileScreen: React.FC = () => {
   const { t } = useTranslation();
@@ -65,6 +79,7 @@ const EditProfileScreen: React.FC = () => {
 
       if (response.status === 200) {
         Alert.alert('Success', 'Profile updated successfully');
+        navigation.goBack();
       }
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -103,130 +118,166 @@ const EditProfileScreen: React.FC = () => {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-        <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
-      </TouchableOpacity>
-      
-      <View style={styles.header}>
-        <Image
-          source={{ uri: avatar? `${STORAGE_URL}/${avatar}`  :'https://via.placeholder.com/150'   }}
-          style={styles.avatar}
-        />
-        <TouchableOpacity style={styles.changePhotoButton} onPress={handleChangePhoto}>
-          <Text style={styles.changePhotoText}>{t('editProfile.changePhoto')}</Text>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#028dd0" />
+      <LinearGradient colors={['#028dd0', '#01579B']} style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
-      </View>
-
-      <View style={styles.form}>
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>{t('editProfile.firstName')}</Text>
-          <TextInput
-            style={styles.input}
-            value={firstname}
-            onChangeText={setFirstName}
-            placeholder={t('editProfile.namePlaceholder')}
+        <Text style={styles.headerTitle}>{t('editProfile.title')}</Text>
+      </LinearGradient>
+      <ScrollView style={styles.content}>
+        <View style={styles.avatarContainer}>
+          <Image
+            source={{ uri: avatar ? `${STORAGE_URL}/${avatar}` : 'https://via.placeholder.com/150' }}
+            style={styles.avatar}
           />
-        </View>        
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>{t('editProfile.lastName')}</Text>
-          <TextInput
-            style={styles.input}
-            value={lastname}
-            onChangeText={setLastName}
-            placeholder={t('editProfile.namePlaceholder')}
-          />
+          <TouchableOpacity style={styles.changePhotoButton} onPress={handleChangePhoto}>
+            <Text style={styles.changePhotoText}>{t('editProfile.changePhoto')}</Text>
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>{t('editProfile.email')}</Text>
-          <TextInput
-            style={styles.input}
-            value={email}
-            readOnly={true}
-          />
+        <View style={styles.form}>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>{t('editProfile.firstName')}</Text>
+            <TextInput
+              style={styles.input}
+              value={firstname}
+              onChangeText={setFirstName}
+              placeholder={t('editProfile.namePlaceholder')}
+            />
+          </View>        
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>{t('editProfile.lastName')}</Text>
+            <TextInput
+              style={styles.input}
+              value={lastname}
+              onChangeText={setLastName}
+              placeholder={t('editProfile.namePlaceholder')}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>{t('editProfile.email')}</Text>
+            <TextInput
+              style={[styles.input, styles.disabledInput]}
+              value={email}
+              editable={false}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>{t('editProfile.phone')}</Text>
+            <TextInput
+              style={styles.input}
+              value={phone}
+              onChangeText={setPhone}
+              placeholder={t('editProfile.phonePlaceholder')}
+              keyboardType="phone-pad"
+            />
+          </View>
         </View>
 
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>{t('editProfile.phone')}</Text>
-          <TextInput
-            style={styles.input}
-            value={phone}
-            onChangeText={setPhone}
-            placeholder={t('editProfile.phonePlaceholder')}
-            keyboardType="phone-pad"
-          />
-        </View>
-      </View>
-
-      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-        <Text style={styles.saveButtonText}>{t('editProfile.save')}</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+          <Text style={styles.saveButtonText}>{t('editProfile.save')}</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#FFFFFF',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+  },
+  backButton: {
+    marginRight: 15,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontFamily: 'Poppins-Bold',
+  },
+  content: {
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#FFFFFF',
   },
-  header: {
+  avatarContainer: {
     alignItems: 'center',
-    padding: theme.spacing.lg,
+    marginTop: 20,
+    marginBottom: 30,
   },
   avatar: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    marginBottom: theme.spacing.md,
+    marginBottom: 10,
   },
   changePhotoButton: {
-    marginTop: theme.spacing.sm,
+    backgroundColor: '#028dd0',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
   },
   changePhotoText: {
-    color: theme.colors.primary,
-    fontSize: theme.typography.sizes.md,
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'Poppins-SemiBold',
   },
   form: {
-    padding: theme.spacing.lg,
+    paddingHorizontal: 20,
   },
   inputContainer: {
-    marginBottom: theme.spacing.lg,
+    marginBottom: 20,
   },
   label: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.xs,
+    fontSize: 14,
+    color: '#8E8E93',
+    marginBottom: 5,
+    fontFamily: 'Poppins-Regular',
   },
   input: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text,
+    fontSize: 16,
+    color: '#1C1C1E',
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.secondary,
-    paddingVertical: theme.spacing.sm,
+    borderBottomColor: '#E5E5EA',
+    paddingVertical: 10,
+    fontFamily: 'Poppins-Regular',
+  },
+  disabledInput: {
+    color: '#8E8E93',
+    backgroundColor: '#F2F2F7',
   },
   saveButton: {
-    backgroundColor: theme.colors.primary,
-    marginHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-    borderRadius: theme.roundness,
+    backgroundColor: '#028dd0',
+    marginHorizontal: 20,
+    marginTop: 30,
+    marginBottom: 20,
+    paddingVertical: 15,
+    borderRadius: 12,
     alignItems: 'center',
   },
   saveButtonText: {
-    color: theme.colors.background,
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.fontWeights.bold,
-  },
-  backButton: {
-    padding: theme.spacing.lg,
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
   },
 });
 
 export default EditProfileScreen;
+

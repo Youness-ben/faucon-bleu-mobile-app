@@ -1,8 +1,10 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, StatusBar, SafeAreaView } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
+import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface Invoice {
   id: string;
@@ -21,6 +23,9 @@ const dummyInvoices: Invoice[] = [
 
 const InvoicesScreen: React.FC = () => {
   const { t } = useTranslation();
+  const navigation = useNavigation();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredInvoices, setFilteredInvoices] = useState(dummyInvoices);
 
   const getStatusColor = (status: Invoice['status']) => {
     switch (status) {
@@ -34,6 +39,17 @@ const InvoicesScreen: React.FC = () => {
         return theme.colors.text;
     }
   };
+
+  const handleSearch = useCallback((text: string) => {
+    setSearchQuery(text);
+    const filtered = dummyInvoices.filter(
+      (invoice) =>
+        invoice.date.includes(text) ||
+        invoice.amount.toString().includes(text) ||
+        t(`invoices.status.${invoice.status}`).toLowerCase().includes(text.toLowerCase())
+    );
+    setFilteredInvoices(filtered);
+  }, [t]);
 
   const renderInvoiceItem = ({ item }: { item: Invoice }) => (
     <View style={styles.invoiceItem}>
@@ -56,68 +72,124 @@ const InvoicesScreen: React.FC = () => {
   );
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{t('invoices.title')}</Text>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#028dd0" />
+      <LinearGradient colors={['#028dd0', '#01579B']} style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+        <Text style={styles.title}>{t('invoices.title')}</Text>
+      </LinearGradient>
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={24} color={theme.colors.primary} style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder={t('invoices.searchPlaceholder')}
+          value={searchQuery}
+          onChangeText={handleSearch}
+          placeholderTextColor="#A0A0A0"
+        />
+      </View>
       <FlatList
-        data={dummyInvoices}
+        data={filteredInvoices}
         renderItem={renderInvoiceItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
-    padding: theme.spacing.md,
+    backgroundColor: '#FFFFFF',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 40,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+  },
+  backButton: {
+    marginRight: 15,
   },
   title: {
-    fontSize: theme.typography.sizes.xl,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.primary,
-    marginBottom: theme.spacing.lg,
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontFamily: 'Poppins-Bold',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 25,
+    marginHorizontal: 20,
+    marginVertical: 10,
+    paddingHorizontal: 15,
+  },
+  searchIcon: {
+    marginRight: 10,
+  },
+  searchInput: {
+    flex: 1,
+    height: 40,
+    fontSize: 16,
+    color: theme.colors.text,
+    fontFamily: 'Poppins-Regular',
   },
   listContent: {
-    paddingBottom: theme.spacing.xl,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   invoiceItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: 'white',
-    borderRadius: theme.roundness,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    ...theme.elevation.small,
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   invoiceInfo: {
     flex: 1,
   },
   invoiceDate: {
-    fontSize: theme.typography.sizes.md,
+    fontSize: 14,
     color: theme.colors.text,
-    marginBottom: theme.spacing.xs,
+    marginBottom: 5,
+    fontFamily: 'Poppins-Regular',
   },
   invoiceAmount: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.fontWeights.bold,
+    fontSize: 18,
+    fontWeight: 'bold',
     color: theme.colors.text,
+    fontFamily: 'Poppins-Bold',
   },
   invoiceActions: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   invoiceStatus: {
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: theme.typography.fontWeights.medium,
-    marginRight: theme.spacing.md,
+    fontSize: 14,
+    fontWeight: '600',
+    marginRight: 15,
+    fontFamily: 'Poppins-SemiBold',
   },
   downloadButton: {
-    padding: theme.spacing.sm,
+    padding: 5,
   },
 });
 
 export default InvoicesScreen;
+

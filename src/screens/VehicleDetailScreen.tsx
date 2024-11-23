@@ -5,9 +5,11 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../styles/theme';
 import api from '../api';
 import { STORAGE_URL } from '../../config';
+import { fonts } from '../styles/fonts';
 
 type RootStackParamList = {
   VehicleDetail: { vehicleId: number };
@@ -197,7 +199,7 @@ const VehicleDetailScreen: React.FC = () => {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <ActivityIndicator size="large" color="#FFFFFF" />
       </View>
     );
   }
@@ -215,39 +217,43 @@ const VehicleDetailScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <ScrollView>
-        <View style={styles.header}>
+      <LinearGradient colors={['#028dd0', '#01579B']} style={styles.header}>
+        <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
-          <View style={styles.brandLogoContainer}>
-            <Image
-              source={{ uri: `${STORAGE_URL}/${vehicle.logo_url}` }}
-              style={styles.brandLogo}
-              defaultSource={require('../../assets/logo-faucon.png')}
-            />
-          </View>
-          <View style={styles.headerTextContainer}>
-            <Text style={styles.vehicleName}>{`${vehicle.brand_name} ${vehicle.model}`}</Text>
-            <Text style={styles.licensePlate}>{vehicle.plate_number}</Text>
+          <View style={styles.vehicleInfoContainer}>
+            <View style={styles.brandLogoContainer}>
+              <Image
+                source={{ uri: `${STORAGE_URL}/${vehicle.logo_url}` }}
+                style={styles.brandLogo}
+                defaultSource={require('../../assets/logo-faucon.png')}
+              />
+            </View>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.vehicleName}>{`${vehicle.brand_name} ${vehicle.model}`}</Text>
+              <Text style={styles.licensePlate}>{vehicle.plate_number}</Text>
+            </View>
           </View>
         </View>
+      </LinearGradient>
 
+      <ScrollView style={styles.content}>
         <View style={styles.buttonContainer}>
           <TouchableOpacity
-            style={styles.button}
+            style={styles.primaryButton}
             onPress={() => navigation.navigate('Services', { vehicleId: vehicle.id, vehicule: vehicle })}
           >
             <Ionicons name="construct-outline" size={24} color="white" />
-            <Text style={styles.buttonText}>{t('vehicleDetail.orderService')}</Text>
+            <Text style={styles.primaryButtonText}>{t('vehicleDetail.orderService')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.button, styles.secondaryButton]}
+            style={styles.secondaryButton}
             onPress={() => navigation.navigate('ServiceHistory', { vehicleId: vehicle.id })}
           >
             <Ionicons name="time-outline" size={24} color={theme.colors.primary} />
-            <Text style={[styles.buttonText, styles.secondaryButtonText]}>
+            <Text style={styles.secondaryButtonText}>
               {t('vehicleDetail.serviceHistory')}
             </Text>
           </TouchableOpacity>
@@ -401,51 +407,63 @@ const EditableDetailItem: React.FC<{ label: string; value: string; onChangeText:
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#FFFFFF',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#028dd0',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.background,
-    padding: theme.spacing.lg,
+    backgroundColor: '#FFFFFF',
+    padding: 20,
   },
   errorText: {
-    fontSize: theme.typography.sizes.lg,
-    color: theme.colors.error,
+    fontSize: 18,
+    color: '#FF3B30',
     textAlign: 'center',
-    marginBottom: theme.spacing.md,
+    marginBottom: 20,
   },
   retryButton: {
-    backgroundColor: theme.colors.primary,
-    padding: theme.spacing.sm,
-    borderRadius: theme.roundness,
+    backgroundColor: '#028dd0',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 25,
   },
   retryButtonText: {
     color: 'white',
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.fontWeights.bold,
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   header: {
+    paddingTop: 40,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+  },
+  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: theme.spacing.lg,
-    backgroundColor: theme.colors.primary,
+  },
+  backButton: {
+    marginRight: 15,
+  },
+  vehicleInfoContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   brandLogoContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: theme.spacing.md,
+    marginRight: 15,
     overflow: 'hidden',
   },
   brandLogo: {
@@ -457,31 +475,76 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   vehicleName: {
-    fontSize: theme.typography.sizes.xl,
-    fontWeight: theme.typography.fontWeights.bold,
+    fontSize: 18,
+    fontWeight: '700',
     color: 'white',
   },
   licensePlate: {
-    fontSize: theme.typography.sizes.lg,
+    fontSize: 14,
     color: 'rgba(255, 255, 255, 0.8)',
+  },
+  content: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 15,
+  },
+  primaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.primary,
+    borderRadius: 10,
+    padding: 15,
+    flex: 1,
+    marginRight: 10,
+    ...theme.elevation.small,
+  },
+  primaryButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 10,
+  },
+  secondaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'white',
+    borderWidth: 2,
+    borderColor: theme.colors.primary,
+    borderRadius: 10,
+    padding: 15,
+    flex: 1,
+    marginLeft: 10,
+    ...theme.elevation.small,
+  },
+  secondaryButtonText: {
+    color: theme.colors.primary,
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 10,
   },
   infoCard: {
     backgroundColor: 'white',
-    borderRadius: theme.roundness,
-    margin: theme.spacing.md,
-    padding: theme.spacing.lg,
+    borderRadius: 10,
+    margin: 15,
+    padding: 20,
     ...theme.elevation.medium,
   },
   infoCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.md,
+    marginBottom: 15,
   },
   sectionTitle: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.text,
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1C1C1E',
   },
   detailsGrid: {
     flexDirection: 'row',
@@ -492,101 +555,72 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     width: '48%',
-    marginBottom: theme.spacing.md,
+    marginBottom: 15,
   },
   detailIcon: {
-    marginRight: theme.spacing.sm,
+    marginRight: 10,
   },
   detailLabel: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.textSecondary,
+    fontSize: 14,
+    color: '#8E8E93',
   },
   detailValue: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text,
-    fontWeight: theme.typography.fontWeights.medium,
+    fontSize: 16,
+    color: '#1C1C1E',
+    fontWeight: '500',
   },
   editableDetailValue: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text,
-    fontWeight: theme.typography.fontWeights.medium,
+    fontSize: 16,
+    color: '#1C1C1E',
+    fontWeight: '500',
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.primary,
+    borderBottomColor: '#028dd0',
   },
   vinContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: theme.spacing.md,
-    paddingTop: theme.spacing.md,
+    marginTop: 15,
+    paddingTop: 15,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+    borderTopColor: '#E5E5EA',
   },
   vinIcon: {
-    marginRight: theme.spacing.sm,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: theme.spacing.lg,
-  },
-  button: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.roundness,
-    padding: theme.spacing.md,
-    flex: 1,
-    marginRight: theme.spacing.sm,
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.fontWeights.bold,
-    marginLeft: theme.spacing.sm,
-  },
-  secondaryButton: {
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: theme.colors.primary,
-  },
-  secondaryButtonText: {
-    color: theme.colors.primary,
+    marginRight: 10,
   },
   headerButtons: {
     flexDirection: 'row',
   },
   headerButton: {
-    marginLeft: theme.spacing.sm,
+    marginLeft: 10,
     padding: 8,
     borderRadius: 10,
   },
   editButton: {
     backgroundColor: 'white',
     borderWidth: 1,
-    borderColor: theme.colors.primary,
+    borderColor: '#028dd0',
   },
   deleteButton: {
-    backgroundColor: theme.colors.error,
+    backgroundColor: '#FF3B30',
   },
   passwordResetContainer: {
     backgroundColor: 'white',
-    borderRadius: theme.roundness,
-    margin: theme.spacing.md,
-    padding: theme.spacing.lg,
+    borderRadius: 10,
+    margin: 15,
+    padding: 20,
     ...theme.elevation.medium,
   },
   input: {
     borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.roundness,
-    padding: theme.spacing.sm,
-    marginBottom: theme.spacing.md,
+    borderColor: '#E5E5EA',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 15,
   },
   pickerContainer: {
     width: '48%',
-    marginBottom: theme.spacing.md,
+    marginBottom: 15,
   },
   picker: {
     height: 50,
@@ -612,44 +646,54 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
   },
-  backButton: {
-    padding: theme.spacing.sm,
-    marginRight: theme.spacing.md,
-  },
   editButtonsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: theme.spacing.lg,
+    padding: 15,
+  },
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#028dd0',
+    borderRadius: 10,
+    padding: 15,
+    flex: 1,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 10,
   },
   saveButton: {
-    flex: 1,
-    marginRight: theme.spacing.sm,
+    marginRight: 10,
   },
   cancelButton: {
-    flex: 1,
     backgroundColor: 'white',
     borderWidth: 1,
-    borderColor: theme.colors.primary,
+    borderColor: '#028dd0',
   },
   cancelButtonText: {
-    color: theme.colors.primary,
+    color: '#028dd0',
   },
   accordionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: 'white',
-    padding: theme.spacing.md,
-    marginHorizontal: theme.spacing.md,
-    marginTop: theme.spacing.md,
-    borderRadius: theme.roundness,
+    padding: 15,
+    marginHorizontal: 15,
+    marginTop: 15,
+    borderRadius: 10,
     ...theme.elevation.small,
   },
   accordionTitle: {
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.text,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1C1C1E',
   },
 });
 
 export default VehicleDetailScreen;
+
