@@ -13,6 +13,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { UserProvider } from './src/UserContext';
 import { NotificationProvider } from './src/NotificationContext';
 import { theme } from './src/styles/theme';
+import Toast from 'react-native-toast-message';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -97,21 +98,22 @@ export default function App() {
   }
 
   return (
-    <I18nextProvider i18n={i18n}>
+   <I18nextProvider i18n={i18n}>
       <SafeAreaProvider style={{backgroundColor:'transparent'}} >
         <View style={{
-    flex: 1,
-    paddingTop: Platform.OS === 'android' ?0 : 0,
-backgroundColor:'transparent'
-  }} onLayout={onLayoutRootView}>
+          flex: 1,
+          paddingTop: Platform.OS === 'android' ? 0 : 0,
+          backgroundColor:'transparent'
+        }} onLayout={onLayoutRootView}>
           <StatusBar barStyle="dark-content" backgroundColor={theme.colors.background} />
-        <NavigationContainer ref={navigationRef}>
-          <UserProvider>
-            <NotificationProvider>
-              <AppNavigator />
-            </NotificationProvider>
-          </UserProvider>
-        </NavigationContainer>
+          <NavigationContainer ref={navigationRef}>
+            <UserProvider>
+              <NotificationProvider>
+                <AppNavigator />
+              </NotificationProvider>
+            </UserProvider>
+          </NavigationContainer>
+          <Toast />
         </View>
       </SafeAreaProvider>
     </I18nextProvider>

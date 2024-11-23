@@ -1,11 +1,26 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, RefreshControl } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Modal,
+  ScrollView,
+  RefreshControl,
+  Dimensions,
+  StatusBar,
+  Image,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../styles/theme';
 import api from '../api';
+import LottieView from 'lottie-react-native';
+import Toast from 'react-native-toast-message';
+import { LinearGradient } from 'expo-linear-gradient';
+import { STORAGE_URL } from '../../config';
 
 type RootStackParamList = {
   ServiceDetails: { serviceId: number };
@@ -18,10 +33,17 @@ interface ServiceRecord {
   service_name: string;
   completion_date: string;
   status: 'completed' | 'cancelled' | 'in_progress' | 'pending';
-  price: number;
+  final_price: number;
+  vehicle?: {
+    brand_name: string;
+    model: string;
+  };
+  scheduled_at?: string;
+  service_icon: string;
 }
 
 const ITEMS_PER_PAGE = 10;
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const ConductorServiceHistoryScreen: React.FC = () => {
   const { t } = useTranslation();
@@ -36,16 +58,23 @@ const ConductorServiceHistoryScreen: React.FC = () => {
   const [showSortModal, setShowSortModal] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
-  const fetchServiceHistory = useCallback(async (pageNumber: number, refresh = false, skipFocusFetch = false) => {
+  const fetchServiceHistory = useCallback(async (pageNumber: number, refresh = false) => {
     if (pageNumber === 1) {
       setIsLoading(true);
     }
     setError(null);
     try {
-      console.log('-',filter);
       const response = await api.get('vehicle/service-history', {
-        params: { filter, sort_by: sortBy,status: filter, page: pageNumber, per_page: ITEMS_PER_PAGE },
+        params: { 
+          filter, 
+          sort_by: sortBy, 
+          sort_direction: sortDirection,
+          status: filter, 
+          page: pageNumber, 
+          per_page: ITEMS_PER_PAGE 
+        },
       });
       const newRecords = response.data.data;
       if (pageNumber === 1 || refresh) {
@@ -58,15 +87,20 @@ const ConductorServiceHistoryScreen: React.FC = () => {
     } catch (err) {
       console.error('Error fetching service history:', err);
       setError(t('serviceHistory.fetchError'));
+      Toast.show({
+        type: 'error',
+        text1: t('serviceHistory.fetchError'),
+        text2: t('serviceHistory.tryAgainLater'),
+      });
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [filter, sortBy, t]);
+  }, [filter, sortBy, sortDirection, t]);
 
   useFocusEffect(
     useCallback(() => {
-      fetchServiceHistory(1,false, true);
+      fetchServiceHistory(1);
     }, [fetchServiceHistory])
   );
 
@@ -80,18 +114,19 @@ const ConductorServiceHistoryScreen: React.FC = () => {
       fetchServiceHistory(page + 1);
     }
   };
-  const getStatusColor = (status?: ServiceRecord['status']) => {
+
+  const getStatusColor = (status: ServiceRecord['status']) => {
     switch (status) {
       case 'completed':
-        return theme.colors.success;
+        return '#4CD964';
       case 'pending':
-        return theme.colors.warning;
+        return '#FF9500';
       case 'in_progress':
-        return theme.colors.info;
+        return '#5AC8FA';
       case 'cancelled':
-        return theme.colors.error;
+        return '#FF3B30';
       default:
-        return theme.colors.text;
+        return '#8E8E93';
     }
   };
 
@@ -102,42 +137,45 @@ const ConductorServiceHistoryScreen: React.FC = () => {
     return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
   };
 
-  const renderServiceItem = ({ item }: { item: ServiceRecord }) => {
-    return (
+  const renderServiceItem = ({ item }: { item: ServiceRecord }) => (
     <TouchableOpacity
       style={styles.serviceItem}
-      onPress={() => navigation.navigate('TicketScreen', { serviceId: item.id ,service: item})}
+      onPress={() => navigation.navigate('ServiceDetails', { serviceId: item.id })}
     >
-    <View   style={{flex:1}}   >
-        <Text style={styles.serviceType}>{item.service?.name || t('serviceHistory.unknownService')}</Text>
+      <View style={styles.serviceIcon}>
+        <Image 
+          source={{ uri: `${STORAGE_URL}/${item.service_icon}` }}
+          style={styles.iconImage}
+          defaultSource={require('../../assets/default_service_icon.png')}
+        />
+      </View>
+      <View style={styles.serviceInfo}>
+        <Text style={styles.serviceName}>{item.service_name || t('serviceHistory.unknownService')}</Text>
         <Text style={styles.vehicleName}>
           {item.vehicle ? `${item.vehicle.brand_name || ''} ${item.vehicle.model || ''}`.trim() : t('serviceHistory.unknownVehicle')}
         </Text>
-        <Text style={styles.serviceDate}>{formatDate(item.scheduled_at)}</Text>
+        <Text style={styles.serviceDate}>{formatDate(item.scheduled_at || item.completion_date)}</Text>
         <View style={styles.serviceDetails}>
-        <Text style={[styles.serviceStatus, { color: getStatusColor(item.status) }]}>
-          {item.status ? t(`serviceStatus.${item.status}`) : t('serviceHistory.unknownStatus')}
-        </Text>
-
+          <Text style={[styles.serviceStatus, { color: getStatusColor(item.status) }]}>
+            {t(`serviceStatus.${item.status}`)}
+          </Text>
+          <Text style={styles.serviceCost}>{`${item.final_price} MAD`}</Text>
         </View>
       </View>
-     <View style={{alignItems:'center'}} >
-      <Ionicons name='arrow-forward-circle-outline' style={{marginVertical:'auto'}} size={40} color={theme.colors.primary}/>
-    </View>
     </TouchableOpacity>
-  )};
+  );
 
-const FilterModal = () => (
+  const FilterModal = () => (
     <Modal
       visible={showFilterModal}
       transparent={true}
-      animationType="fade"
+      animationType="slide"
       onRequestClose={() => setShowFilterModal(false)}
     >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>{t('serviceHistory.filterBy')}</Text>
-          {['all', , 'pending' ,'in_progress' ,'completed', 'cancelled'  ].map((status) => (
+          {['all', 'pending', 'in_progress', 'completed', 'cancelled'].map((status) => (
             <TouchableOpacity
               key={status}
               style={[styles.modalOption, filter === status && styles.selectedOption]}
@@ -147,9 +185,11 @@ const FilterModal = () => (
                 fetchServiceHistory(1, true);
               }}
             >
-              <Text style={[styles.modalOptionText, filter !== status && {color : getStatusColor(status)}]}>{t(`serviceStatus.${status}`)}</Text>
+              <Text style={[styles.modalOptionText, filter === status && styles.selectedOptionText]}>
+                {t(`serviceStatus.${status}`)}
+              </Text>
               {filter === status && (
-                <Ionicons name="checkmark" size={24} color={theme.colors.primary} />
+                <Ionicons name="checkmark" size={24} color="#FFFFFF" />
               )}
             </TouchableOpacity>
           ))}
@@ -168,7 +208,7 @@ const FilterModal = () => (
     <Modal
       visible={showSortModal}
       transparent={true}
-      animationType="fade" 
+      animationType="slide"
       onRequestClose={() => setShowSortModal(false)}
     >
       <View style={styles.modalOverlay}>
@@ -180,13 +220,19 @@ const FilterModal = () => (
               style={[styles.modalOption, sortBy === sort && styles.selectedOption]}
               onPress={() => {
                 setSortBy(sort);
+                setSortDirection(prevDirection => prevDirection === 'asc' ? 'desc' : 'asc');
                 setShowSortModal(false);
                 fetchServiceHistory(1, true);
               }}
             >
-              <Text style={styles.modalOptionText}>{t(`serviceHistory.${sort}`)}</Text>
+              <Text style={[styles.modalOptionText, sortBy === sort && styles.selectedOptionText]}>
+                {t(`serviceHistory.${sort}`)}
+              </Text>
               {sortBy === sort && (
-                <Ionicons name="checkbox-outline" size={24} color={theme.colors.primary} />
+                <View style={styles.sortDirectionContainer}>
+                  <Ionicons name={sortDirection === 'asc' ? "arrow-up" : "arrow-down"} size={24} color="#FFFFFF" />
+                  <Ionicons name="checkmark" size={24} color="#FFFFFF" />
+                </View>
               )}
             </TouchableOpacity>
           ))}
@@ -204,7 +250,12 @@ const FilterModal = () => (
   if (isLoading && page === 1) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <LottieView
+          source={require('../../assets/loading-animation.json')}
+          autoPlay
+          loop
+          style={{ width: 200, height: 200 }}
+        />
       </View>
     );
   }
@@ -212,6 +263,12 @@ const FilterModal = () => (
   if (error && serviceRecords.length === 0) {
     return (
       <View style={styles.errorContainer}>
+        <LottieView
+          source={require('../../assets/error-animation.json')}
+          autoPlay
+          loop
+          style={{ width: 150, height: 150 }}
+        />
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={() => fetchServiceHistory(1)}>
           <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
@@ -222,31 +279,40 @@ const FilterModal = () => (
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{t('serviceHistory.title')}</Text>
-      <View style={styles.filterContainer}>
-        <TouchableOpacity
-          style={styles.filterButton}
-          onPress={() => setShowFilterModal(true)}
-        >
-          <Ionicons name="filter" size={24} color={theme.colors.primary} />
-          <Text style={styles.filterButtonText}>{t('serviceHistory.filter')}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.filterButton}
-          onPress={() => setShowSortModal(true)}
-        >
-          <Ionicons name="swap-vertical" size={24} color={theme.colors.primary} />
-          <Text style={styles.filterButtonText}>{t('serviceHistory.sort')}</Text>
-        </TouchableOpacity>
-      </View>
+      <StatusBar barStyle="light-content" backgroundColor="#028dd0" />
+      <LinearGradient colors={['#028dd0', '#01579B']} style={styles.header}>
+        <Text style={styles.title}>{t('serviceHistory.title')}</Text>
+        <View style={styles.filterContainer}>
+          <TouchableOpacity
+            style={styles.filterButton}
+            onPress={() => setShowFilterModal(true)}
+          >
+            <Ionicons name="filter" size={24} color="#FFFFFF" />
+            <Text style={styles.filterButtonText}>{t('serviceHistory.filter')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.filterButton}
+            onPress={() => setShowSortModal(true)}
+          >
+            <Ionicons name="swap-vertical" size={24} color="#FFFFFF" />
+            <Text style={styles.filterButtonText}>{t('serviceHistory.sort')}</Text>
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
       {serviceRecords.length === 0 ? (
         <View style={styles.emptyStateContainer}>
-          <Ionicons name="document-text-outline" size={48} color={theme.colors.textSecondary} />
+          <LottieView
+            source={require('../../assets/empty-state-animation.json')}
+            autoPlay
+            loop
+            style={{ width: 200, height: 200 }}
+          />
           <Text style={styles.emptyStateText}>{t('serviceHistory.noRecords')}</Text>
         </View>
       ) : (
         <FlatList
           data={serviceRecords}
+          style={{paddingTop:20}}
           renderItem={renderServiceItem}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.listContent}
@@ -256,12 +322,19 @@ const FilterModal = () => (
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={handleRefresh}
-              colors={[theme.colors.primary]}
+              colors={['#028dd0']}
             />
           }
           ListFooterComponent={() => (
             hasMore ? (
-              <ActivityIndicator size="small" color={theme.colors.primary} style={styles.loadingMore} />
+              <View style={styles.loadingMore}>
+                <LottieView
+                  source={require('../../assets/loading-animation.json')}
+                  autoPlay
+                  loop
+                  style={{ width: 50, height: 50 }}
+                />
+              </View>
             ) : null
           )}
         />
@@ -275,154 +348,118 @@ const FilterModal = () => (
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
-    padding: theme.spacing.md,
+    backgroundColor: '#FFFFFF',
+  },
+  header: {
+    paddingTop: 40,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
   },
   title: {
-    fontSize: theme.typography.sizes.xl,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.primary,
-    marginBottom: theme.spacing.md,
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 15,
   },
   filterContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: theme.spacing.md,
   },
   filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.primaryLight,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 20,
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
   },
   filterButtonText: {
-    marginLeft: theme.spacing.sm,
-    color: theme.colors.primary,
-    fontSize: theme.typography.sizes.md,
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalContent: {
-    backgroundColor: theme.colors.background,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: theme.spacing.lg,
-  },
-  modalTitle: {
-    fontSize: theme.typography.sizes.xl,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.md,
-  },
-  modalOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: theme.spacing.md,
-    borderRadius:10
-  },
-  selectedOption: {
-    backgroundColor: theme.colors.secondary,
-  },
-  modalOptionText: {
-    fontSize: theme.typography.sizes.lg,
-    color: theme.colors.text,
-  },
-  closeButton: {
-    marginTop: theme.spacing.md,
-    backgroundColor: theme.colors.textSecondary,
-    borderRadius: 20,
-    paddingVertical: theme.spacing.sm,
-    alignItems: 'center',
-  },
-  closeButtonText: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.fontWeights.semibold,
-    color: theme.colors.background,
+    marginLeft: 8,
+    color: '#FFFFFF',
+    fontSize: 16,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#FFFFFF',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.background,
-    padding: theme.spacing.lg,
+    backgroundColor: '#FFFFFF',
+    padding: 20,
   },
   errorText: {
-    fontSize: theme.typography.sizes.lg,
-    color: theme.colors.error,
+    fontSize: 18,
+    color: '#FF3B30',
     textAlign: 'center',
-    marginBottom: theme.spacing.md,
+    marginVertical: 20,
   },
   retryButton: {
-    backgroundColor: theme.colors.primary,
-    padding: theme.spacing.sm,
-    borderRadius: theme.roundness,
+    backgroundColor: '#028dd0',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 25,
   },
   retryButtonText: {
     color: 'white',
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.fontWeights.bold,
-  },
-  title: {
-    fontSize: theme.typography.sizes.xl,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.primary,
-    marginBottom: theme.spacing.md,
-  },
-  filterContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: theme.spacing.md,
-  },
-  filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.secondary + '20',
-    borderRadius: theme.roundness,
-    padding: theme.spacing.sm,
-  },
-  filterButtonText: {
-    marginLeft: theme.spacing.sm,
-    color: theme.colors.primary,
-    fontSize: theme.typography.sizes.md,
+    fontSize: 16,
+    fontWeight: '600',
   },
   listContent: {
-    paddingBottom: theme.spacing.xl,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   serviceItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: 'white',
-    borderRadius: theme.roundness,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    ...theme.elevation.small,
-    flexDirection:'row',
+    borderRadius: 10,
+    marginBottom: 15,
+    padding: 15,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
-  serviceType: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.xs,
+  serviceIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(2, 141, 208, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  iconImage: {
+    width: 30,
+    height: 30,
+    resizeMode: 'contain',
+  },
+  serviceInfo: {
+    flex: 1,
+  },
+  serviceName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1C1C1E',
+    marginBottom: 5,
   },
   vehicleName: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.xs,
+    fontSize: 14,
+    color: '#8E8E93',
+    marginBottom: 5,
   },
   serviceDate: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.xs,
+    fontSize: 14,
+    color: '#8E8E93',
+    marginBottom: 5,
   },
   serviceDetails: {
     flexDirection: 'row',
@@ -430,64 +467,84 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   serviceStatus: {
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: theme.typography.fontWeights.medium,
+    fontSize: 14,
+    fontWeight: '500',
   },
   serviceCost: {
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.text,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#028dd0',
   },
   emptyStateContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
   },
   emptyStateText: {
-    fontSize: theme.typography.sizes.lg,
-    color: theme.colors.textSecondary,
+    fontSize: 18,
+    color: '#8E8E93',
     textAlign: 'center',
-    marginTop: theme.spacing.md,
+    marginTop: 20,
   },
-  modalContainer: {
+  modalOverlay: {
     flex: 1,
-    justifyContent: 'flex-end',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: theme.colors.background,
-    borderTopLeftRadius: theme.roundness,
-    borderTopRightRadius: theme.roundness,
-    padding: theme.spacing.lg,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
   },
   modalTitle: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.md,
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1C1C1E',
+    marginBottom: 15,
   },
-
   modalOption: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: theme.spacing.sm,
-    borderBottomWidth: 0,
-    borderRadius:10,
-    paddingStart:10,
-    borderBottomColor: theme.colors.border,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5EA',
   },
-
   selectedOption: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: '#028dd0',
+    borderRadius: 10,
+    paddingHorizontal: 10,
   },
   modalOptionText: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text,
+    fontSize: 18,
+    color: '#1C1C1E',
+  },
+  selectedOptionText: {
+    color: '#FFFFFF',
+  },
+  closeButton: {
+    marginTop: 20,
+    backgroundColor: '#028dd0',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   loadingMore: {
-    marginVertical: theme.spacing.md,
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  sortDirectionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });
 
 export default ConductorServiceHistoryScreen;
+

@@ -10,16 +10,16 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
-  Alert,
+  Dimensions,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../styles/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import { useUser } from '../UserContext';
+import Toast from 'react-native-toast-message';
 
 type RootStackParamList = {
   Home: undefined;
@@ -28,19 +28,24 @@ type RootStackParamList = {
 
 type LoginScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
+const { width, height } = Dimensions.get('window');
+
 const LoginScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<LoginScreenNavigationProp>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useUser();
   
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert(t('auth.error'), t('auth.allFieldsRequired'));
+      Toast.show({
+        type: 'error',
+        text1: t('auth.error'),
+        text2: t('auth.allFieldsRequired'),
+      });
       return;
     }
 
@@ -48,22 +53,24 @@ const LoginScreen: React.FC = () => {
     try {
       const response = await api.post('/login/client', { email, password });
       const { token, user } = response.data;
-      console.log("and there");
 
       await AsyncStorage.setItem('userToken', token);
       await AsyncStorage.setItem('userType', 'client');
-      await login(token,'client');
+      await login(token, 'client');
       navigation.navigate('Main');
     } catch (error) {
       console.log(error);
-      Alert.alert(t('auth.error'), t('auth.invalidCredentials'));
+      Toast.show({
+        type: 'error',
+        text1: t('auth.error'),
+        text2: t('auth.invalidCredentials'),
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
   const toggleShowPassword = () => setShowPassword(!showPassword);
-  const toggleRememberMe = () => setRememberMe(!rememberMe);
 
   const navigateToConductorLogin = () => {
     navigation.navigate('ConductorLogin');
@@ -82,57 +89,57 @@ const LoginScreen: React.FC = () => {
             resizeMode="contain"
           />
         </View>
-        <Text style={styles.title}>{t('auth.welcomeBack')}</Text>
-        <Text style={styles.subtitle}>{t('auth.loginToContinue')}</Text>
-        
-        <View style={styles.inputContainer}>
-          <Ionicons name="mail-outline" size={24} color={theme.colors.textSecondary} style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            placeholder={t('auth.email')}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-        </View>
-        
-        <View style={styles.inputContainer}>
-          <Ionicons name="lock-closed-outline" size={24} color={theme.colors.textSecondary} style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            placeholder={t('auth.password')}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={!showPassword}
-          />
-          <TouchableOpacity onPress={toggleShowPassword} style={styles.eyeIcon}>
-            <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={24} color={theme.colors.textSecondary} />
+        <View style={styles.formContainer}>
+          <Text style={styles.title}>{t('auth.welcomeBack')}</Text>
+          <Text style={styles.subtitle}>{t('auth.loginToContinue')}</Text>
+          
+          <View style={styles.inputContainer}>
+            <Ionicons name="mail-outline" size={24} color="#028dd0" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder={t('auth.email')}
+              placeholderTextColor="#A0A0A0"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          </View>
+          
+          <View style={styles.inputContainer}>
+            <Ionicons name="lock-closed-outline" size={24} color="#028dd0" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder={t('auth.password')}
+              placeholderTextColor="#A0A0A0"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity onPress={toggleShowPassword} style={styles.eyeIcon}>
+              <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={24} color="#028dd0" />
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity 
+            style={[styles.button, isLoading && styles.buttonDisabled]} 
+            onPress={handleLogin}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.buttonText}>{t('auth.signIn')}</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.conductorButton} 
+            onPress={navigateToConductorLogin}
+          >
+            <Text style={styles.conductorButtonText}>{t('auth.conductorLogin')}</Text>
           </TouchableOpacity>
         </View>
-
-        <View style={styles.optionsContainer}>
-
-        </View>
-
-        <TouchableOpacity 
-          style={[styles.button, isLoading && styles.buttonDisabled]} 
-          onPress={handleLogin}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color={theme.colors.buttonText} />
-          ) : (
-            <Text style={styles.buttonText}>{t('auth.signIn')}</Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.conductorButton} 
-          onPress={navigateToConductorLogin}
-        >
-          <Text style={styles.conductorButtonText}>{t('auth.conductorLogin')}</Text>
-        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -141,98 +148,102 @@ const LoginScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#FFFFFF',
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: theme.spacing.lg,
+    padding: width * 0.05,
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: theme.spacing.xl,
+    marginBottom: height * 0.05,
   },
   logo: {
-    width: 200,
-    height: 120,
+    width: width * 0.6,
+    height: height * 0.15,
+  },
+  formContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: width * 0.05,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   title: {
-    fontSize: theme.typography.sizes.xl,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.sm,
+    fontSize: width * 0.08,
+    fontWeight: '700',
+    color: '#028dd0',
+    marginBottom: height * 0.01,
     textAlign: 'center',
+    fontFamily: 'Poppins-Bold',
   },
   subtitle: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.xl,
+    fontSize: width * 0.04,
+    color: '#666666',
+    marginBottom: height * 0.03,
     textAlign: 'center',
+    fontFamily: 'Poppins-Regular',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.inputBackground,
-    borderRadius: theme.roundness,
-    marginBottom: theme.spacing.md,
-    paddingHorizontal: theme.spacing.sm,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 10,
+    marginBottom: height * 0.02,
+    paddingHorizontal: width * 0.03,
   },
   inputIcon: {
-    marginRight: theme.spacing.sm,
+    marginRight: width * 0.02,
   },
   input: {
     flex: 1,
-    padding: theme.spacing.md,
-    fontSize: theme.typography.sizes.md,
+    padding: width * 0.03,
+    fontSize: width * 0.04,
+    color: '#333333',
+    fontFamily: 'Poppins-Regular',
   },
   eyeIcon: {
-    padding: theme.spacing.sm,
-  },
-  optionsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: theme.spacing.lg,
-  },
-  rememberMeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  rememberMeText: {
-    marginLeft: theme.spacing.xs,
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.textSecondary,
-  },
-  forgotPasswordText: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.primary,
+    padding: width * 0.02,
   },
   button: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.roundness,
-    padding: theme.spacing.md,
+    backgroundColor: '#028dd0',
+    borderRadius: 10,
+    padding: height * 0.02,
     alignItems: 'center',
+    marginTop: height * 0.02,
   },
   buttonDisabled: {
     opacity: 0.7,
   },
   buttonText: {
-    color: theme.colors.buttonText,
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.fontWeights.bold,
+    color: '#FFFFFF',
+    fontSize: width * 0.045,
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
   },
   conductorButton: {
-    marginTop: theme.spacing.md,
-    backgroundColor: theme.colors.secondary,
-    borderRadius: theme.roundness,
-    padding: theme.spacing.md,
+    marginTop: height * 0.02,
+    backgroundColor: 'transparent',
+    borderRadius: 10,
+    padding: height * 0.02,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#028dd0',
   },
   conductorButtonText: {
-    color: theme.colors.buttonText,
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.fontWeights.bold,
+    color: '#028dd0',
+    fontSize: width * 0.04,
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
   },
 });
 
 export default LoginScreen;
+

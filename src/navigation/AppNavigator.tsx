@@ -23,14 +23,14 @@ import SupportScreen from '../screens/SupportScreen';
 import ChatScreen from '../screens/ChatScreen';
 import TicketScreen from '../screens/TicketScreen';
 import ConductorHomeScreen from '../screens/ConductorHomeScreen';
-
-import { theme } from '../styles/theme';
 import ConductorOrderServiceScreen from '../screens/ConductorOrderServiceScreen';
 import ConductorServiceHistoryScreen from '../screens/ConductorServiceHistoryScreen';
 import ConductorServicesScreen from '../screens/ConductorServicesScreen';
-import { Platform } from 'react-native';
 import ConductorSettingsScreen from '../screens/ConductorSettingsScreen';
 import AccountDeletionConfirmation from '../screens/AccountDeletionConfirmation';
+
+import { theme } from '../styles/theme';
+import CustomTabBar from '../components/CustomTabBar';
 
 type RootStackParamList = {
   Splash: undefined;
@@ -47,8 +47,8 @@ type RootStackParamList = {
   Settings: undefined;
   Support: undefined;
   TicketScreen: { ticketId: string };
-  ConductorOrderServiceScreen : undefined;
-  AccountDeletionConfirmation : undefined;
+  ConductorOrderServiceScreen: undefined;
+  AccountDeletionConfirmation: undefined;
 };
 
 type MainTabParamList = {
@@ -62,6 +62,7 @@ type ConductorTabParamList = {
   ConductorHome: undefined;
   ConductorServiceHistory: undefined;
   ConductorServicesScreen: undefined;
+  ConductorSettings: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -73,6 +74,7 @@ const MainTabs: React.FC = () => {
 
   return (
     <MainTab.Navigator
+      tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap;
@@ -91,24 +93,16 @@ const MainTabs: React.FC = () => {
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        headerShown:false,
-        
+        headerShown: false,
         tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor:  theme.colors.textSecondary,
-
+        tabBarInactiveTintColor: theme.colors.textSecondary,
         tabBarStyle: {
-          
-          display: 'flex',
-          paddingTop: 10,
-          paddingBottom: Platform.OS === 'ios' ? 15 : 10,
-          height: Platform.OS === 'ios' ? 80 : 60,
-          borderRadius:20,
-          marginHorizontal:5,
-          marginBottom:5
-        }
-      
+          backgroundColor: 'transparent',
+          borderTopWidth: 0,
+          elevation: 0,
+          shadowOpacity: 0,
+        },
       })}
-
     >
       <MainTab.Screen name="Home" component={HomeScreen} options={{ title: t('navigation.home') }} />
       <MainTab.Screen name="Fleet" component={FleetScreen} options={{ title: t('navigation.fleet') }} />
@@ -123,6 +117,7 @@ const ConductorTabs: React.FC = () => {
 
   return (
     <ConductorTab.Navigator
+      tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap;
@@ -133,7 +128,7 @@ const ConductorTabs: React.FC = () => {
             iconName = focused ? 'construct' : 'construct-outline';
           } else if (route.name === 'ConductorServiceHistory') {
             iconName = focused ? 'time' : 'time-outline';
-          }else if (route.name === 'ConductorSettings') {
+          } else if (route.name === 'ConductorSettings') {
             iconName = focused ? 'settings' : 'settings-outline';
           } else {
             iconName = 'alert-circle';
@@ -141,50 +136,47 @@ const ConductorTabs: React.FC = () => {
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        headerShown:false,
-        
+        headerShown: false,
         tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor:  theme.colors.textSecondary,
+        tabBarInactiveTintColor: theme.colors.textSecondary,
         tabBarStyle: {
-          display: 'flex',
-          paddingTop: 10,
-          paddingBottom: Platform.OS === 'ios' ? 15 : 5,
-          height: Platform.OS === 'ios' ? 80 : 60,
-        }
+          backgroundColor: 'transparent',
+          borderTopWidth: 0,
+          elevation: 0,
+          shadowOpacity: 0,
+        },
       })}
-
-
     >
- <ConductorTab.Screen name="ConductorHome" component={ConductorHomeScreen} options={{ title: t('navigation.home') }} />
+      <ConductorTab.Screen name="ConductorHome" component={ConductorHomeScreen} options={{ title: t('navigation.home') }} />
       <ConductorTab.Screen name="ConductorServicesScreen" component={ConductorServicesScreen} options={{ title: t('navigation.orderService') }} />
       <ConductorTab.Screen name="ConductorServiceHistory" component={ConductorServiceHistoryScreen} options={{ title: t('navigation.serviceHistory') }} />
-      <ConductorTab.Screen name="ConductorSettings" component={ConductorSettingsScreen} options={{ title: t('navigation.settings') }}   />
+      <ConductorTab.Screen name="ConductorSettings" component={ConductorSettingsScreen} options={{ title: t('navigation.settings') }} />
     </ConductorTab.Navigator>
   );
 };
 
 const AppNavigator: React.FC = () => {
   return (
-      <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Splash" component={SplashScreen} />
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="ConductorLogin" component={ConductorLoginScreen} />
-        <Stack.Screen name="Main" component={MainTabs} />
-        <Stack.Screen name="ConductorMain" component={ConductorTabs} />
-        <Stack.Screen name="OrderService" component={OrderServiceScreen}  />
-        <Stack.Screen name="ConductorOrderServiceScreen" component={ConductorOrderServiceScreen} />
-        <Stack.Screen name="ServiceHistory" component={ServiceHistoryScreen}  />
-        <Stack.Screen name="AddVehicle" component={AddVehicleScreen} />
-        <Stack.Screen name="VehicleDetail" component={VehicleDetailScreen} />
-        <Stack.Screen name="Invoices" component={InvoicesScreen}  />
-        <Stack.Screen name="EditProfile" component={EditProfileScreen}  />
-        <Stack.Screen name="Settings" component={SettingsScreen}  />
-        <Stack.Screen name="Support" component={SupportScreen}  />
-        <Stack.Screen name="AccountDeletionConfirmation" component={AccountDeletionConfirmation}  />
-        <Stack.Screen name="TicketScreen" component={TicketScreen}  />
-        
-      </Stack.Navigator>
+    <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Splash" component={SplashScreen} />
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="ConductorLogin" component={ConductorLoginScreen} />
+      <Stack.Screen name="Main" component={MainTabs} />
+      <Stack.Screen name="ConductorMain" component={ConductorTabs} />
+      <Stack.Screen name="OrderService" component={OrderServiceScreen} />
+      <Stack.Screen name="ConductorOrderServiceScreen" component={ConductorOrderServiceScreen} />
+      <Stack.Screen name="ServiceHistory" component={ServiceHistoryScreen} />
+      <Stack.Screen name="AddVehicle" component={AddVehicleScreen} />
+      <Stack.Screen name="VehicleDetail" component={VehicleDetailScreen} />
+      <Stack.Screen name="Invoices" component={InvoicesScreen} />
+      <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="Support" component={SupportScreen} />
+      <Stack.Screen name="AccountDeletionConfirmation" component={AccountDeletionConfirmation} />
+      <Stack.Screen name="TicketScreen" component={TicketScreen} />
+    </Stack.Navigator>
   );
 };
 
 export default AppNavigator;
+

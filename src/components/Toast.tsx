@@ -1,45 +1,41 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
-import { theme } from '../styles/theme';
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useToast } from '../contexts/ToastContext';
 
-interface ToastProps {
-  visible: boolean;
-  message: string;
-  type: 'success' | 'error' | 'info';
-}
+const { width } = Dimensions.get('window');
 
-const Toast: React.FC<ToastProps> = ({ visible, message, type }) => {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+const Toast: React.FC = () => {
+  const { toastMessage, toastType, isVisible, hideToast } = useToast();
+  const opacity = new Animated.Value(0);
 
   useEffect(() => {
-    if (visible) {
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
-    } else {
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
+    if (isVisible) {
+      Animated.sequence([
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.delay(2000),
+        Animated.timing(opacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start(() => hideToast());
     }
-  }, [visible, fadeAnim]);
+  }, [isVisible]);
 
-  if (!visible) return null;
+  if (!isVisible) return null;
+
+  const icon = toastType === 'error' ? 'alert-circle' : toastType === 'success' ? 'checkmark-circle' : 'information-circle';
+  const backgroundColor = toastType === 'error' ? '#FF3B30' : toastType === 'success' ? '#4CD964' : '#0A84FF';
 
   return (
-    <Animated.View
-      style={[
-        styles.container,
-        { opacity: fadeAnim },
-        type === 'success' && styles.successToast,
-        type === 'error' && styles.errorToast,
-        type === 'info' && styles.infoToast,
-      ]}
-    >
-      <Text style={styles.message}>{message}</Text>
+    <Animated.View style={[styles.container, { opacity, backgroundColor }]}>
+      <Ionicons name={icon} size={24} color="#FFFFFF" />
+      <Text style={styles.message}>{toastMessage}</Text>
     </Animated.View>
   );
 };
@@ -47,32 +43,30 @@ const Toast: React.FC<ToastProps> = ({ visible, message, type }) => {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 40,
-    left: 20,
-    right: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    padding: 16,
+    top: 50,
+    left: width * 0.05,
+    right: width * 0.05,
+    backgroundColor: '#FF3B30',
     borderRadius: 8,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 9999,
-  },
-  successToast: {
-    backgroundColor: theme.colors.success,
-  },
-  errorToast: {
-    backgroundColor: theme.colors.error,
-  },
-  infoToast: {
-    backgroundColor: theme.colors.info,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   message: {
-    color: 'white',
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    marginLeft: 10,
+    fontFamily: 'Poppins-Regular',
   },
 });
 
 export default Toast;
+

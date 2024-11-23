@@ -1,30 +1,46 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Switch, ScrollView, Image, Modal, Animated, Easing, Alert } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  ScrollView, 
+  Modal, 
+  Animated, 
+  Easing, 
+  Alert,
+  StatusBar,
+  Dimensions,
+  Platform
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { theme } from '../styles/theme';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useUser } from '../UserContext';
+import LottieView from 'lottie-react-native';
 
 type RootStackParamList = {
   EditProfile: undefined;
   Invoices: undefined;
   Support: undefined;
   Settings: undefined;
+  AccountDeletionConfirmation: undefined;
+  Splash: undefined;
 };
 
 type ProfileScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
-export default function Component() {
+const { width, height } = Dimensions.get('window');
+
+export default function ConductorSettingsScreen() {
   const { t, i18n } = useTranslation();
   const navigation = useNavigation<ProfileScreenNavigationProp>();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const {logout} = useUser();
-
+  const { logout } = useUser();
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -35,8 +51,6 @@ export default function Component() {
     }).start();
   }, []);
 
-  const toggleNotifications = () => setNotificationsEnabled(previousState => !previousState);
-
   const changeLanguage = (lang: string) => {
     i18n.changeLanguage(lang);
     setShowLanguageModal(false);
@@ -45,16 +59,14 @@ export default function Component() {
   const OptionItem = ({ icon, text, onPress, rightElement }: { icon: string; text: string; onPress?: () => void; rightElement?: React.ReactNode }) => (
     <TouchableOpacity style={styles.option} onPress={onPress}>
       <View style={styles.optionIconContainer}>
-        <Ionicons name={icon as any} size={24} color={theme.colors.surface} />
+        <Ionicons name={icon as any} size={24} color="#FFFFFF" />
       </View>
       <Text style={styles.optionText}>{text}</Text>
-      {rightElement || <Ionicons name="chevron-forward" size={24} color={theme.colors.textSecondary} />}
+      {rightElement || <Ionicons name="chevron-forward" size={24} color="#8E8E93" />}
     </TouchableOpacity>
   );
 
-
-const deleteAccount = () => {
-
+  const deleteAccount = () => {
     Alert.alert(
       t('profile.confirm_delete_account'),
       t('profile.ask_confirm_delete_account'),
@@ -66,12 +78,9 @@ const deleteAccount = () => {
         {
           text: t('common.delete'),
           style: "destructive",
-          onPress:async () => {
-      
-                await logout();
-                navigation.navigate("AccountDeletionConfirmation");
-
-            
+          onPress: async () => {
+            await logout();
+            navigation.navigate("AccountDeletionConfirmation");
           },
         },
       ],
@@ -79,11 +88,10 @@ const deleteAccount = () => {
     );
   };
 
-const logoff = () => {
-
+  const logoff = () => {
     Alert.alert(
       t('profile.ask_confirm_logout'),
-     "",
+      "",
       [
         {
           text: t('common.cancel'),
@@ -92,10 +100,9 @@ const logoff = () => {
         {
           text: t('profile.logout'),
           style: "destructive",
-          onPress:async () => {
-      
-                await logout();
-                navigation.navigate("Splash");
+          onPress: async () => {
+            await logout();
+            navigation.navigate("Splash");
           },
         },
       ],
@@ -105,11 +112,12 @@ const logoff = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView>
- 
-        <View style={styles.section}>
-
-
+      <StatusBar barStyle="light-content" backgroundColor="#028dd0" />
+      <LinearGradient colors={['#028dd0', '#01579B']} style={styles.header}>
+        <Text style={styles.headerTitle}>{t('profile.settings')}</Text>
+      </LinearGradient>
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+        <Animated.View style={[styles.section, { opacity: fadeAnim }]}>
           <OptionItem
             icon="language-outline"
             text={t('profile.language')}
@@ -125,14 +133,13 @@ const logoff = () => {
             text={t('profile.support')}
             onPress={() => navigation.navigate('Support')}
           />
-
-        </View>
+        </Animated.View>
 
         <TouchableOpacity onPress={logoff} style={styles.logoutButton}>
           <Text style={styles.logoutButtonText}>{t('profile.logout')}</Text>
         </TouchableOpacity>
-        <TouchableOpacity  onPress={deleteAccount} style={styles.deleteButton}>
-          <Text style={styles.deleteButtonText} >{t('profile.delete_account')}</Text>
+        <TouchableOpacity onPress={deleteAccount} style={styles.deleteButton}>
+          <Text style={styles.deleteButtonText}>{t('profile.delete_account')}</Text>
         </TouchableOpacity>
 
         <Modal
@@ -153,6 +160,9 @@ const logoff = () => {
                   <Text style={styles.languageOptionText}>
                     {lang === 'en' ? 'English' : lang === 'ar' ? 'العربية' : lang === 'fr' ? 'Français' : lang === 'it' ? 'Italiano' : 'Español'}
                   </Text>
+                  {i18n.language === lang && (
+                    <Ionicons name="checkmark" size={24} color="#028dd0" />
+                  )}
                 </TouchableOpacity>
               ))}
               <TouchableOpacity
@@ -172,135 +182,144 @@ const logoff = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    flexDirection:'row',
-    alignItems:'center',
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#FFFFFF',
   },
   header: {
-    alignItems: 'center',
-    backgroundColor: theme.colors.primary,
-    paddingVertical: theme.spacing.xl,
-    borderBottomLeftRadius: theme.roundness,
-    borderBottomRightRadius: theme.roundness,
+    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
-  avatar: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 4,
-    borderColor: theme.colors.surface,
-    backgroundColor: theme.colors.surface,
-    marginBottom: theme.spacing.md,
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontFamily: 'Poppins-Bold',
   },
-  name: {
-    fontSize: theme.typography.sizes.xl,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.surface,
-    marginBottom: theme.spacing.xs,
+  content: {
+    flex: 1,
   },
-  email: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.surface,
-    opacity: 0.8,
+  contentContainer: {
+    paddingTop: 20,
+    paddingBottom: 40,
   },
   section: {
-    marginTop: theme.spacing.lg,
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.roundness,
-    marginHorizontal: theme.spacing.md,
-    shadowColor: theme.colors.text,
-    shadowOffset: { width: 0, height: 2 },
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: theme.elevation.medium,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.secondary,
+    borderBottomColor: '#E5E5EA',
   },
   optionIconContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: '#028dd0',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: theme.spacing.md,
+    marginRight: 16,
   },
   optionText: {
     flex: 1,
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text,
+    fontSize: 17,
+    color: '#1C1C1E',
+    fontFamily: 'Poppins-Regular',
   },
   languageValue: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.textSecondary,
+    fontSize: 15,
+    color: '#8E8E93',
+    fontFamily: 'Poppins-Regular',
   },
   logoutButton: {
-    marginTop: theme.spacing.xl,
-    marginHorizontal: theme.spacing.lg,
-    backgroundColor: theme.colors.error,
-    paddingVertical: theme.spacing.md,
-    borderRadius: theme.roundness,
+    marginTop: 20,
+    marginHorizontal: 20,
+    backgroundColor: '#028dd0',
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
   },
   deleteButton: {
-    marginTop: theme.spacing.xl,
-    marginHorizontal: theme.spacing.lg,
-    borderColor: theme.colors.error,
-    paddingVertical: theme.spacing.md,
-    borderRadius: theme.roundness,
-    borderWidth:1,
+    marginTop: 12,
+    marginHorizontal: 20,
+    borderColor: '#FF3B30',
+    paddingVertical: 16,
+    borderRadius: 12,
+    borderWidth: 1,
     alignItems: 'center',
   },
   logoutButtonText: {
-    color: theme.colors.surface,
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.fontWeights.bold,
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
   },
   deleteButtonText: {
-    color: theme.colors.error,
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.fontWeights.bold,
+    color: '#FF3B30',
+    fontSize: 17,
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: theme.colors.backdrop,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.roundness,
-    padding: theme.spacing.lg,
-    width: '80%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    width: width * 0.8,
+    maxHeight: height * 0.7,
   },
   modalTitle: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.md,
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#1C1C1E',
+    marginBottom: 16,
+    fontFamily: 'Poppins-Bold',
   },
   languageOption: {
-    paddingVertical: theme.spacing.md,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.secondary,
+    borderBottomColor: '#E5E5EA',
   },
   languageOptionText: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text,
+    fontSize: 17,
+    color: '#1C1C1E',
+    fontFamily: 'Poppins-Regular',
   },
   closeButton: {
-    marginTop: theme.spacing.md,
+    marginTop: 20,
     alignItems: 'center',
+    backgroundColor: '#028dd0',
+    paddingVertical: 12,
+    borderRadius: 8,
   },
   closeButtonText: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.primary,
-    fontWeight: theme.typography.fontWeights.bold,
+    fontSize: 17,
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
   },
 });
+

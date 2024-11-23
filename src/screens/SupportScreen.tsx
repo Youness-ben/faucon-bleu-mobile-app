@@ -10,7 +10,7 @@ import { FAUCON_ADDRESS, FAUCON_EMAIL, FAUCON_LOCATION, FAUCON_PHONE, FAUCON_WHA
 const SupportScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
-  const {logout} = useUser();
+  const {user} = useUser();
   const contactMethods = [
     { icon: 'call-outline', title: t('support.phone'), value: FAUCON_PHONE, action: () => Linking.openURL('tel:'+FAUCON_PHONE.replace(' ','')) },
     { icon: 'mail-outline', title: t('support.email'), value: FAUCON_EMAIL, action: () => Linking.openURL('mailto:'+FAUCON_EMAIL) },
@@ -19,7 +19,7 @@ const SupportScreen: React.FC = () => {
   ];
   return (
     <>
-       <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={styles.backButton}>
+       <TouchableOpacity onPress={() => navigation.navigate(user?.type=='client' ? 'Profile' : 'ConductorSettings')} style={styles.backButton}>
         <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
       </TouchableOpacity>
       

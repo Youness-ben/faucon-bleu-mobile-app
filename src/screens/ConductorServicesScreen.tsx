@@ -1,12 +1,25 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, ScrollView, Image, ActivityIndicator, RefreshControl } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Modal,
+  ScrollView,
+  Image,
+  Dimensions,
+  StatusBar,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../styles/theme';
 import api from '../api';
 import { STORAGE_URL } from '../../config';
+import LottieView from 'lottie-react-native';
+import Toast from 'react-native-toast-message';
+import { LinearGradient } from 'expo-linear-gradient';
 
 type RootStackParamList = {
   OrderService: { serviceType: string; serviceId: number };
@@ -22,9 +35,12 @@ interface Service {
   category: string | null;
   long_description: string;
   price: number;
+  estimated_duration: number;
+  estimated_duration_unite: string;
 }
 
 const ITEMS_PER_PAGE = 10;
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function ConductorServicesScreen() {
   const { t } = useTranslation();
@@ -57,6 +73,11 @@ export default function ConductorServicesScreen() {
     } catch (err) {
       console.error('Error fetching services:', err);
       setError(t('services.fetchError'));
+      Toast.show({
+        type: 'error',
+        text1: t('services.fetchError'),
+        text2: t('services.tryAgainLater'),
+      });
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -83,42 +104,37 @@ export default function ConductorServicesScreen() {
   const categories = Array.from(new Set(services.map(service => service.category || t('services.uncategorized'))));
 
   const renderServiceItem = ({ item }: { item: Service }) => (
-    <View style={styles.serviceItem}>
-      <TouchableOpacity
-        style={styles.serviceButton}
-        onPress={() => navigation.navigate('ConductorOrderServiceScreen', { serviceType: item.name, serviceId: item.id })}
-      >
-        <View style={styles.serviceIcon}>
-          <Image 
-            source={{ uri: `${STORAGE_URL}/${item.icon}` }}
-            style={styles.iconImage}
-            width={24}
-            height={24}
-            defaultSource={require('../../assets/default_service_icon.png')}
-          />
-        </View>
-        <View style={styles.serviceInfo}>
-          <Text style={styles.serviceName}>{item.name}</Text>
-          <Text style={styles.serviceDescription} numberOfLines={2}>{item.description}</Text>
-          <Text style={styles.servicePrice}>{t('services.estimatedDuration', { duration: item.estimated_duration, unite: item.estimated_duration_unite })}</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={24} color={theme.colors.primary} />
-      </TouchableOpacity>
+    <TouchableOpacity
+      style={styles.serviceItem}
+      onPress={() => navigation.navigate('OrderService', { serviceType: item.name, serviceId: item.id })}
+    >
+      <View style={styles.serviceIcon}>
+        <Image 
+          source={{ uri: `${STORAGE_URL}/${item.icon}` }}
+          style={styles.iconImage}
+          defaultSource={require('../../assets/default_service_icon.png')}
+        />
+      </View>
+      <View style={styles.serviceInfo}>
+        <Text style={styles.serviceName}>{item.name}</Text>
+        <Text style={styles.serviceDescription} numberOfLines={2}>{item.description}</Text>
+        <Text style={styles.servicePrice}>
+          {t('services.estimatedDuration', { duration: item.estimated_duration, unite: item.estimated_duration_unite })}
+        </Text>
+      </View>
       <TouchableOpacity
         style={styles.infoButton}
         onPress={() => setSelectedService(item)}
       >
-        <Ionicons name="information-circle-outline" size={24} color={theme.colors.primary} />
+        <Ionicons name="information-circle-outline" size={24} color="#028dd0" />
       </TouchableOpacity>
-    </View>
+    </TouchableOpacity>
   );
 
   const renderCategory = ({ item: category }: { item: string }) => (
     <View style={styles.categoryContainer}>
       <Text style={styles.categoryTitle}>
-        {
-        //category ? t(`services.categories.${category.toLowerCase()}`, category) : t('services.uncategorized')
-        }
+        {category ? t(`services.categories.${category.toLowerCase()}`, category) : t('services.uncategorized')}
       </Text>
       <FlatList
         data={services.filter(service => (service.category || t('services.uncategorized')) === category)}
@@ -132,7 +148,12 @@ export default function ConductorServicesScreen() {
   if (isLoading && page === 1) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <LottieView
+          source={require('../../assets/loading-animation.json')}
+          autoPlay
+          loop
+          style={{ width: 200, height: 200 }}
+        />
       </View>
     );
   }
@@ -140,6 +161,12 @@ export default function ConductorServicesScreen() {
   if (error && services.length === 0) {
     return (
       <View style={styles.errorContainer}>
+        <LottieView
+          source={require('../../assets/error-animation.json')}
+          autoPlay
+          loop
+          style={{ width: 150, height: 150 }}
+        />
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={() => fetchServices(1)}>
           <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
@@ -150,10 +177,18 @@ export default function ConductorServicesScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{t('services.availableServices')}</Text>
+      <StatusBar barStyle="light-content" backgroundColor="#028dd0" />
+      <LinearGradient colors={['#028dd0', '#01579B']} style={styles.header}>
+        <Text style={styles.title}>{t('services.availableServices')}</Text>
+      </LinearGradient>
       {services.length === 0 ? (
         <View style={styles.emptyStateContainer}>
-          <Ionicons name="construct-outline" size={48} color={theme.colors.textSecondary} />
+          <LottieView
+            source={require('../../assets/empty-state-animation.json')}
+            autoPlay
+            loop
+            style={{ width: 200, height: 200 }}
+          />
           <Text style={styles.emptyStateText}>{t('services.noServicesAvailable')}</Text>
         </View>
       ) : (
@@ -165,16 +200,18 @@ export default function ConductorServicesScreen() {
           contentContainerStyle={styles.listContent}
           onEndReached={loadMore}
           onEndReachedThreshold={0.1}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={handleRefresh}
-              colors={[theme.colors.primary]}
-            />
-          }
+          onRefresh={handleRefresh}
+          refreshing={isRefreshing}
           ListFooterComponent={() => (
             hasMore ? (
-              <ActivityIndicator size="small" color={theme.colors.primary} style={styles.loadingMore} />
+              <View style={styles.loadingMore}>
+                <LottieView
+                  source={require('../../assets/loading-animation.json')}
+                  autoPlay
+                  loop
+                  style={{ width: 50, height: 50 }}
+                />
+              </View>
             ) : null
           )}
         />
@@ -192,7 +229,10 @@ export default function ConductorServicesScreen() {
               <Text style={styles.modalDescription}>{selectedService?.description}</Text>
               <Text style={styles.modalLongDescription}>{selectedService?.long_description}</Text>
               <Text style={styles.modalPrice}>
-          <Text style={styles.servicePrice}>{t('services.estimatedDuration', { duration: selectedService?.estimated_duration, unite: selectedService?.estimated_duration_unite })}</Text>
+                {t('services.estimatedDuration', { 
+                  duration: selectedService?.estimated_duration, 
+                  unite: selectedService?.estimated_duration_unite 
+                })}
               </Text>
             </ScrollView>
             <TouchableOpacity
@@ -211,121 +251,130 @@ export default function ConductorServicesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#FFFFFF',
+  },
+  header: {
+    paddingTop: 40,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#FFFFFF',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.background,
-    padding: theme.spacing.lg,
+    backgroundColor: '#FFFFFF',
+    padding: 20,
   },
   errorText: {
-    fontSize: theme.typography.sizes.lg,
-    color: theme.colors.error,
+    fontSize: 18,
+    color: '#FF3B30',
     textAlign: 'center',
-    marginBottom: theme.spacing.md,
+    marginVertical: 20,
   },
   retryButton: {
-    backgroundColor: theme.colors.primary,
-    padding: theme.spacing.sm,
-    borderRadius: theme.roundness,
+    backgroundColor: '#028dd0',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 25,
   },
   retryButtonText: {
     color: 'white',
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.fontWeights.bold,
-  },
-  title: {
-    fontSize: theme.typography.sizes.xxl,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.primary,
-    padding: theme.spacing.md,
+    fontSize: 16,
+    fontWeight: '600',
   },
   listContent: {
-    paddingBottom: theme.spacing.xl,
+    paddingBottom: 20,
   },
   categoryContainer: {
-    marginBottom: theme.spacing.lg,
+    marginBottom: 20,
   },
   categoryTitle: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.text,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.secondary + '20', // 20% opacity
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#028dd0',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(2, 141, 208, 0.1)',
   },
   serviceItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'white',
-    borderRadius: theme.roundness,
-    marginHorizontal: theme.spacing.md,
-    marginVertical: theme.spacing.sm,
-    ...theme.elevation.small,
-  },
-  serviceButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: theme.spacing.md,
+    borderRadius: 10,
+    marginHorizontal: 20,
+    marginVertical: 10,
+    padding: 15,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   serviceIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: theme.colors.primary + '20', 
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(2, 141, 208, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: theme.spacing.md,
+    marginRight: 15,
   },
   iconImage: {
-    width: 24,
-    height: 24,
-    resizeMode:'contain',
+    width: 30,
+    height: 30,
+    resizeMode: 'contain',
   },
   serviceInfo: {
     flex: 1,
   },
   serviceName: {
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.fontWeights.medium,
-    color: theme.colors.text,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1C1C1E',
+    marginBottom: 5,
   },
   serviceDescription: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.textSecondary,
-    marginTop: theme.spacing.xs,
+    fontSize: 14,
+    color: '#8E8E93',
+    marginBottom: 5,
   },
   servicePrice: {
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.primary,
-    marginTop: theme.spacing.xs,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#028dd0',
   },
   infoButton: {
-    padding: theme.spacing.sm,
+    padding: 10,
   },
   emptyStateContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
   },
   emptyStateText: {
-    fontSize: theme.typography.sizes.lg,
-    color: theme.colors.textSecondary,
+    fontSize: 18,
+    color: '#8E8E93',
     textAlign: 'center',
-    marginTop: theme.spacing.md,
+    marginTop: 20,
   },
   loadingMore: {
-    marginVertical: theme.spacing.md,
+    alignItems: 'center',
+    paddingVertical: 20,
   },
   modalOverlay: {
     flex: 1,
@@ -335,40 +384,41 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: 'white',
-    borderRadius: theme.roundness,
-    padding: theme.spacing.lg,
-    width: '80%',
-    maxHeight: '80%',
+    borderRadius: 20,
+    padding: 20,
+    width: SCREEN_WIDTH * 0.8,
+    maxHeight: SCREEN_WIDTH * 1.2,
   },
   modalTitle: {
-    fontSize: theme.typography.sizes.xl,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.primary,
-    marginBottom: theme.spacing.md,
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#028dd0',
+    marginBottom: 15,
   },
   modalDescription: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.md,
+    fontSize: 16,
+    color: '#1C1C1E',
+    marginBottom: 15,
   },
   modalLongDescription: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.md,
+    fontSize: 14,
+    color: '#8E8E93',
+    marginBottom: 15,
   },
   modalPrice: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.primary,
-    marginBottom: theme.spacing.lg,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#028dd0',
+    marginBottom: 20,
   },
   modalCloseButton: {
     alignSelf: 'flex-end',
-    padding: theme.spacing.sm,
+    padding: 10,
   },
   modalCloseButtonText: {
-    color: theme.colors.primary,
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.fontWeights.medium,
+    color: '#028dd0',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
+
