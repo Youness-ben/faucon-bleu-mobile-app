@@ -216,11 +216,7 @@ const HomeScreen: React.FC = () => {
         />
       ) : (
         <View style={styles.emptyStateContainer}>
-          <LottieView
-            autoPlay={true}
-            style={styles.emptyStateAnimation}
-            source={require("../../assets/emptybag.json")}
-          />
+
           <Text style={styles.noVehiclesText}>{t('home.noVehicles')}</Text>
         </View>
       )}
