@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    fontFamily: 'Poppins-Bold',
+    
   },
   searchContainer: {
     flexDirection: 'row',
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     height: 40,
     fontSize: 16,
     color: theme.colors.text,
-    fontFamily: 'Poppins-Regular',
+    
   },
   listContent: {
     paddingHorizontal: 20,
@@ -168,13 +168,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.colors.text,
     marginBottom: 5,
-    fontFamily: 'Poppins-Regular',
+    
   },
   invoiceAmount: {
     fontSize: 18,
     fontWeight: 'bold',
     color: theme.colors.text,
-    fontFamily: 'Poppins-Bold',
+    
   },
   invoiceActions: {
     flexDirection: 'row',
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginRight: 15,
-    fontFamily: 'Poppins-SemiBold',
+    
   },
   downloadButton: {
     padding: 5,

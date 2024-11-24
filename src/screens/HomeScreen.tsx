@@ -25,6 +25,7 @@ import LottieView from "lottie-react-native";
 import Toast from 'react-native-toast-message';
 import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../styles/theme';
+import { useFloatingButton } from '../useFloatingButton';
 
 type RootStackParamList = {
   ServiceHistory: undefined;
@@ -81,6 +82,7 @@ const HomeScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const bannerRef = useRef<FlatList>(null);
   const bannerInterval = useRef<NodeJS.Timeout | null>(null);
+  const { toggleVisibility } = useFloatingButton();
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -119,6 +121,7 @@ const HomeScreen: React.FC = () => {
   );
 
   useEffect(() => {
+    toggleVisibility(true);
     registerForPushNotificationsAsync();
   }, []);
 

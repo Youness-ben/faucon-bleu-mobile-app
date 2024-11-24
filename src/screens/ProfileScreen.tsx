@@ -228,13 +228,13 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    fontFamily: 'Poppins-Bold',
+    
   },
   email: {
     fontSize: 14,
     color: '#FFFFFF',
     opacity: 0.8,
-    fontFamily: 'Poppins-Regular',
+    
   },
   content: {
     flex: 1,
@@ -278,12 +278,12 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 17,
     color: '#1C1C1E',
-    fontFamily: 'Poppins-Regular',
+    
   },
   languageValue: {
     fontSize: 15,
     color: '#8E8E93',
-    fontFamily: 'Poppins-Regular',
+    
   },
   logoutButton: {
     marginTop: 20,
@@ -306,13 +306,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '600',
-    fontFamily: 'Poppins-SemiBold',
+    
   },
   deleteButtonText: {
     color: '#FF3B30',
     fontSize: 17,
     fontWeight: '600',
-    fontFamily: 'Poppins-SemiBold',
+    
   },
   modalOverlay: {
     flex: 1,
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1C1C1E',
     marginBottom: 16,
-    fontFamily: 'Poppins-Bold',
+    
   },
   languageOption: {
     flexDirection: 'row',
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
   languageOptionText: {
     fontSize: 17,
     color: '#1C1C1E',
-    fontFamily: 'Poppins-Regular',
+    
   },
   closeButton: {
     marginTop: 20,
@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: '#FFFFFF',
     fontWeight: '600',
-    fontFamily: 'Poppins-SemiBold',
+    
   },
 });
 

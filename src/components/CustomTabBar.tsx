@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 12,
-    fontFamily: 'Poppins-Regular',
+    
     marginTop: 2,
     fontWeight:'bold',
     color: 'white',

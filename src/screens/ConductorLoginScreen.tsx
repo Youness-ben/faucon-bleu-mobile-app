@@ -178,14 +178,14 @@ const styles = StyleSheet.create({
     color: '#028dd0',
     marginBottom: height * 0.01,
     textAlign: 'center',
-    fontFamily: 'Poppins-Bold',
+    
   },
   subtitle: {
     fontSize: width * 0.04,
     color: '#666666',
     marginBottom: height * 0.03,
     textAlign: 'center',
-    fontFamily: 'Poppins-Regular',
+    
   },
   inputContainer: {
     flexDirection: 'row',
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
     padding: width * 0.03,
     fontSize: width * 0.04,
     color: '#333333',
-    fontFamily: 'Poppins-Regular',
+    
   },
   eyeIcon: {
     padding: width * 0.02,
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: width * 0.045,
     fontWeight: '600',
-    fontFamily: 'Poppins-SemiBold',
+    
   },
   clientButton: {
     marginTop: height * 0.02,
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     color: '#028dd0',
     fontSize: width * 0.04,
     fontWeight: '600',
-    fontFamily: 'Poppins-SemiBold',
+    
   },
 });
 

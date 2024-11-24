@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    fontFamily: 'Poppins-Bold',
+    
   },
   content: {
     flex: 1,
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 5,
     color: theme.colors.text,
-    fontFamily: 'Poppins-Regular',
+    
   },
   input: {
     borderWidth: 1,
@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 10,
     fontSize: 16,
-    fontFamily: 'Poppins-Regular',
+    
   },
   pickerContainer: {
     borderWidth: 1,
@@ -410,7 +410,7 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
-    fontFamily: 'Poppins-Bold',
+    
   },
   rowContainer: {
     flexDirection: 'row',

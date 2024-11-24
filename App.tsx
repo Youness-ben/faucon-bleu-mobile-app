@@ -17,6 +17,7 @@ import { theme } from './src/styles/theme';
 import Toast from 'react-native-toast-message';
 import { FloatingButtonProvider } from './src/FloatingButtonContext';
 import FloatingAudioButton from './src/components/FloatingAudioButton';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -33,7 +34,11 @@ export default function App() {
   const navigationRef = useRef();
   const notificationListener = useRef();
   const responseListener = useRef();
-
+  const handleSendAudio = (audioUri: string) => {
+    // Implement the logic to send the audio
+    console.log('Audio recorded:', audioUri);
+    // You can add your logic here to send the audio to a server or process it
+  };
   useEffect(() => {
     async function prepare() {
       try {
@@ -108,6 +113,7 @@ export default function App() {
   }
   
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
    <I18nextProvider i18n={i18n}>
       <SafeAreaProvider style={{backgroundColor:'transparent'}} >
         <View style={{
@@ -121,8 +127,8 @@ export default function App() {
               <NotificationProvider>
 
                 <FloatingButtonProvider>
+                <FloatingAudioButton onSendAudio={handleSendAudio} />
                 <AppNavigator />
-                  <FloatingAudioButton  />
                 </FloatingButtonProvider>
               </NotificationProvider>
             </UserProvider>
@@ -131,6 +137,7 @@ export default function App() {
         </View>
       </SafeAreaProvider>
     </I18nextProvider>
+    </GestureHandlerRootView>
   );
   
 }

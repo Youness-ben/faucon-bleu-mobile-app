@@ -41,6 +41,7 @@ import Slider from '@react-native-community/slider';
 import initializeEcho from '../echo';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PinchGestureHandler, State } from 'react-native-gesture-handler';
+import { useFloatingButton } from '../useFloatingButton';
 
 type RootStackParamList = {
   TicketScreen: { serviceId: string,service ?: any  };
@@ -114,8 +115,14 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
 const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
 
+  const [position, setPosition] = useState(0); // Current playback position in milliseconds
+  const [duration, setDuration] = useState(1); // Total duration in milliseconds
+  const [isSliding, setIsSliding] = useState(false);
+
+  const { toggleVisibility } = useFloatingButton();
 
   React.useEffect(() => {
+    toggleVisibility(false);
     async function loadSound() {
       if(notificationSound)
           return;
@@ -126,6 +133,8 @@ const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: 
     loadSound();
 
     return () => {
+      
+    toggleVisibility(true);
       if (notificationSound) {
         notificationSound.unloadAsync();
       }
@@ -435,8 +444,10 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
       Alert.alert('Error', 'Failed to download file. Please try again.');
     }
   };
+
   const playAudio = async (uri: string, messageId: string) => {
     try {
+ 
       setIsAudioLoading(messageId);
       
       // Unload the previous sound if it exists
@@ -444,16 +455,17 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
         await sound.unloadAsync();
       }
 
+      setCurrentlyPlayingId(messageId);
       // Create and load the new sound
       const { sound: newSound } = await Audio.Sound.createAsync(
         { uri },
         { shouldPlay: false }, // Don't start playing immediately
-        onPlaybackStatusUpdate
+        (status) => onPlaybackStatusUpdate(status, messageId)
       );
 
       setSound(newSound);
 
-      // Set up the audio progress for this message
+
       setAudioProgress(prev => ({
         ...prev,
         [messageId]: {
@@ -462,11 +474,8 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
         },
       }));
 
-      // Start playing the audio
       await newSound.playAsync();
-
       setIsPlaying(true);
-      setCurrentlyPlayingId(messageId);
     } catch (error) {
       console.error('Error playing audio:', error);
       Alert.alert('Error', 'Failed to play audio. Please try again.');
@@ -475,10 +484,11 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
     }
   };
 
-  const onPlaybackStatusUpdate = (status: Audio.PlaybackStatus) => {
+  const onPlaybackStatusUpdate = (status: Audio.PlaybackStatus, messageId: string) => {
     if (status.isLoaded) {
       setIsAudioLoading(null);
-      const messageId = currentlyPlayingId as string;
+      //const messageId = currentlyPlayingId as string;
+
       setAudioProgress(prev => ({
         ...prev,
         [messageId]: {
@@ -487,7 +497,6 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
         },
       }));
 
-      setAudioPosition(status.positionMillis);
 
       if (status.didJustFinish) {
         setIsPlaying(false);
@@ -758,7 +767,7 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
                     style={styles.audioSlider}
                     minimumValue={0}
                     maximumValue={audioProgress[item.id]?.duration || 100}
-                    value={audioPosition}
+                    value={audioProgress[item.id]?.position }
                     onValueChange={(value) => seekAudio(item.id, value)}
                     minimumTrackTintColor={theme.colors.primary}
                     maximumTrackTintColor={theme.colors.border}

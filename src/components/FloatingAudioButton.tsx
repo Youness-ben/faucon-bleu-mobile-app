@@ -1,7 +1,17 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, TouchableOpacity, Animated, PanResponder, StyleSheet, Dimensions } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
+import React, { useState, useEffect } from 'react';
+import { TouchableOpacity, StyleSheet, Dimensions, Image, View } from 'react-native';
+import RecordingModal from './RecordingModal';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withRepeat,
+  withTiming,
+  Easing,
+  useAnimatedGestureHandler,
+} from 'react-native-reanimated';
+import { PanGestureHandler } from 'react-native-gesture-handler';
+import { useFloatingButton } from '../useFloatingButton';
 
 const { width, height } = Dimensions.get('window');
 
@@ -10,142 +20,131 @@ interface FloatingAudioButtonProps {
 }
 
 const FloatingAudioButton: React.FC<FloatingAudioButtonProps> = ({ onSendAudio }) => {
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const { isVisible } = useFloatingButton();
 
-  const pan = useRef(new Animated.ValueXY()).current;
-  const scale = useRef(new Animated.Value(1)).current;
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: () => !isExpanded,
-      onPanResponderGrant: () => {
-        pan.setOffset({
-          x: pan.x._value,
-          y: pan.y._value
-        });
-      },
-      onPanResponderMove: Animated.event(
-        [
-          null,
-          { dx: pan.x, dy: pan.y }
-        ],
-        { useNativeDriver: false }
-      ),
-      onPanResponderRelease: () => {
-        pan.flattenOffset();
-      }
-    })
-  ).current;
+  const translateX = useSharedValue(width - 80);
+  const translateY = useSharedValue(height / 2 - 30);
+  const scale = useSharedValue(1);
+  const waveOpacity = useSharedValue(0.5);
 
   useEffect(() => {
-    return () => {
-      if (recording) {
-        recording.stopAndUnloadAsync();
-      }
-    };
+    scale.value = withRepeat(
+      withTiming(1.1, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true
+    );
+
+    waveOpacity.value = withRepeat(
+      withTiming(0.8, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true
+    );
   }, []);
 
-  const startRecording = async () => {
-    try {
-      await Audio.requestPermissionsAsync();
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-      setRecording(recording);
-      setIsRecording(true);
-    } catch (err) {
-      console.error('Failed to start recording', err);
-    }
-  };
+  const gestureHandler = useAnimatedGestureHandler({
+    onStart: (_, ctx: any) => {
+      ctx.startX = translateX.value;
+      ctx.startY = translateY.value;
+    },
+    onActive: (event, ctx) => {
+      translateX.value = ctx.startX + event.translationX;
+      translateY.value = ctx.startY + event.translationY;
+    },
+    onEnd: () => {
+      translateX.value = withSpring(Math.min(Math.max(translateX.value, 0), width - 60));
+      translateY.value = withSpring(Math.min(Math.max(translateY.value, 0), height - 60));
+    },
+  });
 
-  const stopRecording = async () => {
-    if (!recording) return;
+  const animatedStyles = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { translateX: translateX.value },
+        { translateY: translateY.value },
+        { scale: scale.value },
+      ],
+    };
+  });
 
-    setIsRecording(false);
-    await recording.stopAndUnloadAsync();
-    const uri = recording.getURI();
-    setRecording(null);
-
-    if (uri) {
-      onSendAudio(uri);
-    }
-  };
+  const waveStyles = useAnimatedStyle(() => {
+    return {
+      opacity: waveOpacity.value,
+    };
+  });
 
   const handlePress = () => {
-    if (!isExpanded) {
-      Animated.spring(scale, {
-        toValue: 2,
-        useNativeDriver: true,
-      }).start();
-      setIsExpanded(true);
-    }
+    setIsModalVisible(true);
   };
 
-  const handlePressOut = () => {
-    if (isExpanded) {
-      Animated.spring(scale, {
-        toValue: 1,
-        useNativeDriver: true,
-      }).start();
-      setIsExpanded(false);
-    }
+  const handleCloseModal = () => {
+    setIsModalVisible(false);
   };
+
+  const handleSendAudio = (audioUri: string) => {
+    onSendAudio(audioUri);
+    setIsModalVisible(false);
+  };
+
+  if (!isVisible) {
+    return null;
+  }
 
   return (
-    <Animated.View
-      style={[
-        styles.container,
-        {
-          transform: [
-            { translateX: pan.x },
-            { translateY: pan.y },
-            { scale: scale }
-          ]
-        }
-      ]}
-      {...panResponder.panHandlers}
-    >
-      <TouchableOpacity
-        onPressIn={handlePress}
-        onPressOut={handlePressOut}
-        onLongPress={startRecording}
-        onPress={stopRecording}
-        style={styles.button}
-      >
-        <Ionicons
-          name={isRecording ? "mic" : "mic-outline"}
-          size={24}
-          color="white"
-        />
-      </TouchableOpacity>
-    </Animated.View>
+    <View style={styles.container} pointerEvents="box-none">
+      <PanGestureHandler onGestureEvent={gestureHandler}>
+        <Animated.View style={[styles.buttonContainer, animatedStyles]}>
+          <Animated.View style={[styles.wave, waveStyles]} />
+          <TouchableOpacity
+            onPress={handlePress}
+            style={styles.button}
+            activeOpacity={0.7}
+          >
+            <Image
+              source={require('../../assets/AI_ICON.png')}
+              style={styles.buttonImage}
+            />
+          </TouchableOpacity>
+        </Animated.View>
+      </PanGestureHandler>
+      <RecordingModal
+        isVisible={isModalVisible}
+        onClose={handleCloseModal}
+        onSendAudio={handleSendAudio}
+      />
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1000,
+  },
+  buttonContainer: {
     position: 'absolute',
-    bottom: 20,
-    right: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 70,
+    height: 70,
   },
   button: {
     width: 60,
     height: 60,
-    borderRadius: 30,
-    backgroundColor: '#028dd0',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+  },
+  buttonImage: {
+    width: 50,
+    height: 50,
+    resizeMode: 'contain',
+  },
+  wave: {
+    position: 'absolute',
+    width: 70,
+    height: 70,
+    borderRadius: 40,
+    backgroundColor: 'rgba(2, 141, 208, 0.2)',
   },
 });
 

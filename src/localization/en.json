@@ -284,5 +284,11 @@
     "Date": "Date",
     "chat": "Chat",
     "Status": "Status"
+  },
+  "recordingModal":{
+   "playback" :  "Playback, send, or cancel your recording",
+   "recording" :  "Recording... Release to stop",
+   "pressRecord" :  "Press and hold to record",
+   "title" :  "Record Audio"
   }
 }

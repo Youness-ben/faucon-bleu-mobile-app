@@ -368,7 +368,7 @@ const styles = StyleSheet.create({
     color: theme.colors.error,
     textAlign: 'center',
     marginBottom: 20,
-    fontFamily: 'Poppins-Regular',
+    
   },
   retryButton: {
     backgroundColor: theme.colors.primary,
@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
-    fontFamily: 'Poppins-Bold',
+    
   },
   footerLoader: {
     alignItems: 'center',
@@ -410,14 +410,14 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     textAlign: 'center',
     marginBottom: 10,
-    fontFamily: 'Poppins-Bold',
+    
   },
   emptyStateDescription: {
     fontSize: 16,
     color: theme.colors.textSecondary,
     textAlign: 'center',
     marginBottom: 20,
-    fontFamily: 'Poppins-Regular',
+    
   },
   emptyStateButton: {
     flexDirection: 'row',
@@ -435,7 +435,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
-    fontFamily: 'Poppins-Bold',
+    
   },
   searchContainer: {
     flexDirection: 'row',
@@ -454,7 +454,7 @@ const styles = StyleSheet.create({
     height: 40,
     fontSize: 16,
     color: theme.colors.text,
-    fontFamily: 'Poppins-Regular',
+    
   },
   errorAnimation: {
     width: 150,

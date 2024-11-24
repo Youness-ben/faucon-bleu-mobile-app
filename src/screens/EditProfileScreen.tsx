@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    fontFamily: 'Poppins-Bold',
+    
   },
   content: {
     flex: 1,
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
   changePhotoText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontFamily: 'Poppins-SemiBold',
+    
   },
   form: {
     paddingHorizontal: 20,
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#8E8E93',
     marginBottom: 5,
-    fontFamily: 'Poppins-Regular',
+    
   },
   input: {
     fontSize: 16,
@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5EA',
     paddingVertical: 10,
-    fontFamily: 'Poppins-Regular',
+    
   },
   disabledInput: {
     color: '#8E8E93',
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '600',
-    fontFamily: 'Poppins-SemiBold',
+    
   },
 });
 

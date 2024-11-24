@@ -8,7 +8,7 @@ interface FloatingButtonContextType {
 export const FloatingButtonContext = createContext<FloatingButtonContextType | undefined>(undefined);
 
 export const FloatingButtonProvider: React.FC = ({ children }) => {
-  const [isVisible, setIsVisible] = useState(true);
+  const [isVisible, setIsVisible] = useState(false);
 
   const toggleVisibility = useCallback((visible: boolean) => {
     setIsVisible(visible);
