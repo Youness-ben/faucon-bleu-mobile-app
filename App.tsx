@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler';
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { I18nextProvider } from 'react-i18next';
@@ -14,6 +15,8 @@ import { UserProvider } from './src/UserContext';
 import { NotificationProvider } from './src/NotificationContext';
 import { theme } from './src/styles/theme';
 import Toast from 'react-native-toast-message';
+import { FloatingButtonProvider } from './src/FloatingButtonContext';
+import FloatingAudioButton from './src/components/FloatingAudioButton';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -103,7 +106,7 @@ export default function App() {
   if (!appIsReady) {
     return null;
   }
-
+  
   return (
    <I18nextProvider i18n={i18n}>
       <SafeAreaProvider style={{backgroundColor:'transparent'}} >
@@ -116,7 +119,11 @@ export default function App() {
           <NavigationContainer ref={navigationRef}>
             <UserProvider>
               <NotificationProvider>
+
+                <FloatingButtonProvider>
                 <AppNavigator />
+                  <FloatingAudioButton  />
+                </FloatingButtonProvider>
               </NotificationProvider>
             </UserProvider>
           </NavigationContainer>

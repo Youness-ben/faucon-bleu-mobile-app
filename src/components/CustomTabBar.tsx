@@ -102,7 +102,7 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
               <Ionicons
                 name={options.tabBarIcon({ focused: isFocused, color: '', size: 24 }).props.name}
                 size={24}
-                color={isFocused ?'rgba(2, 141, 208, 0.7)' : 'rgba(2, 141, 208, 0.7)'}
+                color={isFocused ?'rgba(2, 141, 208, 1)' : 'rgba(2, 141, 208, 1)'}
               />
             </Animated.View>
             <Animated.Text style={[styles.tabText, animatedTextStyle]}>

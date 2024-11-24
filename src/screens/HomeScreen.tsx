@@ -326,21 +326,21 @@ const HomeScreen: React.FC = () => {
             style={styles.headerButton}
             onPress={() => navigation.navigate('ServiceHistory')}
           >
-            <Ionicons name="time-outline" size={24} color="#FFFFFF" />
+            <Ionicons name="time-outline" size={24} color="#028dd0" />
             <Text style={styles.headerButtonText}>{t('home.serviceHistory')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.headerButton}
             onPress={() => navigation.navigate('Services')}
           >
-            <Ionicons name="construct-outline" size={24} color="#FFFFFF" />
-            <Text style={styles.headerButtonText}>{t('home.orderService')}</Text>
+            <Ionicons name="construct-outline" size={24} color="#028dd0" />
+            <Text style={styles.headerButtonText}>{t('home.quickService')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.headerButton}
             onPress={() => navigation.navigate('Support')}
           >
-            <Ionicons name="help-circle-outline" size={24} color="#FFFFFF" />
+            <Ionicons name="help-circle-outline" size={24} color="#028dd0" />
             <Text style={styles.headerButtonText}>{t('home.callSupport')}</Text>
           </TouchableOpacity>
         </View>
@@ -418,11 +418,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 10,
     marginHorizontal: 5,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 10,
   },
   headerButtonText: {
-    color: '#FFFFFF',
+    color: '#028dd0',
     fontSize: 12,
     marginTop: 5,
     textAlign: 'center',
@@ -471,6 +471,7 @@ height: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 15,
+    marginRight: 15,
     padding: 10,
     backgroundColor: '#F5F5F5',
     borderRadius: 10,

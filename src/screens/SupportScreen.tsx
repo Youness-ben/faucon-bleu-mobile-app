@@ -19,7 +19,7 @@ const SupportScreen: React.FC = () => {
   ];
   return (
     <>
-       <TouchableOpacity onPress={() => navigation.navigate(user?.type=='client' ? 'Profile' : 'ConductorSettings')} style={styles.backButton}>
+       <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
         <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
       </TouchableOpacity>
       

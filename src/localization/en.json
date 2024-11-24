@@ -142,6 +142,7 @@
     "noUpcomingServices": "No upcoming services",
     "viewAllServices": "View All Services",
     "no_service": "No service history",
+    "orderNewService": "Order a new service",
     "fetchFailed": "Failed to fetch data"
   },
   "error": {

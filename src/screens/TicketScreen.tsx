@@ -18,6 +18,7 @@ import {
   Modal,
   Dimensions,
   ImageBackground,
+  StatusBar,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -39,6 +40,7 @@ import { WebView } from 'react-native-webview';
 import Slider from '@react-native-community/slider';
 import initializeEcho from '../echo';
 import { LinearGradient } from 'expo-linear-gradient';
+import { PinchGestureHandler, State } from 'react-native-gesture-handler';
 
 type RootStackParamList = {
   TicketScreen: { serviceId: string,service ?: any  };
@@ -55,6 +57,8 @@ interface Message {
   latitude?: number;
   longitude?: number;
   created_at: string;
+  isUploading?: boolean; 
+
 }
 
 interface AudioProgress {
@@ -107,9 +111,14 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
 
   const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
   const headerHeight = useRef(new Animated.Value(0)).current;
+const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+
 
   React.useEffect(() => {
     async function loadSound() {
+      if(notificationSound)
+          return;
       const { sound } = await Audio.Sound.createAsync(require('../../assets/ping.mp3'));
       setNotificationSound(sound);
     }
@@ -200,7 +209,17 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
     };
   }, [serviceId]);
 
-  const sendMessage = async (messageType: string, content?: string, file?: any, location?: { latitude: number; longitude: number }) => {
+ const [attachmentProgress, setAttachmentProgress] = useState<{ [key: string]: number }>({});
+  const [isUploading, setIsUploading] = useState(false);
+
+   const updateAttachmentProgress = (messageId: string, progress: number) => {
+    setAttachmentProgress(prev => ({
+      ...prev,
+      [messageId]: progress
+    }));
+  };
+
+const sendMessage = async (messageType: string, content?: string, file?: any, location?: { latitude: number; longitude: number }) => {
     try {
       const formData = new FormData();
       formData.append('message_type', messageType);
@@ -218,12 +237,41 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
         formData.append('longitude', location.longitude.toString());
       }
 
+      const tempMessageId = Date.now().toString();
+      setMessages(prevMessages => [...prevMessages, {
+        id: tempMessageId,
+        sender_type: user.type,
+        message_type: messageType,
+        content: content || 'Uploading...',
+        created_at: new Date().toISOString(),
+        isUploading: true
+      }]);
+
+      setIsUploading(true);
+
       const response = await api.post(`service-orders/${serviceId}/chat`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          updateAttachmentProgress(tempMessageId, percentCompleted);
+        }
       });
-      setMessages(prevMessages => [...prevMessages, response.data]);
+
+      setMessages(prevMessages => prevMessages.map(msg => 
+        msg.id === tempMessageId ? { ...response.data, isUploading: false } : msg
+      ));
+
+      setIsUploading(false);
+      setAttachmentProgress(prev => {
+        const newProgress = { ...prev };
+        delete newProgress[tempMessageId];
+        return newProgress;
+      });
     } catch (error) {
       console.error('Error sending message:', error);
+      setMessages(prevMessages => prevMessages.filter(msg => msg.id !== tempMessageId));
+      setIsUploading(false);
+      Alert.alert('Error', 'Failed to send message. Please try again.');
     }
   };
 
@@ -239,7 +287,6 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.All,
         allowsEditing: true,
-        aspect: [4, 3],
         quality: 1,
       });
 
@@ -498,12 +545,12 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
 
   const renderHeader = () => (
     <View style={styles.headerContainer}>
+      
       <LinearGradient 
-        colors={['#028dd0', '#01579B']} 
-        start={{x: 0, y: 0}} 
-        end={{x: 1, y: 0}} 
-        style={styles.headerGradient}
-      >
+      colors={['#028dd0', '#01579B']} 
+      style={styles.header}
+    >
+      <StatusBar barStyle="light-content" backgroundColor="#028dd0" />
         <View style={styles.headerTopRow}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
@@ -536,6 +583,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
       </LinearGradient>
     </View>
   );
+
   const renderMessage = ({ item }: { item: Message })  => {
     const messageDate = new Date(item.created_at);
     let dateDisplay = format(messageDate, 'MM/dd/yyyy');
@@ -549,7 +597,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
     const timeDisplay = format(messageDate, 'HH:mm');
   
     return (
-      <View style={[
+     <View style={[
         styles.messageWrapper,
         item.sender_type === user.type ? styles.currentUserMessageWrapper : styles.otherUserMessageWrapper
       ]}>
@@ -560,6 +608,24 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
         ]}>
           <View style={styles.messageContent}>
 
+       {item.isUploading && (
+              <View style={styles.uploadingContainer}>
+                <View style={styles.uploadingBackground}>
+                  <Animated.View 
+                    style={[
+                      styles.uploadingProgress, 
+                      { width: `${attachmentProgress[item.id] || 0}%` }
+                    ]} 
+                  />
+                </View>
+                <View style={styles.uploadingContent}>
+                  <ActivityIndicator size="small" color={theme.colors.primary} />
+                  <Text style={styles.uploadingText}>
+                    {attachmentProgress[item.id] ? `Uploading... ${attachmentProgress[item.id]}%` : 'Preparing...'}
+                  </Text>
+                </View>
+              </View>
+            )}
 
             {item.sender_type !== user.type && (
               <View style={styles.senderInfo}>
@@ -616,23 +682,38 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
               </View>
             )}
             {item.message_type === 'text' && <Text style={styles.messageText}>{item.content}</Text>}
+           
             {item.message_type === 'image' && (
               <TouchableOpacity onPress={() => setPreviewFile({ uri: `${STORAGE_URL}/${item.file_path}`, type: 'image' })}>
-                <Image source={{ uri: `${STORAGE_URL}/${item.file_path}` }} style={styles.imageMessage} />
-                <Text style={styles.previewText}>Tap to preview</Text>
+                <View style={styles.imageContainer}>
+                  <Image source={{ uri: `${STORAGE_URL}/${item.file_path}` }} style={styles.imageMessage} />
+                  <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.7)']}
+                    style={styles.imageOverlay}
+                  >
+                    <Text style={styles.previewText}>Tap to view</Text>
+                  </LinearGradient>
+                </View>
               </TouchableOpacity>
             )}
+
             {item.message_type === 'video' && (
-              <TouchableOpacity onPress={() => 
-                setPreviewFile({ uri: `${STORAGE_URL}/${item.file_path}`, type: 'video' })
-              }>
-                <Video
-                  source={{ uri: `${STORAGE_URL}/${item.file_path}` }}
-                  style={styles.videoMessage}
-                  resizeMode="cover"
-                  shouldPlay={false}
-                />
-                <Text style={styles.previewText}>Tap to preview</Text>
+              <TouchableOpacity onPress={() => setPreviewFile({ uri: `${STORAGE_URL}/${item.file_path}`, type: 'video' })}>
+                <View style={styles.videoContainer}>
+                  <Video
+                    source={{ uri: `${STORAGE_URL}/${item.file_path}` }}
+                    style={styles.videoMessage}
+                    resizeMode="cover"
+                    shouldPlay={false}
+                  />
+                  <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.7)']}
+                    style={styles.videoOverlay}
+                  >
+                    <Ionicons name="play-circle-outline" size={48} color="#FFFFFF" />
+                    <Text style={styles.previewText}>Tap to play</Text>
+                  </LinearGradient>
+                </View>
               </TouchableOpacity>
             )}
             {item.message_type === 'file' && (
@@ -777,55 +858,77 @@ const renderFabMenu = () => (
   </View>
 );
 
-  const renderPreview = () => {
+const renderPreview = () => {
     if (!previewUri) return null;
 
     return (
       <Modal
         animationType="slide"
-        transparent={false}
+        transparent={true}
         visible={!!previewUri}
         onRequestClose={clearPreview}
       >
-        <SafeAreaView style={styles.fullScreenPreview}>
-          <View style={styles.previewHeader}>
-            <TouchableOpacity onPress={clearPreview} style={styles.closeButton}>
-              <Ionicons name="close-circle" size={32} color={theme.colors.surface} />
-            </TouchableOpacity>
-          </View>
-          <View style={styles.fullScreenPreviewContent}>
+        <SafeAreaView style={styles.previewContainer}>
+          <LinearGradient
+            colors={['rgba(0,0,0,0.7)', 'transparent']}
+            style={styles.previewGradient}
+          >
+
+          </LinearGradient>
+          
+          <View style={styles.previewContent}>
             {previewType === 'image' ? (
-              <Image source={{ uri: previewUri }} style={styles.fullScreenPreviewImage} resizeMode="contain" />
+              <Image source={{ uri: previewUri }} style={styles.previewImage} resizeMode="contain" />
             ) : previewType === 'video' ? (
               <Video
                 source={{ uri: previewUri }}
-                rate={1.0}
-                volume={1.0}
-                isMuted={false}
-                resizeMode="contain"
-                shouldPlay={false}
-                isLooping={false}
-                style={styles.fullScreenPreviewVideo}
+                style={styles.previewVideo}
                 useNativeControls
+                resizeMode="contain"
+                isLooping
               />
             ) : (
               <View style={styles.filePreview}>
-                <Ionicons name="document-outline" size={48} color={theme.colors.primary} />
+                <Ionicons name="document-outline" size={64} color={theme.colors.primary} />
                 <Text style={styles.filePreviewText}>{previewName}</Text>
               </View>
             )}
           </View>
-          <View style={styles.previewActions}>
-            <TouchableOpacity style={styles.previewButton} onPress={sendAttachment}>
-              <Text style={styles.previewButtonText}>Send</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.previewButton, styles.cancelButton]} onPress={clearPreview}>
-              <Text style={styles.previewButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
+          
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.7)']}
+            style={styles.previewGradient}
+          >
+            <View style={styles.previewActions}>
+              <TouchableOpacity style={styles.previewButton} onPress={sendAttachment}>
+                <Ionicons name="send" size={24} color="#FFFFFF" />
+                <Text style={styles.previewButtonText}>Send</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.previewButton, styles.cancelButton]} onPress={clearPreview}>
+                <Ionicons name="close-circle" size={24} color="#FFFFFF" />
+                <Text style={styles.previewButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
         </SafeAreaView>
       </Modal>
     );
+  };
+
+  const [scale, setScale] = useState(1);
+  const baseScale = useRef(1);
+  const pinchRef = useRef();
+
+  const onPinchGestureEvent = Animated.event(
+    [{ nativeEvent: { scale: scale } }],
+    { useNativeDriver: true }
+  );
+
+  const onPinchHandlerStateChange = (event) => {
+    if (event.nativeEvent.oldState === State.ACTIVE) {
+      baseScale.current *= event.nativeEvent.scale;
+      setScale(1);
+    }
   };
 
   const renderFilePreview = () => {
@@ -833,23 +936,39 @@ const renderFabMenu = () => (
 
     return (
       <Modal
-        animationType="slide"
+        animationType="fade"
         transparent={false}
         visible={!!previewFile}
         onRequestClose={() => setPreviewFile(null)}
       >
         <SafeAreaView style={styles.fullScreenPreview}>
+          <StatusBar hidden />
           <View style={styles.previewHeader}>
-            <TouchableOpacity style={styles.downloadButton} onPress={() => downloadFile(previewFile.uri, 'file')}>
-              <Ionicons name="download-outline" size={24} color={theme.colors.surface} />
-            </TouchableOpacity>
             <TouchableOpacity onPress={() => setPreviewFile(null)} style={styles.closeButton}>
-              <Ionicons name="close-circle" size={32} color={theme.colors.surface} />
+              <Ionicons name="close" size={28} color="#FFFFFF" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.downloadButton} onPress={() => downloadFile(previewFile.uri, 'file')}>
+              <Ionicons name="download-outline" size={24} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
           <View style={styles.fullScreenPreviewContent}>
             {previewFile.type === 'image' ? (
-              <Image source={{ uri: previewFile.uri }} style={styles.fullScreenPreviewImage} resizeMode="contain" />
+              <PinchGestureHandler
+                ref={pinchRef}
+                onGestureEvent={onPinchGestureEvent}
+                onHandlerStateChange={onPinchHandlerStateChange}
+              >
+                <Animated.Image
+                  source={{ uri: previewFile.uri }}
+                  style={[
+                    styles.fullScreenPreviewImage,
+                    {
+                      transform: [{ scale: Animated.multiply(scale, baseScale.current) }],
+                    },
+                  ]}
+                  resizeMode="contain"
+                />
+              </PinchGestureHandler>
             ) : previewFile.type === 'video' ? (
               <Video
                 source={{ uri: previewFile.uri }}
@@ -866,11 +985,40 @@ const renderFabMenu = () => (
               <WebView source={{ uri: previewFile.uri }} style={styles.previewWebView} />
             )}
           </View>
+          <LinearGradient
+            colors={['rgba(0,0,0,0.7)', 'transparent']}
+            style={styles.previewGradient}
+          />
         </SafeAreaView>
       </Modal>
     );
   };
+  
+  const getUserLocation = async () => {
+    setIsLoadingLocation(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission denied', 'Allow the app to use location service.');
+        return;
+      }
 
+      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      setUserLocation({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      });
+      setSelectedLocation({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      });
+    } catch (error) {
+      console.error('Error getting location:', error);
+      Alert.alert('Error', 'Failed to get your location. Please try again.');
+    } finally {
+      setIsLoadingLocation(false);
+    }
+  };
   const renderLocationPicker = () => {
     if (!isMapVisible) return null;
 
@@ -881,35 +1029,53 @@ const renderFabMenu = () => (
         visible={isMapVisible}
         onRequestClose={() => setIsMapVisible(false)}
       >
-        <View style={styles.mapContainer}>
-          <MapView
-            provider={PROVIDER_DEFAULT}
-            style={styles.map}
-            initialRegion={{
-              latitude: 37.78825,
-              longitude: -122.4324,
-              latitudeDelta: 0.0922,
-              longitudeDelta: 0.0421,
-            }}
-            onPress={(e) => setSelectedLocation(e.nativeEvent.coordinate)}
-          >
-            <UrlTile
-              urlTemplate="https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              maximumZ={19}
-            />
-            {selectedLocation && (
-              <Marker coordinate={selectedLocation} />
-            )}
-          </MapView>
-          <View style={styles.mapActions}>
-            <TouchableOpacity style={styles.mapButton} onPress={sendLocation}>
-              <Text style={styles.mapButtonText}>Send Location</Text>
+        <SafeAreaView style={styles.locationPickerContainer}>
+          <StatusBar barStyle="light-content" backgroundColor="#000000" />
+          <View style={styles.locationPickerHeader}>
+            <TouchableOpacity onPress={() => setIsMapVisible(false)} style={styles.locationPickerCloseButton}>
+              <Ionicons name="close" size={24} color="#FFFFFF" />
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.mapButton, styles.cancelButton]} onPress={() => setIsMapVisible(false)}>
-              <Text style={styles.mapButtonText}>Cancel</Text>
+            <Text style={styles.locationPickerTitle}>Send Location</Text>
+            <TouchableOpacity onPress={getUserLocation} style={styles.locationPickerMyLocationButton}>
+              <Ionicons name="locate" size={24} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
-        </View>
+
+          <View style={styles.mapContainer}>
+            {isLoadingLocation ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <Text style={styles.loadingText}>Getting your location...</Text>
+              </View>
+            ) : (
+              <MapView
+                provider={PROVIDER_DEFAULT}
+                style={styles.map}
+                initialRegion={userLocation ? {
+                  ...userLocation,
+                  latitudeDelta: 0.0922,
+                  longitudeDelta: 0.0421,
+                } : undefined}
+                onPress={(e) => setSelectedLocation(e.nativeEvent.coordinate)}
+              >
+                {selectedLocation && (
+                  <Marker coordinate={selectedLocation} />
+                )}
+              </MapView>
+            )}
+          </View>
+
+          <View style={styles.locationPickerActions}>
+            <TouchableOpacity 
+              style={[styles.locationPickerButton, !selectedLocation && styles.locationPickerButtonDisabled]} 
+              onPress={sendLocation}
+              disabled={!selectedLocation}
+            >
+              <Ionicons name="send" size={24} color="#FFFFFF" />
+              <Text style={styles.locationPickerButtonText}>Send Location</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
       </Modal>
     );
   };
@@ -1215,16 +1381,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  imageMessage: {
-    width: 200,
-    height: 200,
-    borderRadius: theme.roundness,
-  },
-  videoMessage: {
-    width: 200,
-    height: 200,
-    borderRadius: theme.roundness,
-  },
+
   fileMessage: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1258,109 +1415,174 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     marginTop: theme.spacing.xs,
   },
-  previewContainer: {
+
+  
+ previewContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+  },
+  previewGradient: {
+    height: 100,
+    justifyContent: 'center',
+  },
+  
+  previewCloseButton: {
+    position: 'absolute',
+    left: 16,
+    padding: 8,
+  },
+  previewTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  previewContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  previewContent: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.roundness,
-    padding: theme.spacing.md,
-    width: '90%',
-    maxHeight: '80%',
   },
   previewImage: {
     width: '100%',
-    height: 300,
-    borderRadius: theme.roundness,
+    height: '100%',
   },
   previewVideo: {
     width: '100%',
     height: 300,
-    borderRadius: theme.roundness,
   },
-  previewWebView: {
-    width: '100%',
-    height: 400,
+  filePreview: {
+    alignItems: 'center',
+  },
+  filePreviewText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#FFFFFF',
   },
   previewActions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    padding: theme.spacing.md,
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    paddingVertical: 16,
   },
   previewButton: {
-    backgroundColor: theme.colors.primary,
-    padding: theme.spacing.md,
-    borderRadius: theme.roundness,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 25,
   },
   cancelButton: {
     backgroundColor: theme.colors.error,
   },
   previewButtonText: {
-    color: theme.colors.surface,
-    fontWeight: theme.typography.fontWeights.bold,
-    fontSize: theme.typography.sizes.md,
-    marginLeft: theme.spacing.sm,
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 16,
+    marginLeft: 8,
+  },
+
+locationPickerContainer: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
+  locationPickerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#000000',
+  },
+  locationPickerCloseButton: {
+    padding: 8,
+  },
+  locationPickerMyLocationButton: {
+    padding: 8,
+  },
+  locationPickerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   mapContainer: {
     flex: 1,
+    backgroundColor: '#000000',
   },
   map: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  loadingContainer: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000000',
   },
-  mapActions: {
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#FFFFFF',
+  },
+  locationPickerActions: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: theme.spacing.md,
-    backgroundColor: theme.colors.surface,
+    justifyContent: 'center',
+    paddingVertical: 16,
+    backgroundColor: '#000000',
   },
-  mapButton: {
+  locationPickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: theme.colors.primary,
-    padding: theme.spacing.sm,
-    borderRadius: theme.roundness,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 25,
   },
-  mapButtonText: {
-    color: theme.colors.surface,
-    fontWeight: theme.typography.fontWeights.bold,
+  locationPickerButtonDisabled: {
+    opacity: 0.5,
   },
+  locationPickerButtonText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 16,
+    marginLeft: 8,
+  },
+  
+
+  
   fullScreenPreview: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.9)',
   },
+
+  
+
   previewHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: theme.spacing.md,
+    padding: 16,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
   },
+
+
+
+
+  
   closeButton: {
-    padding: theme.spacing.sm,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   downloadButton: {
-    padding: theme.spacing.sm,
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.roundness,
-  },
-  previewTitle: {
-    flex: 1,
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.fontWeights.bold,
-    textAlign: 'center',
-    color: theme.colors.text,
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(2, 141, 208, 0.8)',
   },
   fullScreenPreviewContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: theme.spacing.lg,
   },
   fullScreenPreviewImage: {
     width: '100%',
@@ -1370,12 +1592,85 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  filePreview: {
+  previewWebView: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#FFFFFF',
+  },
+ 
+
+
+  
+  imageContainer: {
+    position: 'relative',
+    borderRadius: theme.roundness,
+    overflow: 'hidden',
+    marginBottom: theme.spacing.sm,
+    width: 200, // Set a fixed width for consistency
+  },
+  imageMessage: {
+    width: '100%', // Use 100% of the container width
+    height: 200,
+    borderRadius: theme.roundness,
+  },
+  imageOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 50,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  filePreviewText: {
-    marginTop: theme.spacing.sm,
-    color: theme.colors.text,
-    fontSize: theme.typography.sizes.md,
+  videoContainer: {
+    position: 'relative',
+    borderRadius: theme.roundness,
+    overflow: 'hidden',
+    marginBottom: theme.spacing.sm,
+    width: 200, // Set a fixed width for consistency
+  },
+  videoMessage: {
+    width: '100%', // Use 100% of the container width
+    height: 200,
+    borderRadius: theme.roundness,
+  },
+  videoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: -1, height: 1 },
+    textShadowRadius: 10,
+  },
+ 
+  
+  uploadingContainer: {
+    marginBottom: 8,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  uploadingBackground: {
+    height: 4,
+    backgroundColor: theme.colors.border,
+    borderRadius: 2,
+  },
+  uploadingProgress: {
+    height: '100%',
+    backgroundColor: theme.colors.primary,
+  },
+  uploadingContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  uploadingText: {
+    marginLeft: 8,
+    fontSize: 12,
+    color: theme.colors.muted,
   },
 });

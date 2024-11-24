@@ -22,7 +22,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useUser } from '../UserContext';
 import { STORAGE_URL } from '../../config';
-import { theme } from '../styles/theme';
 
 type RootStackParamList = {
   EditProfile: undefined;
@@ -232,7 +231,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins-Bold',
   },
   email: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#FFFFFF',
     opacity: 0.8,
     fontFamily: 'Poppins-Regular',
