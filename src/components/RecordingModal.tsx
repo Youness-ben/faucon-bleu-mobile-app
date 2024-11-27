@@ -144,29 +144,31 @@ const RecordingModal: React.FC<RecordingModalProps> = ({ isVisible, onClose, onS
                 />
               </TouchableOpacity>
             ) : (
-              <View style={styles.controlsContainer}>
-                <TouchableOpacity
-                  style={styles.controlButton}
-                  onPress={isPlaying ? stopPlayback : playRecording}
-                >
-                  <Ionicons
-                    name={isPlaying ? "pause" : "play"}
-                    size={24}
-                    color="white"
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.controlButton, styles.sendButton]}
-                  onPress={handleSend}
-                >
-                  <Ionicons name="send" size={24} color="white" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.controlButton, styles.cancelButton]}
-                  onPress={handleCancel}
-                >
-                  <Ionicons name="close" size={24} color="white" />
-                </TouchableOpacity>
+           <View style={styles.trafficLightContainer}>
+                <View style={styles.controlsContainer}>
+                  <TouchableOpacity
+                    style={[styles.controlButton, styles.cancelButton]}
+                    onPress={handleCancel}
+                  >
+                    <Ionicons name="trash" size={24} color="white" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.controlButton, styles.playButton]}
+                    onPress={isPlaying ? stopPlayback : playRecording}
+                  >
+                    <Ionicons
+                      name={isPlaying ? "pause-circle-outline" : "play-circle-outline"}
+                      size={32}
+                      color="white"
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.controlButton, styles.sendButton]}
+                    onPress={handleSend}
+                  >
+                    <Ionicons name="send" size={24} color="white" />
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
             <Text style={styles.instructions}>
@@ -205,7 +207,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 60,
     color: '#028dd0',
   },
   recordingContainer: {
@@ -227,29 +229,47 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  trafficLightContainer: {
+    backgroundColor: '#333',
+    borderRadius: 30,
+    padding: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 70,
+    height: 190,
+  },
   controlsContainer: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 20,
+    gap: 10,
   },
   controlButton: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#028dd0',
     justifyContent: 'center',
     alignItems: 'center',
-    marginHorizontal: 10,
-  },
-  sendButton: {
-    backgroundColor: '#4CD964',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   cancelButton: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: '#FF3B30', // Traffic light red
+  },
+  playButton: {
+    backgroundColor: '#dec443', // Traffic light yellow
+  },
+  sendButton: {
+    backgroundColor: '#34C759', // Traffic light green
   },
   instructions: {
-    marginTop: 20,
+    marginTop: 60,
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
