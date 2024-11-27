@@ -10,6 +10,7 @@ import {
   Dimensions,
   RefreshControl,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -143,8 +144,49 @@ const HomeScreen: React.FC = () => {
     };
   }, [banners]);
 
-  const registerForPushNotificationsAsync = async () => {
-    // ... (keep the existing implementation)
+ const registerForPushNotificationsAsync = async () => {
+    let token;
+    if (Constants.isDevice) {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      if (finalStatus !== 'granted') {
+        Toast.show({
+          type: 'error',
+          text1: t('notifications.permissionDenied'),
+          text2: t('notifications.enableInSettings'),
+        });
+        return;
+      }
+      token = (await Notifications.getExpoPushTokenAsync()).data;
+    } else {
+      Toast.show({
+        type: 'error',
+        text1: t('notifications.deviceNotSupported'),
+        text2: t('notifications.usePhysicalDevice'),
+      });
+    }
+
+    if (Platform.OS === 'android') {
+      Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF231F7C',
+      });
+    }
+
+    if (token) {
+      await AsyncStorage.setItem('expoPushToken', token);
+      try {
+        await api.post('/vehicle/update-push-token', { token });
+      } catch (error) {
+        console.error('Error sending push token to backend:', error);
+      }
+    }
   };
 
   const getStatusColor = (status?: Service['status']) => {
