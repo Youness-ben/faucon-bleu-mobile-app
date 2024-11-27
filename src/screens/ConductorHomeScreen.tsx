@@ -10,6 +10,7 @@ import {
   Dimensions,
   RefreshControl,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -138,7 +139,7 @@ const ConductorHomeScreen: React.FC = () => {
 
   const registerForPushNotificationsAsync = async () => {
     let token;
-    if (Constants.isDevice) {
+    
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
       if (existingStatus !== 'granted') {
@@ -154,13 +155,7 @@ const ConductorHomeScreen: React.FC = () => {
         return;
       }
       token = (await Notifications.getExpoPushTokenAsync()).data;
-    } else {
-      Toast.show({
-        type: 'error',
-        text1: t('notifications.deviceNotSupported'),
-        text2: t('notifications.usePhysicalDevice'),
-      });
-    }
+    
 
     if (Platform.OS === 'android') {
       Notifications.setNotificationChannelAsync('default', {
