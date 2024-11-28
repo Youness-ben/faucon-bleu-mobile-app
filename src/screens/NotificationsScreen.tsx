@@ -29,6 +29,7 @@ interface Notification {
   body: string;
   created_at: string;
   client_read_at: string | null;
+  vehicle_read_at: string | null;
   type: string;
   data: any;
 }
@@ -57,7 +58,7 @@ const NotificationsScreen: React.FC = () => {
     }
     setError(null);
     try {
-      const response = await api.get('/client/notifications', {
+      const response = await api.get(`/${user?.type}/notifications`, {
         params: { page: pageNumber, per_page: ITEMS_PER_PAGE }
       });
       const newNotifications = response.data.data;
@@ -123,7 +124,7 @@ const NotificationsScreen: React.FC = () => {
   const markAllAsRead = useCallback(async () => {
     try {
       
-      await api.post('/client/notifications/mark-all-read');
+      await api.post(`/${user?.type}/notifications/mark-all-read`);
       setNotifications(prevNotifications =>
         prevNotifications.map(notification => ({
           ...notification,
@@ -155,7 +156,7 @@ const NotificationsScreen: React.FC = () => {
 
   const markAsRead = async (notification: Notification)  => {
     try {
-      await api.post(`/client/notifications/${notification.id}/read`);
+      await api.post(`/${user?.type}/notifications/${notification.id}/read`);
       setNotifications(prevNotifications =>
         prevNotifications.map(Lnotification =>
           Lnotification.id === notification.id
@@ -180,7 +181,7 @@ const NotificationsScreen: React.FC = () => {
   };
 
   const renderNotificationItem = ({ item }: { item: Notification }) => {
-    const isUnread = !item.client_read_at;
+    const isUnread = !(user?.type == "client" ? item.client_read_at :item.vehicle_read_at);
     const itemFadeAnim = fadeAnims[item.id] || new Animated.Value(1);
     const itemPulseAnim = pulseAnims[item.id] || new Animated.Value(1);
 
@@ -355,6 +356,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginHorizontal: 20,
     marginVertical: 2,
+    marginBottom: 10,
     padding: 15,
     shadowColor: "#000",
     shadowOffset: {

@@ -34,7 +34,7 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
           </LinearGradient>
         </Defs>
         <Path
-          d={`M0 0L${width} 0L${width} 60C${width} 88 ${width - 30} 100 ${width - 70} 100L70 100C30 100 0 88 0 60L0 0Z`}
+          d={`M0 0L${width} 0L${width} 100L0 100L0 0Z`}
           fill="url(#grad)"
         />
       </Svg>
@@ -117,7 +117,12 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
 
 const styles = StyleSheet.create({
   container: {
+    position: 'absolute',
+    bottom: 0,         
+    left: 0,
+    right: 0,
     flexDirection: 'row',
+    backgroundColor:"#01579B",
     height: 80,
     elevation: 8,
     shadowColor: '#000',
@@ -126,6 +131,8 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    borderBottomRightRadius: 0,
+    borderBottomLeftRadius: 0,
     overflow: 'hidden',
   },
   tabButton: {

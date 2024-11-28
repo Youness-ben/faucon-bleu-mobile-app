@@ -164,12 +164,13 @@ const HomeScreen: React.FC = () => {
         });
         return;
       }
-      token = (await Notifications.getExpoPushTokenAsync()).data;
+      token = (await Notifications.getExpoPushTokenAsync({projectId :"770160a7-d515-4bb7-b29f-3131a5eccc75" })).data;
 
 
     if (Platform.OS === 'android') {
       Notifications.setNotificationChannelAsync('default', {
         name: 'default',
+        sound : require("../../assets/notification_sound.wav"),
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#FF231F7C',

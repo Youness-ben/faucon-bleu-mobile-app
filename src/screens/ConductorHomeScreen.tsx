@@ -11,6 +11,7 @@ import {
   RefreshControl,
   StatusBar,
   Platform,
+  Alert,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -78,19 +79,22 @@ const ConductorHomeScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const bannerRef = useRef<FlatList>(null);
   const bannerInterval = useRef<NodeJS.Timeout | null>(null);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [vehicleResponse, bannersResponse, servicesResponse] = await Promise.all([
+      const [vehicleResponse, bannersResponse, servicesResponse,notificationsResponse] = await Promise.all([
         api.get('/vehicle/data'),
         api.get('/vehicle/banners'),
         api.get('/vehicle/upcoming-services'),
+        api.get('/vehicle/notifications/unread-count'),
       ]);
       setVehicle(vehicleResponse.data);
       setBanners(bannersResponse.data);
       setUpcomingServices(servicesResponse.data);
+      setUnreadNotificationsCount(notificationsResponse.data.unread_count);
     } catch (err) {
       console.error('Error fetching data:', err);
       setError(t('conductorHome.fetchError'));
@@ -154,24 +158,27 @@ const ConductorHomeScreen: React.FC = () => {
         });
         return;
       }
-      token = (await Notifications.getExpoPushTokenAsync()).data;
-    
+      try {
+      token = (await Notifications.getExpoPushTokenAsync({projectId :"770160a7-d515-4bb7-b29f-3131a5eccc75" })).data;
+    } catch (error) {
+      console.log('ER1: '+ error);
+    }
 
     if (Platform.OS === 'android') {
       Notifications.setNotificationChannelAsync('default', {
         name: 'default',
+        sound : require("../../assets/notification_sound.wav"),
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#FF231F7C',
       });
     }
-
     if (token) {
       await AsyncStorage.setItem('expoPushToken', token);
       try {
         await api.post('/vehicle/update-push-token', { token });
       } catch (error) {
-        console.error('Error sending push token to backend:', error);
+      console.log('ER2: '+ error);
       }
     }
   };
@@ -271,16 +278,33 @@ const ConductorHomeScreen: React.FC = () => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#028dd0" />
       <LinearGradient colors={['#028dd0', '#01579B']} style={styles.header}>
-        <View style={styles.brandLogoContainer}>
-          <Image
-            source={{ uri: `${STORAGE_URL}/${vehicle.logo_url}` }}
-            style={styles.brandLogo}
-            defaultSource={require('../../assets/logo-faucon.png')}
-          />
-        </View>
-        <View style={styles.headerTextContainer}>
-          <Text style={styles.vehicleName}>{`${vehicle.brand_name} ${vehicle.model}`}</Text>
-          <Text style={styles.licensePlate}>{vehicle.plate_number}</Text>
+      <View style={styles.headerContent}>
+          <View style={styles.brandLogoContainer}>
+            <Image
+              source={{ uri: `${STORAGE_URL}/${vehicle?.logo_url}` }}
+              style={styles.brandLogo}
+              defaultSource={require('../../assets/logo-faucon.png')}
+            />
+          </View>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.vehicleName}>{`${vehicle?.brand_name} ${vehicle?.model}`}</Text>
+            <Text style={styles.licensePlate}>{vehicle?.plate_number}</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.notificationButton}
+            onPress={() => navigation.navigate('Notifications')}
+          >
+            <View style={styles.notificationIconContainer}>
+              <Ionicons name={`notifications${unreadNotificationsCount<=0 ? '-outline':''}`} size={24} color="#FFFFFF" />
+              {unreadNotificationsCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>
+                    {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
         </View>
       </LinearGradient>
       <ScrollView
@@ -394,10 +418,13 @@ marginTop: 20,
     fontWeight: '600',
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
     padding: 15,
     paddingTop: 40,
+    paddingBottom: 20,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   brandLogoContainer: {
     width: 50,
@@ -425,6 +452,28 @@ marginTop: 20,
   licensePlate: {
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.8)',
+  },
+  notificationButton: {
+    padding: 10,
+  },
+  notificationIconContainer: {
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    right: -6,
+    top: -3,
+    backgroundColor: 'red',
+    borderRadius: 9,
+    width: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   scrollView: {
     flex: 1,
