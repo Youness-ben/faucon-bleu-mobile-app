@@ -59,7 +59,6 @@ export default function App() {
     }
 
     prepare();
-    prepare();
 
     notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
       console.log('Notification received:', notification);

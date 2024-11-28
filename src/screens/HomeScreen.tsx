@@ -83,20 +83,23 @@ const HomeScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const bannerRef = useRef<FlatList>(null);
   const bannerInterval = useRef<NodeJS.Timeout | null>(null);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const { toggleVisibility } = useFloatingButton();
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [servicesResponse, bannersResponse, vehiclesResponse] = await Promise.all([
+      const [servicesResponse, bannersResponse, vehiclesResponse,notificationsResponse] = await Promise.all([
         api.get('/client/coming-order-services'),
         api.get('/client/banners'),
-        api.get('/client/home-vehicles')
+        api.get('/client/home-vehicles'),
+          api.get('/client/notifications/unread-count')
       ]);
       setServices(servicesResponse.data);
       setBanners(bannersResponse.data);
       setVehicles(vehiclesResponse.data);
+      setUnreadNotificationsCount(notificationsResponse.data.unread_count);
     } catch (err) {
       console.error('Error fetching data:', err);
       setError(t('home.fetchError'));
@@ -371,12 +374,21 @@ const HomeScreen: React.FC = () => {
             <Ionicons name="construct-outline" size={24} color="#028dd0" />
             <Text style={styles.headerButtonText}>{t('home.quickService')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity
+           <TouchableOpacity
             style={styles.headerButton}
-            onPress={() => navigation.navigate('Support')}
+            onPress={() => navigation.navigate('Notifications')}
           >
-            <Ionicons name="help-circle-outline" size={24} color="#028dd0" />
-            <Text style={styles.headerButtonText}>{t('home.callSupport')}</Text>
+            <View style={styles.notificationIconContainer}>
+              <Ionicons name="notifications-outline" size={24} color="#028dd0" />
+              {unreadNotificationsCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>
+                    {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.headerButtonText}>{t('home.notifications')}</Text>
           </TouchableOpacity>
         </View>
       </LinearGradient>
@@ -623,6 +635,25 @@ height: '100%',
     fontSize: 16,
     fontWeight: '600',
   },
+  notificationIconContainer: {
+  position: 'relative',
+},
+badge: {
+  position: 'absolute',
+  right: -6,
+  top: -3,
+  backgroundColor: 'red',
+  borderRadius: 9,
+  width: 18,
+  height: 18,
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+badgeText: {
+  color: 'white',
+  fontSize: 10,
+  fontWeight: 'bold',
+},
 });
 
 export default HomeScreen;

@@ -74,6 +74,7 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
   const { serviceId ,service} = route.params;
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
+  const [curservice, setCurService] = useState(service);
   const [isRecording, setIsRecording] = useState(false);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
@@ -115,12 +116,10 @@ export default function Component({ route }: { route: TicketScreenRouteProp }) {
 const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
 
-  const [position, setPosition] = useState(0); // Current playback position in milliseconds
-  const [duration, setDuration] = useState(1); // Total duration in milliseconds
-  const [isSliding, setIsSliding] = useState(false);
 
   const { toggleVisibility } = useFloatingButton();
 
+       
   React.useEffect(() => {
     toggleVisibility(false);
     async function loadSound() {
@@ -141,7 +140,7 @@ const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: 
     };
   }, []);
 
-  
+
   const playNotificationSound = React.useCallback(async () => {
     if (notificationSound) {
       try {
@@ -204,10 +203,26 @@ const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: 
   }, [serviceId, fadeAnim]);
   
 
+  const fetchService = async()=>{
+    if(curservice===undefined){
+      try{
+         const [tservice] = await Promise.all([
+
+        api.get(`/client/service-orders/${serviceId}`),
+      ]);
+      setCurService(tservice.data);
+
+       } catch (err) {
+
+      }
+
+    }
+  };
+
   useEffect(() => {
     fetchMessages();
     clearNewMessages(serviceId);
-
+    fetchService ();
     return () => {
       if (sound) {
         sound.unloadAsync();
@@ -584,10 +599,10 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
             opacity: headerHeight,
           }
         ]}>
-          <Text style={styles.headerDetailText}>{t('ticket.carInfo')}: <Text style={styles.headerDetailBold}>{`${service.vehicle.brand_name || ''} ${service.vehicle.model || ''}`}</Text></Text>
-          <Text style={styles.headerDetailText}>{t('ticket.serviceType')}: <Text style={styles.headerDetailBold}>{service?.service?.name}</Text></Text>
-          <Text style={styles.headerDetailText}>{t('ticket.date')}: <Text style={styles.headerDetailBold}>{format(new Date(service?.scheduled_at), 'dd/MM/yyyy')}</Text></Text>
-          <Text style={styles.headerDetailText}>{t('ticket.status')}: <Text style={[styles.headerDetailBold, { color: getStatusColor(service?.status) }]}>{t(`serviceStatus.${service?.status}`)}</Text></Text>
+          <Text style={styles.headerDetailText}>{t('ticket.carInfo')}: <Text style={styles.headerDetailBold}>{`${curservice?.vehicle?.brand_name || ''} ${curservice?.vehicle?.model || ''} ${curservice?.vehicle?.year || ''}`}</Text></Text>
+          <Text style={styles.headerDetailText}>{t('ticket.serviceType')}: <Text style={styles.headerDetailBold}>{curservice?.service?.name}</Text></Text>
+          <Text style={styles.headerDetailText}>{t('ticket.date')}: <Text style={styles.headerDetailBold}>{curservice?.scheduled_at ? format(new Date(curservice?.scheduled_at), 'dd/MM/yyyy'): ''}</Text></Text>
+          <Text style={styles.headerDetailText}>{t('ticket.status')}: <Text style={[styles.headerDetailBold, { color: getStatusColor(curservice?.status) }]}>{t(`serviceStatus.${curservice?.status}`)}</Text></Text>
         </Animated.View>
       </LinearGradient>
     </View>

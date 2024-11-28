@@ -134,6 +134,7 @@
   "home": {
     "welcome": "Welcome",
     "quickService": "Quick Service",
+    "notifications": "Notifications",
     "serviceHistory": "Service History",
     "callSupport": "Support",
     "myVehicles": "My Vehicles",
@@ -290,5 +291,10 @@
    "recording" :  "Recording... Release to stop",
    "pressRecord" :  "Press and hold to record",
    "title" :  "Record Audio"
+  },  "notifications": {
+    "title": "Notifications",
+    "noNotifications": "You have no notifications",
+    "fetchError": "Failed to fetch notifications",
+    "tryAgainLater": "Please try again later"
   }
 }
