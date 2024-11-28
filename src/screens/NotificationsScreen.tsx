@@ -21,6 +21,7 @@ import { theme } from '../styles/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import LottieView from 'lottie-react-native';
 import Toast from 'react-native-toast-message';
+import { useUser } from '../UserContext';
 
 interface Notification {
   id: number;
@@ -44,6 +45,7 @@ const NotificationsScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const { user } = useUser();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const fadeAnims = useRef<{ [key: number]: Animated.Value }>({}).current;
@@ -67,14 +69,12 @@ const NotificationsScreen: React.FC = () => {
       setHasMore(newNotifications.length === ITEMS_PER_PAGE);
       setPage(pageNumber);
 
-      // Start the fade-in animation for the list
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 500,
         useNativeDriver: true,
       }).start();
 
-      // Create fade and pulse animations for new unread notifications
       newNotifications.forEach(notification => {
         if (!notification.client_read_at) {
           if (!fadeAnims[notification.id]) {
@@ -122,7 +122,7 @@ const NotificationsScreen: React.FC = () => {
 
   const markAllAsRead = useCallback(async () => {
     try {
-      return;
+      
       await api.post('/client/notifications/mark-all-read');
       setNotifications(prevNotifications =>
         prevNotifications.map(notification => ({

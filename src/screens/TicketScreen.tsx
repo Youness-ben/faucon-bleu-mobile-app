@@ -244,7 +244,9 @@ const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: 
   };
 
 const sendMessage = async (messageType: string, content?: string, file?: any, location?: { latitude: number; longitude: number }) => {
-    try {
+        const tempMessageId = Date.now().toString();
+  
+  try {
       const formData = new FormData();
       formData.append('message_type', messageType);
 
@@ -261,7 +263,7 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
         formData.append('longitude', location.longitude.toString());
       }
 
-      const tempMessageId = Date.now().toString();
+      
       setMessages(prevMessages => [...prevMessages, {
         id: tempMessageId,
         sender_type: user.type,
