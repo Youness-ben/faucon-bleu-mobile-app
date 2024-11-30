@@ -7,6 +7,7 @@ interface User {
   email?: string;
   avatar?: string;
   phone?: string;
+  role?: string;
   last_name?: string;
   first_name?: string;
   plate_number?: string;
@@ -45,7 +46,7 @@ export const UserProvider: React.FC = ({ children }) => {
       const newUser: User = {
         id: userData.id,
         type: userType,
-        ...(userType === 'client' ? { email: userData.email, last_name: userData.last_name, first_name: userData.first_name, avatar: userData.avatar } : { plate_number: userData.plate_number, avatar: userData.avatar }),
+        ...(userType === 'client' ? { email: userData.email,role: userData.role, last_name: userData.last_name, first_name: userData.first_name, avatar: userData.avatar } : { plate_number: userData.plate_number, avatar: userData.avatar }),
       };
 
       setUser(newUser);

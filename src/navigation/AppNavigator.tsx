@@ -32,6 +32,9 @@ import AccountDeletionConfirmation from '../screens/AccountDeletionConfirmation'
 import { theme } from '../styles/theme';
 import CustomTabBar from '../components/CustomTabBar';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import ClientAccountsScreen from '../screens/ClientAccountsScreen';
+import AddClientScreen from '../screens/AddClientScreen';
+import ClientDetailScreen from '../screens/ClientDetailScreen';
 
 type RootStackParamList = {
   Splash: undefined;
@@ -51,6 +54,9 @@ type RootStackParamList = {
   ConductorOrderServiceScreen: undefined;
   AccountDeletionConfirmation: undefined;
   Notifications : undefined;
+  ClientAccounts : undefined;
+  AddClient : undefined;
+  ClientDetail : undefined;
 };
 
 type MainTabParamList = {
@@ -177,6 +183,10 @@ const AppNavigator: React.FC = () => {
       <Stack.Screen name="AccountDeletionConfirmation" component={AccountDeletionConfirmation} />
       <Stack.Screen name="TicketScreen" component={TicketScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen}  />
+       <Stack.Screen name="ClientAccounts" component={ClientAccountsScreen} />
+        <Stack.Screen name="AddClient" component={AddClientScreen} />
+        <Stack.Screen name="ClientDetail" component={ClientDetailScreen} />
+       
     </Stack.Navigator>
   );
 };

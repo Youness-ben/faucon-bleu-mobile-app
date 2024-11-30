@@ -244,8 +244,20 @@
     "confirm_delete_account": "Confirm account deletion",
     "account_deletion_pending": "Account Deletion Pending",
     "account_deletion_time": "Your account deletion request has been received. This process may take up to 5 business days. Logging back in during this time will cancel the deletion request.",
-    "ask_confirm_delete_account": "Are you sure you want to delete your account? This action is irreversible."
-
+    "ask_confirm_delete_account": "Are you sure you want to delete your account? This action is irreversible.",
+    "changePassword": "Change Password",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm New Password",
+    "password_mismatch": "Password Mismatch",
+    "password_invalid": "Invalid password",
+    "password_mismatch_message": "New password and confirmation do not match.",
+    "password_invalid_message": "New password must be at least 8 charachters",
+    "password_changed": "Password Changed",
+    "password_changed_message": "Your password has been successfully changed.",
+    "password_change_error": "Password Change Error",
+    "password_change_error_message": "An error occurred while changing your password. Please try again."
+  
   },
   "editProfile": {
     "changePhoto": "Change Photo",

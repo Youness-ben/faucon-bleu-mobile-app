@@ -24,23 +24,25 @@ import api from '../api';
 import { STORAGE_URL } from '../../config';
 
 type RootStackParamList = {
-  VehicleDetail: { vehicleId: number };
-  AddVehicle: undefined;
+  ClientDetail: { clientId: number };
+  AddClient: undefined;
 };
 
-type FleetScreenNavigationProp = StackNavigationProp<RootStackParamList>;
+type ClientAccountsScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
-interface Vehicle {
+interface Client {
   id: number;
-  brand_name: string;
-  year: string;
-  model: string;
-  plate_number: string;
-  logo_url: string;
+  email: string;
+  raison_social: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  client_type: string;
+  avatar: string;
 }
 
 interface PaginatedResponse {
-  data: Vehicle[];
+  data: Client[];
   current_page: number;
   last_page: number;
 }
@@ -61,9 +63,9 @@ const SkeletonItem: React.FC = () => {
   }, [opacity]);
 
   return (
-    <Animated.View style={[styles.vehicleCard, { opacity }]}>
-      <View style={[styles.vehicleLogo, styles.skeleton]} />
-      <View style={styles.vehicleInfo}>
+    <Animated.View style={[styles.clientCard, { opacity }]}>
+      <View style={[styles.clientAvatar, styles.skeleton]} />
+      <View style={styles.clientInfo}>
         <View style={[styles.skeletonText, { width: '70%' }]} />
         <View style={[styles.skeletonText, { width: '50%', marginTop: 8 }]} />
       </View>
@@ -71,7 +73,7 @@ const SkeletonItem: React.FC = () => {
   );
 };
 
-const EmptyState: React.FC<{ onAddVehicle: () => void }> = ({ onAddVehicle }) => {
+const EmptyState: React.FC<{ onAddClient: () => void }> = ({ onAddClient }) => {
   const { t } = useTranslation();
 
   return (
@@ -82,21 +84,21 @@ const EmptyState: React.FC<{ onAddVehicle: () => void }> = ({ onAddVehicle }) =>
         loop
         style={styles.emptyStateAnimation}
       />
-      <Text style={styles.emptyStateTitle}>{t('fleet.emptyStateTitle')}</Text>
-      <Text style={styles.emptyStateDescription}>{t('fleet.emptyStateDescription')}</Text>
-      <TouchableOpacity style={styles.emptyStateButton} onPress={onAddVehicle}>
+      <Text style={styles.emptyStateTitle}>{t('clientAccounts.emptyStateTitle')}</Text>
+      <Text style={styles.emptyStateDescription}>{t('clientAccounts.emptyStateDescription')}</Text>
+      <TouchableOpacity style={styles.emptyStateButton} onPress={onAddClient}>
         <Ionicons name="add-circle-outline" size={24} color="white" style={styles.emptyStateButtonIcon} />
-        <Text style={styles.emptyStateButtonText}>{t('fleet.addFirstVehicle')}</Text>
+        <Text style={styles.emptyStateButtonText}>{t('clientAccounts.addFirstClient')}</Text>
       </TouchableOpacity>
     </View>
   );
 };
 
-const FleetScreen: React.FC = () => {
+const ClientAccountsScreen: React.FC = () => {
   const { t } = useTranslation();
-  const navigation = useNavigation<FleetScreenNavigationProp>();
+  const navigation = useNavigation<ClientAccountsScreenNavigationProp>();
 
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,7 +107,7 @@ const FleetScreen: React.FC = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const fetchVehicles = useCallback(async (page: number, refresh: boolean = false, search: string = '') => {
+  const fetchClients = useCallback(async (page: number, refresh: boolean = false, search: string = '') => {
     if (refresh) {
       setIsRefreshing(true);
     } else if (page === 1) {
@@ -116,19 +118,19 @@ const FleetScreen: React.FC = () => {
     setError(null);
 
     try {
-      const response = await api.get<PaginatedResponse>(`/client/vehicles/list?page=${page}&per_page=${ITEMS_PER_PAGE}&search=${search}`);
+      const response = await api.get<PaginatedResponse>(`client/accounts?page=${page}&per_page=${ITEMS_PER_PAGE}&search=${search}`);
       if (response && response.data && Array.isArray(response.data.data)) {
-        const newVehicles = response.data.data;
+        const newClients = response.data.data;
 
-        setVehicles(prevVehicles => (refresh || page === 1 ? newVehicles : [...prevVehicles, ...newVehicles]));
+        setClients(prevClients => (refresh || page === 1 ? newClients : [...prevClients, ...newClients]));
         setCurrentPage(response.data.current_page);
         setLastPage(response.data.last_page);
       } else {
         throw new Error('Invalid response format');
       }
     } catch (err) {
-      console.error('Error fetching vehicles:', err);
-      setError(t('fleet.fetchError'));
+      console.error('Error fetching clients:', err);
+      setError(t('clientAccounts.fetchError'));
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -138,45 +140,45 @@ const FleetScreen: React.FC = () => {
   
   useFocusEffect(
     useCallback(() => {
-      fetchVehicles(1, true, searchQuery);
-    }, [fetchVehicles, searchQuery])
+      fetchClients(1, true, searchQuery);
+    }, [fetchClients, searchQuery])
   );
 
   const handleRefresh = useCallback(() => {
-    fetchVehicles(1, true, searchQuery);
-  }, [fetchVehicles, searchQuery]);
+    fetchClients(1, true, searchQuery);
+  }, [fetchClients, searchQuery]);
 
   const handleLoadMore = useCallback(() => {
     if (currentPage < lastPage && !isLoading && !isLoadingMore) {
-      fetchVehicles(currentPage + 1, false, searchQuery);
+      fetchClients(currentPage + 1, false, searchQuery);
     }
-  }, [currentPage, lastPage, isLoading, isLoadingMore, fetchVehicles, searchQuery]);
+  }, [currentPage, lastPage, isLoading, isLoadingMore, fetchClients, searchQuery]);
 
-  const handleAddVehicle = useCallback(() => {
-    navigation.navigate('AddVehicle');
+  const handleAddClient = useCallback(() => {
+    navigation.navigate('AddClient');
   }, [navigation]);
 
   const handleSearch = useCallback((text: string) => {
     setSearchQuery(text);
-    fetchVehicles(1, true, text);
-  }, [fetchVehicles]);
+    fetchClients(1, true, text);
+  }, [fetchClients]);
 
-  const renderVehicleItem = useCallback(({ item }: { item: Vehicle }) => (
+  const renderClientItem = useCallback(({ item }: { item: Client }) => (
     <TouchableOpacity
-      style={styles.vehicleCard}
-      onPress={() => navigation.navigate('VehicleDetail', { vehicleId: item.id })}
+      style={styles.clientCard}
+      onPress={() => navigation.navigate('ClientDetail', { clientId: item.id })}
     >
-      <View style={styles.vehicleIcon}>
+      <View style={styles.clientAvatar}>
         <Image 
-          source={{ uri: `${STORAGE_URL}/${item.logo_url}` }} 
-          style={styles.iconImage} 
-          defaultSource={require('../../assets/logo-faucon.png')}
+          source={{ uri: item.avatar ? `${STORAGE_URL}/${item.avatar}` : 'https://via.placeholder.com/150' }} 
+          style={styles.avatarImage} 
+          defaultSource={require('../../assets/default_user.png')}
         />
       </View>
-      <View style={styles.vehicleInfo}>
-        <Text style={styles.vehicleName}>{`${item.brand_name} ${item.model}`}</Text>
-        <Text style={styles.vehicleYear}>{item.year}</Text>
-        <Text style={styles.vehicleLicensePlate}>{item.plate_number}</Text>
+      <View style={styles.clientInfo}>
+        <Text style={styles.clientName}>{`${item.first_name} ${item.last_name}`}</Text>
+        <Text style={styles.clientEmail}>{item.email}</Text>
+        <Text style={styles.clientType}>{item.client_type}</Text>
       </View>
       <Ionicons name="chevron-forward" size={24} color="#028dd0" />
     </TouchableOpacity>
@@ -192,7 +194,7 @@ const FleetScreen: React.FC = () => {
   }, [isLoadingMore]);
 
   const renderContent = useMemo(() => {
-    if (isLoading && (!vehicles || vehicles.length === 0)) {
+    if (isLoading && (!clients || clients.length === 0)) {
       return (
         <FlatList
           data={Array(ITEMS_PER_PAGE).fill(0)}
@@ -213,21 +215,21 @@ const FleetScreen: React.FC = () => {
             style={styles.errorAnimation}
           />
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={() => fetchVehicles(1, true)}>
+          <TouchableOpacity style={styles.retryButton} onPress={() => fetchClients(1, true)}>
             <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
           </TouchableOpacity>
         </View>
       );
     }
 
-    if (!vehicles || vehicles.length === 0) {
-      return <EmptyState onAddVehicle={handleAddVehicle} />;
+    if (!clients || clients.length === 0) {
+      return <EmptyState onAddClient={handleAddClient} />;
     }
 
     return (
       <FlatList
-        data={vehicles}
-        renderItem={renderVehicleItem}
+        data={clients}
+        renderItem={renderClientItem}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContent}
         refreshControl={
@@ -247,33 +249,31 @@ const FleetScreen: React.FC = () => {
         updateCellsBatchingPeriod={50}
       />
     );
-  }, [isLoading, vehicles, error, isRefreshing, handleRefresh, handleLoadMore, renderVehicleItem, renderFooter, t, fetchVehicles, handleAddVehicle]);
+  }, [isLoading, clients, error, isRefreshing, handleRefresh, handleLoadMore, renderClientItem, renderFooter, t, fetchClients, handleAddClient]);
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#028dd0" />
       <LinearGradient colors={['#028dd0', '#01579B']} style={styles.header}>
-        <Text style={styles.title}>{t('fleet.title')}</Text>
+        <Text style={styles.title}>{t('clientAccounts.title')}</Text>
       </LinearGradient>
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={24} color={theme.colors.primary} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
-          placeholder={t('fleet.searchPlaceholder')}
+          placeholder={t('clientAccounts.searchPlaceholder')}
           placeholderTextColor="#A0A0A0"
           value={searchQuery}
           onChangeText={handleSearch}
         />
       </View>
       {renderContent}
-      {vehicles && vehicles.length > 0 && (
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={handleAddVehicle}
-        >
-          <Ionicons name="add" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity
+        style={styles.addButton}
+        onPress={handleAddClient}
+      >
+        <Ionicons name="add" size={24} color="#FFFFFF" />
+      </TouchableOpacity>
     </View>
   );
 };
@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 80,
   },
-  vehicleCard: {
+  clientCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'white',
@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  vehicleIcon: {
+  clientAvatar: {
     width: 50,
     height: 50,
     borderRadius: 25,
@@ -327,26 +327,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 15,
   },
-  iconImage: {
-    width: 30,
-    height: 30,
-    resizeMode: 'contain',
+  avatarImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
   },
-  vehicleInfo: {
+  clientInfo: {
     flex: 1,
   },
-  vehicleName: {
+  clientName: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1C1C1E',
     marginBottom: 5,
   },
-  vehicleYear: {
+  clientEmail: {
     fontSize: 14,
     color: '#8E8E93',
     marginBottom: 5,
   },
-  vehicleLicensePlate: {
+  clientType: {
     fontSize: 14,
     fontWeight: '500',
     color: '#028dd0',
@@ -354,21 +354,20 @@ const styles = StyleSheet.create({
   addButton: {
     position: 'absolute',
     right: 20,
-    bottom: 100,
+    bottom: 20,
     backgroundColor: theme.colors.primary,
     width: 60,
     height: 60,
     borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation:5
+    elevation:5,
   },
   errorText: {
     fontSize: 18,
     color: theme.colors.error,
     textAlign: 'center',
     marginBottom: 20,
-    
   },
   retryButton: {
     backgroundColor: theme.colors.primary,
@@ -380,7 +379,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
-    
   },
   footerLoader: {
     alignItems: 'center',
@@ -410,14 +408,12 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     textAlign: 'center',
     marginBottom: 10,
-    
   },
   emptyStateDescription: {
     fontSize: 16,
     color: theme.colors.textSecondary,
     textAlign: 'center',
     marginBottom: 20,
-    
   },
   emptyStateButton: {
     flexDirection: 'row',
@@ -435,7 +431,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
-    
   },
   searchContainer: {
     flexDirection: 'row',
@@ -454,7 +449,6 @@ const styles = StyleSheet.create({
     height: 40,
     fontSize: 16,
     color: theme.colors.text,
-    
   },
   errorAnimation: {
     width: 150,
@@ -463,5 +457,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default FleetScreen;
+export default ClientAccountsScreen;
 

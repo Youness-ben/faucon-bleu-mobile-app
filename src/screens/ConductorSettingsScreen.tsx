@@ -11,7 +11,7 @@ import {
   Alert,
   StatusBar,
   Dimensions,
-  Platform
+  TextInput
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
@@ -20,7 +20,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useUser } from '../UserContext';
-import LottieView from 'lottie-react-native';
+import api from '../api';
+import Toast from 'react-native-toast-message';
 
 type RootStackParamList = {
   EditProfile: undefined;
@@ -40,6 +41,10 @@ export default function ConductorSettingsScreen() {
   const navigation = useNavigation<ProfileScreenNavigationProp>();
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const { logout } = useUser();
 
   useEffect(() => {
@@ -110,6 +115,40 @@ export default function ConductorSettingsScreen() {
     );
   };
 
+  const changePassword = async () => {
+    if (newPassword !== confirmPassword) {
+    Toast.show({
+        type: 'error',
+        text1: t('profile.password_mismatch'),
+        text2: t('profile.password_mismatch_message'),
+      });
+
+      return;
+    }
+  if (newPassword == '' || newPassword.length<8) {
+    Toast.show({
+        type: 'error',
+        text1: t('profile.password_invalid'),
+        text2: t('profile.password_invalid_message'),
+      });
+
+      return;
+    }
+    try {
+      await api.post('/change-password', {
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+      Alert.alert(t('profile.password_changed'), t('profile.password_changed_message'));
+      setShowPasswordModal(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      console.log(error);
+      Alert.alert(t('profile.password_change_error'), t('profile.password_change_error_message'));
+    }
+  };
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#028dd0" />
@@ -127,6 +166,11 @@ export default function ConductorSettingsScreen() {
                 {i18n.language === 'en' ? 'English' : i18n.language === 'fr' ? 'Français' : i18n.language === 'es' ? 'Español' : i18n.language === 'it' ? 'Italiano' : 'العربية'}
               </Text>
             }
+          />
+          <OptionItem
+            icon="lock-closed-outline"
+            text={t('profile.changePassword')}
+            onPress={() => setShowPasswordModal(true)}
           />
           <OptionItem
             icon="help-circle-outline"
@@ -174,6 +218,51 @@ export default function ConductorSettingsScreen() {
             </View>
           </View>
         </Modal>
+        <Modal
+          visible={showPasswordModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowPasswordModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>{t('profile.changePassword')}</Text>
+              <TextInput
+                style={styles.input}
+                placeholder={t('profile.currentPassword')}
+                secureTextEntry
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder={t('profile.newPassword')}
+                secureTextEntry
+                value={newPassword}
+                onChangeText={setNewPassword}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder={t('profile.confirmPassword')}
+                secureTextEntry
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+              />
+              <TouchableOpacity
+                style={styles.changePasswordButton}
+                onPress={changePassword}
+              >
+                <Text style={styles.changePasswordButtonText}>{t('profile.changePassword')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowPasswordModal(false)}
+              >
+                <Text style={styles.closeButtonText}>{t('common.cancel')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </SafeAreaView>
   );
@@ -185,11 +274,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   header: {
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingTop: 40,
     paddingBottom: 20,
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
   },
   headerTitle: {
     fontSize: 28,
@@ -319,7 +406,29 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: '#FFFFFF',
     fontWeight: '600',
-    
+  },
+  input: {
+    height: 50,
+    borderColor: '#E5E5EA',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginBottom: 16,
+    fontSize: 16,
+    color: '#1C1C1E',
+  },
+  changePasswordButton: {
+    backgroundColor: '#028dd0',
+    alignItems: 'center',
+    marginBottom: 12,
+    marginTop: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  changePasswordButtonText: {
+    fontSize: 17,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });
 

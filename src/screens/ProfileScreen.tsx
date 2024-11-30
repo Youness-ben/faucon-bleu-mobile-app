@@ -12,7 +12,8 @@ import {
   StatusBar,
   Dimensions,
   Platform,
-  Image
+  Image,
+  TextInput
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
@@ -22,6 +23,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useUser } from '../UserContext';
 import { STORAGE_URL } from '../../config';
+import api from '../api';
+import Toast from 'react-native-toast-message';
 
 type RootStackParamList = {
   EditProfile: undefined;
@@ -30,6 +33,7 @@ type RootStackParamList = {
   Settings: undefined;
   AccountDeletionConfirmation: undefined;
   Splash: undefined;
+  ClientAccounts: undefined;
 };
 
 type ProfileScreenNavigationProp = StackNavigationProp<RootStackParamList>;
@@ -40,6 +44,10 @@ export default function ProfileScreen() {
   const { t, i18n } = useTranslation();
   const navigation = useNavigation<ProfileScreenNavigationProp>();
   const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const { logout, user } = useUser();
 
@@ -111,6 +119,41 @@ export default function ProfileScreen() {
     );
   };
 
+  const changePassword = async () => {
+    if (newPassword !== confirmPassword) {
+    Toast.show({
+        type: 'error',
+        text1: t('profile.password_mismatch'),
+        text2: t('profile.password_mismatch_message'),
+      });
+
+      return;
+    }
+  if (newPassword == '' || newPassword.length<8) {
+    Toast.show({
+        type: 'error',
+        text1: t('profile.password_invalid'),
+        text2: t('profile.password_invalid_message'),
+      });
+
+      return;
+    }
+    try {
+      await api.post('/change-password', {
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+      Alert.alert(t('profile.password_changed'), t('profile.password_changed_message'));
+      setShowPasswordModal(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      console.log(error);
+      Alert.alert(t('profile.password_change_error'), t('profile.password_change_error_message'));
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#028dd0" />
@@ -149,12 +192,24 @@ export default function ProfileScreen() {
             }
           />
           <OptionItem
+            icon="lock-closed-outline"
+            text={t('profile.changePassword')}
+            onPress={() => setShowPasswordModal(true)}
+          />
+          <OptionItem
             icon="help-circle-outline"
             text={t('profile.support')}
             onPress={() => navigation.navigate('Support')}
           />
+          {user?.role === 'management' && (
+          <OptionItem
+            icon="people-outline"
+            text={t('profile.manageClientAccounts')}
+            onPress={() => navigation.navigate('ClientAccounts')}
+          />
+        )}
         </Animated.View>
-
+ 
         <TouchableOpacity onPress={logoff} style={styles.logoutButton}>
           <Text style={styles.logoutButtonText}>{t('profile.logout')}</Text>
         </TouchableOpacity>
@@ -194,6 +249,52 @@ export default function ProfileScreen() {
             </View>
           </View>
         </Modal>
+
+        <Modal
+          visible={showPasswordModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowPasswordModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>{t('profile.changePassword')}</Text>
+              <TextInput
+                style={styles.input}
+                placeholder={t('profile.currentPassword')}
+                secureTextEntry
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder={t('profile.newPassword')}
+                secureTextEntry
+                value={newPassword}
+                onChangeText={setNewPassword}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder={t('profile.confirmPassword')}
+                secureTextEntry
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+              />
+              <TouchableOpacity
+                style={styles.changePasswordButton}
+                onPress={changePassword}
+              >
+                <Text style={styles.changePasswordButtonText}>{t('profile.changePassword')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowPasswordModal(false)}
+              >
+                <Text style={styles.closeButtonText}>{t('common.cancel')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </SafeAreaView>
   );
@@ -208,8 +309,6 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 50 : 20,
     paddingBottom: 20,
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
   },
   profileInfo: {
     flexDirection: 'row',
@@ -228,13 +327,11 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    
   },
   email: {
     fontSize: 14,
     color: '#FFFFFF',
     opacity: 0.8,
-    
   },
   content: {
     flex: 1,
@@ -278,12 +375,10 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 17,
     color: '#1C1C1E',
-    
   },
   languageValue: {
     fontSize: 15,
     color: '#8E8E93',
-    
   },
   logoutButton: {
     marginTop: 20,
@@ -306,13 +401,11 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '600',
-    
   },
   deleteButtonText: {
     color: '#FF3B30',
     fontSize: 17,
     fontWeight: '600',
-    
   },
   modalOverlay: {
     flex: 1,
@@ -332,7 +425,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1C1C1E',
     marginBottom: 16,
-    
   },
   languageOption: {
     flexDirection: 'row',
@@ -345,7 +437,6 @@ const styles = StyleSheet.create({
   languageOptionText: {
     fontSize: 17,
     color: '#1C1C1E',
-    
   },
   closeButton: {
     marginTop: 20,
@@ -358,7 +449,29 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: '#FFFFFF',
     fontWeight: '600',
-    
+  },
+  input: {
+    height: 50,
+    borderColor: '#E5E5EA',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginBottom: 16,
+    fontSize: 16,
+    color: '#1C1C1E',
+  },
+  changePasswordButton: {
+    backgroundColor: '#028dd0',
+    alignItems: 'center',
+    marginBottom: 12,
+    marginTop: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  changePasswordButtonText: {
+    fontSize: 17,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });
 
