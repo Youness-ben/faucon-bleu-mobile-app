@@ -17,7 +17,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import api from '../api';
 import { format } from 'date-fns';
-import { theme } from '../styles/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import LottieView from 'lottie-react-native';
 import Toast from 'react-native-toast-message';

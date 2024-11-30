@@ -6,8 +6,8 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Alert,
   StatusBar,
+  Image,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
@@ -17,6 +17,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../styles/theme';
 import api from '../api';
 import { Picker } from '@react-native-picker/picker';
+import Toast from 'react-native-toast-message';
+import * as ImagePicker from 'expo-image-picker';
 
 type RootStackParamList = {
   ClientAccounts: undefined;
@@ -32,28 +34,71 @@ const AddClientScreen: React.FC = () => {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
   const [role, setRole] = useState('responsable');
+  const [avatar, setAvatar] = useState<string | null>(null);
 
   const handleAddClient = async () => {
     try {
-      const response = await api.post('/client/accounts', {
-        first_name: firstName,
-        last_name: lastName,
-        email,
-        phone,
-        role,
+      const formData = new FormData();
+      formData.append('first_name', firstName);
+      formData.append('last_name', lastName);
+      formData.append('email', email);
+      formData.append('password', password);
+      formData.append('phone', phone);
+      formData.append('role', role);
+
+      if (avatar) {
+        const filename = avatar.split('/').pop();
+        const match = /\.(\w+)$/.exec(filename as string);
+        const type = match ? `image/${match[1]}` : 'image';
+        formData.append('avatar', { uri: avatar, name: filename, type } as any);
+      }
+
+      const response = await api.post('/client/accounts', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       if (response.status === 201) {
-        Alert.alert(
-          t('addClient.success'),
-          t('addClient.successMessage'),
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
-        );
+        Toast.show({
+          type: 'success',
+          text1: t('addClient.success'),
+          text2: t('addClient.successMessage'),
+          onPress: () => navigation.goBack(),
+        });
+        navigation.goBack();
       }
     } catch (error) {
       console.error('Error adding client:', error);
-      Alert.alert(t('addClient.error'), t('addClient.errorMessage'));
+      Toast.show({
+        type: 'error',
+        text1: t('addClient.error'),
+        text2: t('addClient.errorMessage'),
+      });
+    }
+  };
+
+  const handleChooseAvatar = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (permissionResult.granted === false) {
+      Toast.show({
+        type: 'error',
+        text1: t('addClient.permissionDenied'),
+        text2: t('addClient.permissionDeniedMessage'),
+      });
+      return;
+    }
+
+    const pickerResult = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+
+    if (!pickerResult.canceled) {
+      setAvatar(pickerResult.assets[0].uri);
     }
   };
 
@@ -67,6 +112,16 @@ const AddClientScreen: React.FC = () => {
         <Text style={styles.headerTitle}>{t('addClient.title')}</Text>
       </LinearGradient>
       <ScrollView style={styles.content}>
+        <TouchableOpacity style={styles.avatarContainer} onPress={handleChooseAvatar}>
+          {avatar ? (
+            <Image source={{ uri: avatar }} style={styles.avatar} />
+          ) : (
+            <View style={styles.avatarPlaceholder}>
+              <Ionicons name="camera" size={40} color="#FFFFFF" />
+            </View>
+          )}
+        </TouchableOpacity>
+        <Text style={styles.avatarLabel}>{t('addClient.tapToAddAvatar')}</Text>
         <View style={styles.inputContainer}>
           <Text style={styles.label}>{t('addClient.firstName')}</Text>
           <TextInput
@@ -86,6 +141,16 @@ const AddClientScreen: React.FC = () => {
           />
         </View>
         <View style={styles.inputContainer}>
+          <Text style={styles.label}>{t('addClient.phone')}</Text>
+          <TextInput
+            style={styles.input}
+            value={phone}
+            onChangeText={setPhone}
+            placeholder={t('addClient.phonePlaceholder')}
+            keyboardType="phone-pad"
+          />
+        </View>
+        <View style={styles.inputContainer}>
           <Text style={styles.label}>{t('addClient.email')}</Text>
           <TextInput
             style={styles.input}
@@ -95,15 +160,16 @@ const AddClientScreen: React.FC = () => {
             keyboardType="email-address"
           />
         </View>
+
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>{t('addClient.phone')}</Text>
+          <Text style={styles.label}>{t('addClient.password')}</Text>
           <TextInput
-            style={styles.input}
-            value={phone}
-            onChangeText={setPhone}
-            placeholder={t('addClient.phonePlaceholder')}
-            keyboardType="phone-pad"
-          />
+              style={[styles.input,styles.inputContainer]}
+              placeholder={t('addClient.password')}
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+            />
         </View>
         <View style={styles.inputContainer}>
           <Text style={styles.label}>{t('addClient.role')}</Text>
@@ -150,8 +216,29 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
   },
-  inputContainer: {
+  avatarContainer: {
+    alignItems: 'center',
     marginBottom: 20,
+  },
+  avatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
+  avatarPlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#CCCCCC',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarLabel: {
+    textAlign: 'center',
+    color: theme.colors.primary,
+  },
+  inputContainer: {
+    marginBottom: 10,
   },
   label: {
     fontSize: 16,

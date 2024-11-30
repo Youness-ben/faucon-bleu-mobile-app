@@ -6,9 +6,12 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Alert,
   StatusBar,
   ActivityIndicator,
+  Alert,
+  Image,
+  Dimensions,
+  Modal,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -18,6 +21,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../styles/theme';
 import api from '../api';
 import { Picker } from '@react-native-picker/picker';
+import Toast from 'react-native-toast-message';
+import * as ImagePicker from 'expo-image-picker';
+import { STORAGE_URL } from '../../config';
 
 type RootStackParamList = {
   ClientAccounts: undefined;
@@ -34,8 +40,10 @@ interface Client {
   email: string;
   phone: string;
   role: string;
+  can_be_deleted:number;
+  avatar?: string;
 }
-
+const { width, height } = Dimensions.get('window');
 const ClientDetailScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<ClientDetailScreenNavigationProp>();
@@ -44,8 +52,12 @@ const ClientDetailScreen: React.FC = () => {
 
   const [client, setClient] = useState<Client | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
-
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [newAvatarUri, setNewAvatarUri] = useState<string | null>(null);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  
   useEffect(() => {
     fetchClientDetails();
   }, []);
@@ -54,9 +66,16 @@ const ClientDetailScreen: React.FC = () => {
     try {
       const response = await api.get(`/client/accounts/${clientId}`);
       setClient(response.data);
+      if (response.data.avatar) {
+        setAvatarUri(`${STORAGE_URL}/${response.data.avatar}`);
+      }
     } catch (error) {
       console.error('Error fetching client details:', error);
-      Alert.alert(t('clientDetail.error'), t('clientDetail.errorFetching'));
+      Toast.show({
+        type: 'error',
+        text1: t('clientDetail.error'),
+        text2: t('clientDetail.errorFetching'),
+      });
     } finally {
       setIsLoading(false);
     }
@@ -66,18 +85,45 @@ const ClientDetailScreen: React.FC = () => {
     if (!client) return;
 
     try {
-      const response = await api.put(`/client/accounts/${clientId}`, client);
+      const formData = new FormData();
+      formData.append('first_name', client.first_name);
+      formData.append('last_name', client.last_name);
+      formData.append('phone', client.phone);
+      formData.append('role', client.role);
+
+      if (newAvatarUri) {
+        const filename = newAvatarUri.split('/').pop();
+        const match = /\.(\w+)$/.exec(filename as string);
+        const type = match ? `image/${match[1]}` : 'image';
+        formData.append('avatar', { uri: newAvatarUri, name: filename, type } as any);
+      }
+
+      const response = await api.post(`/client/accounts/${clientId}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
       if (response.status === 200) {
-        Alert.alert(t('clientDetail.success'), t('clientDetail.updateSuccess'));
-        setIsEditing(false);
+        Toast.show({
+          type: 'success',
+          text1: t('clientDetail.success'),
+          text2: t('clientDetail.updateSuccess'),
+        });
+        fetchClientDetails(); // Refresh client data
       }
     } catch (error) {
       console.error('Error updating client:', error);
-      Alert.alert(t('clientDetail.error'), t('clientDetail.updateError'));
+      Toast.show({
+        type: 'error',
+        text1: t('clientDetail.error'),
+        text2: t('clientDetail.updateError'),
+      });
     }
   };
 
+
   const handleDeleteClient = () => {
+    if(client?.can_be_deleted==0)
+        return;
     Alert.alert(
       t('clientDetail.deleteConfirmTitle'),
       t('clientDetail.deleteConfirmMessage'),
@@ -100,26 +146,73 @@ const ClientDetailScreen: React.FC = () => {
     );
   };
 
+
   const handleResetPassword = () => {
-    Alert.alert(
-      t('clientDetail.resetPasswordConfirmTitle'),
-      t('clientDetail.resetPasswordConfirmMessage'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        { 
-          text: t('common.reset'), 
-          onPress: async () => {
-            try {
-              await api.post(`/management/clients/${clientId}/reset-password`);
-              Alert.alert(t('clientDetail.success'), t('clientDetail.passwordResetSuccess'));
-            } catch (error) {
-              console.error('Error resetting password:', error);
-              Alert.alert(t('clientDetail.error'), t('clientDetail.passwordResetError'));
-            }
-          }
-        },
-      ]
-    );
+    setShowPasswordModal(true);
+  };
+
+  const changePassword = async () => {
+    if (newPassword !== confirmPassword) {
+      Toast.show({
+        type: 'error',
+        text1: t('clientDetail.password_mismatch'),
+        text2: t('clientDetail.password_mismatch_message'),
+      });
+      return;
+    }
+    if (newPassword === '' || newPassword.length < 8) {
+      Toast.show({
+        type: 'error',
+        text1: t('clientDetail.password_invalid'),
+        text2: t('clientDetail.password_invalid_message'),
+      });
+      return;
+    }
+    try {
+      await api.post(`client/accounts/${clientId}/reset-password`, {
+        new_password: newPassword,
+      });
+      Toast.show({
+        type: 'success',
+        text1: t('clientDetail.password_changed'),
+        text2: t('clientDetail.password_changed_message'),
+      });
+      setShowPasswordModal(false);
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      Toast.show({
+        type: 'error',
+        text1: t('clientDetail.password_change_error'),
+        text2: t('clientDetail.password_change_error_message'),
+      });
+    }
+  };
+
+
+  const handleChooseAvatar = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (permissionResult.granted === false) {
+      Toast.show({
+        type: 'error',
+        text1: t('clientDetail.permissionDenied'),
+        text2: t('clientDetail.permissionDeniedMessage'),
+      });
+      return;
+    }
+
+    const pickerResult = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+
+    if (!pickerResult.canceled) {
+      setNewAvatarUri(pickerResult.assets[0].uri);
+    }
   };
 
   if (isLoading) {
@@ -146,21 +239,38 @@ const ClientDetailScreen: React.FC = () => {
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('clientDetail.title')}</Text>
-        <TouchableOpacity onPress={() => setIsEditing(!isEditing)} style={styles.editButton}>
-          <Ionicons name={isEditing ? "checkmark" : "create-outline"} size={24} color="white" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={handleDeleteClient} style={styles.deleteButton}>
-          <Ionicons name="trash-outline" size={24} color="white" />
-        </TouchableOpacity>
+        {
+          client?.can_be_deleted==1 &&
+          <>
+          
+          <TouchableOpacity onPress={handleResetPassword} style={styles.lockButton}>
+            <Ionicons name="lock-open-outline" size={24} color="#01579B" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleDeleteClient} style={styles.deleteButton}>
+            <Ionicons name="trash-outline" size={24} color="white" />
+          </TouchableOpacity></>
+        }
       </LinearGradient>
       <ScrollView style={styles.content}>
+        <TouchableOpacity style={styles.avatarContainer} onPress={handleChooseAvatar}>
+        <TouchableOpacity style={styles.avatarContainer} onPress={handleChooseAvatar}>
+
+        <Image 
+            source={{ uri: newAvatarUri || avatarUri || 'https://via.placeholder.com/150' }} 
+            style={styles.avatar} 
+          />
+
+        </TouchableOpacity>
+        <Text style={styles.avatarLabel}>{t('addClient.tapToAddAvatar')}</Text>
+  
+
+        </TouchableOpacity>
         <View style={styles.inputContainer}>
           <Text style={styles.label}>{t('clientDetail.firstName')}</Text>
           <TextInput
             style={styles.input}
             value={client.first_name}
             onChangeText={(text) => setClient({ ...client, first_name: text })}
-            editable={isEditing}
           />
         </View>
         <View style={styles.inputContainer}>
@@ -169,7 +279,6 @@ const ClientDetailScreen: React.FC = () => {
             style={styles.input}
             value={client.last_name}
             onChangeText={(text) => setClient({ ...client, last_name: text })}
-            editable={isEditing}
           />
         </View>
         <View style={styles.inputContainer}>
@@ -178,7 +287,7 @@ const ClientDetailScreen: React.FC = () => {
             style={styles.input}
             value={client.email}
             onChangeText={(text) => setClient({ ...client, email: text })}
-            editable={isEditing}
+            editable={false}
             keyboardType="email-address"
           />
         </View>
@@ -188,7 +297,6 @@ const ClientDetailScreen: React.FC = () => {
             style={styles.input}
             value={client.phone}
             onChangeText={(text) => setClient({ ...client, phone: text })}
-            editable={isEditing}
             keyboardType="phone-pad"
           />
         </View>
@@ -198,23 +306,53 @@ const ClientDetailScreen: React.FC = () => {
             <Picker
               selectedValue={client.role}
               onValueChange={(itemValue) => setClient({ ...client, role: itemValue })}
-              enabled={isEditing}
               style={styles.picker}
+              enabled={client?.can_be_deleted===1}
             >
               <Picker.Item label={t('clientDetail.roleResponsable')} value="responsable" />
               <Picker.Item label={t('clientDetail.roleManagement')} value="management" />
             </Picker>
           </View>
         </View>
-        {isEditing && (
+
           <TouchableOpacity style={styles.updateButton} onPress={handleUpdateClient}>
             <Text style={styles.buttonText}>{t('clientDetail.updateButton')}</Text>
           </TouchableOpacity>
-        )}
-        <TouchableOpacity style={styles.resetPasswordButton} onPress={handleResetPassword}>
-          <Text style={styles.buttonText}>{t('clientDetail.resetPasswordButton')}</Text>
-        </TouchableOpacity>
+
       </ScrollView>
+      
+      <Modal
+        visible={showPasswordModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowPasswordModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{t('clientDetail.resetPassword')}</Text>
+            <TextInput
+              style={[styles.input,styles.inputContainer]}
+              placeholder={t('clientDetail.newPassword')}
+              secureTextEntry
+              value={newPassword}
+              onChangeText={setNewPassword}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder={t('clientDetail.confirmPassword')}
+              secureTextEntry
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+            />
+            <TouchableOpacity style={styles.changePasswordButton} onPress={changePassword}>
+              <Text style={styles.changePasswordButtonText}>{t('clientDetail.resetPassword')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.closeButton} onPress={() => setShowPasswordModal(false)}>
+              <Text style={styles.closeButtonText}>{t('common.cancel')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -254,7 +392,16 @@ const styles = StyleSheet.create({
     marginLeft: 15,
   },
   deleteButton: {
-    marginLeft: 15,
+    marginLeft: 10,
+    padding: 8,
+    borderRadius: 10,
+    backgroundColor: '#FF3B30',
+  },
+  lockButton: {
+    marginLeft: 10,
+    padding: 8,
+    borderRadius: 10,
+    backgroundColor: 'white',
   },
   content: {
     flex: 1,
@@ -303,6 +450,64 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#FFFFFF',
     fontSize: 18,
+    fontWeight: '600',
+  },
+  avatarContainer: {
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  avatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
+  avatarLabel: {
+    textAlign: 'center',
+    color: theme.colors.primary,
+  },
+  
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    width: width * 0.8,
+    maxHeight: height * 0.7,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#1C1C1E',
+    marginBottom: 16,
+  },
+  changePasswordButton: {
+    backgroundColor: '#028dd0',
+    alignItems: 'center',
+    marginBottom: 12,
+    marginTop: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  changePasswordButtonText: {
+    fontSize: 17,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  closeButton: {
+    marginTop: 12,
+    alignItems: 'center',
+    backgroundColor: '#E5E5EA',
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  closeButtonText: {
+    fontSize: 17,
+    color: '#1C1C1E',
     fontWeight: '600',
   },
 });

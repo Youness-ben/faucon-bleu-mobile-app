@@ -22,6 +22,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../styles/theme';
 import api from '../api';
 import { STORAGE_URL } from '../../config';
+import Toast from 'react-native-toast-message';
 
 type RootStackParamList = {
   ClientDetail: { clientId: number };
@@ -84,12 +85,9 @@ const EmptyState: React.FC<{ onAddClient: () => void }> = ({ onAddClient }) => {
         loop
         style={styles.emptyStateAnimation}
       />
+
       <Text style={styles.emptyStateTitle}>{t('clientAccounts.emptyStateTitle')}</Text>
       <Text style={styles.emptyStateDescription}>{t('clientAccounts.emptyStateDescription')}</Text>
-      <TouchableOpacity style={styles.emptyStateButton} onPress={onAddClient}>
-        <Ionicons name="add-circle-outline" size={24} color="white" style={styles.emptyStateButtonIcon} />
-        <Text style={styles.emptyStateButtonText}>{t('clientAccounts.addFirstClient')}</Text>
-      </TouchableOpacity>
     </View>
   );
 };
@@ -130,7 +128,10 @@ const ClientAccountsScreen: React.FC = () => {
       }
     } catch (err) {
       console.error('Error fetching clients:', err);
-      setError(t('clientAccounts.fetchError'));
+      Toast.show({
+        type: 'error',
+        text1: t('clientAccounts.fetchError'),
+      });
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -255,6 +256,9 @@ const ClientAccountsScreen: React.FC = () => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#028dd0" />
       <LinearGradient colors={['#028dd0', '#01579B']} style={styles.header}>
+      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="white" />
+        </TouchableOpacity>
         <Text style={styles.title}>{t('clientAccounts.title')}</Text>
       </LinearGradient>
       <View style={styles.searchContainer}>
@@ -279,11 +283,17 @@ const ClientAccountsScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  
+  backButton: {
+    marginRight: 15,
+  },
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingTop: 40,
     paddingBottom: 20,
     paddingHorizontal: 20,
