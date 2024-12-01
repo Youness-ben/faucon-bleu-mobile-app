@@ -42,6 +42,8 @@ import initializeEcho from '../echo';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PinchGestureHandler, State } from 'react-native-gesture-handler';
 import { useFloatingButton } from '../useFloatingButton';
+import Toast from 'react-native-toast-message';
+
 
 type RootStackParamList = {
   TicketScreen: { serviceId: string,service ?: any  };
@@ -59,6 +61,10 @@ interface Message {
   longitude?: number;
   created_at: string;
   isUploading?: boolean; 
+  need_confirmation :number;
+  confirmed :number;
+  confirmed_at :string;
+  confirmed_name:string;
 
 }
 
@@ -190,7 +196,11 @@ const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: 
       setMessages(response.data);
     } catch (error) {
       console.error('Error fetching messages:', error);
-      Alert.alert('Error', 'Failed to fetch messages. Please try again.');
+     Toast.show({
+        type: 'error',
+        text1:'Error',
+        text2: 'Failed to fetch messages. Please try again.',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -297,7 +307,12 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
       console.error('Error sending message:', error);
       setMessages(prevMessages => prevMessages.filter(msg => msg.id !== tempMessageId));
       setIsUploading(false);
-      Alert.alert('Error', 'Failed to send message. Please try again.');
+       Toast.show({
+        type: 'error',
+        text1:'Error',
+        text2: 'Failed to fetch messages. Please try again.',
+      });
+      
     }
   };
 
@@ -324,7 +339,11 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
       }
     } catch (error) {
       console.error('Error picking image or video:', error);
-      Alert.alert('Error', 'Failed to pick image or video. Please try again.');
+       Toast.show({
+        type: 'error',
+        text1:'Error',
+        text2: 'Failed to pick image or video. Please try again.',
+      });
     }
     setIsFabOpen(false);
   };
@@ -343,7 +362,11 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
       }
     } catch (error) {
       console.error('Error picking document:', error);
-      Alert.alert('Error', 'Failed to pick document. Please try again.');
+       Toast.show({
+        type: 'error',
+        text1:'Error',
+        text2: 'Failed to pick document. Please try again.',
+      });
     }
     setIsFabOpen(false);
   };
@@ -388,7 +411,11 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
       }, 1000);
     } catch (err) {
       console.error('Failed to start recording', err);
-      Alert.alert('Error', 'Failed to start recording. Please try again.');
+        Toast.show({
+        type: 'error',
+        text1:'Error',
+        text2: 'Failed to start recording. Please try again.',
+      });
     }
   };
 
@@ -409,7 +436,11 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
       }
     } catch (error) {
       console.error('Error stopping recording:', error);
-      Alert.alert('Error', 'Failed to stop recording. Please try again.');
+        Toast.show({
+        type: 'error',
+        text1:'Error',
+        text2: 'Failed to stop recording. Please try again.',
+      });
     }
   };
 
@@ -432,7 +463,7 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
   };
 
   const downloadFile = async (uri: string, fileName: string) => {
-    try {
+    
       const fileUri = `${FileSystem.documentDirectory}${fileName}`;
       const downloadResumable = FileSystem.createDownloadResumable(
         STORAGE_URL+uri,
@@ -443,23 +474,24 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
         }
       );
 
-      const { uri: downloadedUri } = await downloadResumable.downloadAsync();
-      
-      if (downloadedUri) {
+       downloadResumable.downloadAsync() .then(({ uri }) => {
         Alert.alert('Success', `File downloaded successfully`,
           [  { text: 'Cancel', style: 'cancel' },
           {
             text: 'Open',
-            onPress: () => Linking.openURL(downloadedUri),
+            onPress: () => Linking.openURL(uri),
           },
         ]);
-      } else {
-        throw new Error('Download failed');
-      }
-    } catch (error) {
-      console.error('Error downloading file:', error);
-      Alert.alert('Error', 'Failed to download file. Please try again.');
-    }
+      }) .catch(error => {
+         console.error('Error downloading file:', error);
+        Toast.show({
+          type: 'error',
+          text1:'Error',
+          text2: 'Failed to download file. Please try again.',
+        });
+      });
+      
+      
   };
 
   const playAudio = async (uri: string, messageId: string) => {
@@ -495,7 +527,11 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
       setIsPlaying(true);
     } catch (error) {
       console.error('Error playing audio:', error);
-      Alert.alert('Error', 'Failed to play audio. Please try again.');
+      Toast.show({
+          type: 'error',
+          text1:'Permission denied',
+          text2:'Failed to play audio. Please try again.',
+        });
     } finally {
       setIsAudioLoading(null);
     }
@@ -504,7 +540,6 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
   const onPlaybackStatusUpdate = (status: Audio.PlaybackStatus, messageId: string) => {
     if (status.isLoaded) {
       setIsAudioLoading(null);
-      //const messageId = currentlyPlayingId as string;
 
       setAudioProgress(prev => ({
         ...prev,
@@ -544,7 +579,15 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
- 
+ const handleConfirmation = async (itemID: number ,status: boolean)=>{
+
+        const response = await api.post(`client/service-orders/chat/feedback`,{
+          feedback : status?1:0,
+          message : itemID,
+          service : serviceId,
+        });
+
+ };
   const toggleHeader = () => {
     setIsHeaderExpanded(!isHeaderExpanded);
     Animated.spring(headerHeight, {
@@ -812,6 +855,32 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
           ]}>
           {`${dateDisplay} ${timeDisplay}`}
         </Text>
+
+           {(item.need_confirmation === 1) && (
+            <View style={styles.confirmationContainer}>
+              {item.confirmed === 1 && (
+                <Text style={styles.confirmationText}>
+                 {t(`ticket.${item.confirmed === 0 ? 'refused' : 'accepted'}`,{user : item.confirmed_name,date : format(new Date(item.confirmed_at), 'MM/dd/yyyy HH:mm')})}
+                </Text>
+              )}
+              {(item.confirmed === null  && user?.role=='management') && (
+                <View style={styles.confirmationButtons}>
+                  <TouchableOpacity 
+                    style={[styles.confirmButton, styles.confirmButtonAccept]} 
+                    onPress={() => handleConfirmation(item.id, true)}
+                  >
+                    <Text style={styles.confirmButtonText}>{t("common.accept")}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.confirmButton, styles.confirmButtonRefuse]} 
+                    onPress={() => handleConfirmation(item.id, false)}
+                  >
+                    <Text style={styles.confirmButtonText}>{t("common.refuse")}</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )}
           </View>
         </Animated.View>  
     </View>
@@ -1025,7 +1094,11 @@ const renderPreview = () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission denied', 'Allow the app to use location service.');
+          Toast.show({
+          type: 'error',
+          text1:'Permission denied',
+          text2: 'Allow the app to use location service.',
+        });
         return;
       }
 
@@ -1039,8 +1112,12 @@ const renderPreview = () => {
         longitude: location.coords.longitude,
       });
     } catch (error) {
-      console.error('Error getting location:', error);
-      Alert.alert('Error', 'Failed to get your location. Please try again.');
+      console.error('Error getting location:', error); 
+      Toast.show({
+          type: 'error',
+          text1:'Permission denied',
+          text2:'Failed to get your location. Please try again.',
+        });
     } finally {
       setIsLoadingLocation(false);
     }
@@ -1698,5 +1775,38 @@ locationPickerContainer: {
     marginLeft: 8,
     fontSize: 12,
     color: theme.colors.muted,
+  },
+  confirmationContainer: {
+    marginTop: 8,
+    padding: 8,
+    borderRadius: 8,
+  },
+  confirmationText: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  confirmationButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  confirmButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmButtonAccept: {
+    backgroundColor: '#4CAF50',
+  },
+  confirmButtonRefuse: {
+    backgroundColor: '#F44336',
+  },
+  confirmButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });

@@ -9,7 +9,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../styles/theme';
 import api from '../api';
 import { STORAGE_URL } from '../../config';
-import { fonts } from '../styles/fonts';
 
 type RootStackParamList = {
   VehicleDetail: { vehicleId: number };

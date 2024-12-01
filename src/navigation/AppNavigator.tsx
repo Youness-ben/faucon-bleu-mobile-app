@@ -35,6 +35,7 @@ import NotificationsScreen from '../screens/NotificationsScreen';
 import ClientAccountsScreen from '../screens/ClientAccountsScreen';
 import AddClientScreen from '../screens/AddClientScreen';
 import ClientDetailScreen from '../screens/ClientDetailScreen';
+import AccountFleetScreen from '../screens/AccountFleetScreen';
 
 type RootStackParamList = {
   Splash: undefined;
@@ -56,6 +57,7 @@ type RootStackParamList = {
   Notifications : undefined;
   ClientAccounts : undefined;
   AddClient : undefined;
+  AccountFleetScreen : undefined;
   ClientDetail : undefined;
 };
 
@@ -186,6 +188,7 @@ const AppNavigator: React.FC = () => {
        <Stack.Screen name="ClientAccounts" component={ClientAccountsScreen} />
         <Stack.Screen name="AddClient" component={AddClientScreen} />
         <Stack.Screen name="ClientDetail" component={ClientDetailScreen} />
+        <Stack.Screen name="AccountFleetScreen" component={AccountFleetScreen} />
        
     </Stack.Navigator>
   );

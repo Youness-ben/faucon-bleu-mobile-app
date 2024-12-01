@@ -23,6 +23,8 @@
     "email": "Email",
     "password": "Password",
     "retry": "Retry",
+    "accept": "Accept",
+    "refuse": "Refuse",
     "close": "Close",
     "cancel": "Cancel",
     "delete": "Delete",
@@ -144,6 +146,7 @@
     "noUpcomingServices": "No upcoming services",
     "viewAllServices": "View All Services",
     "no_service": "No service history",
+    "last_service": "Last service",
     "orderNewService": "Order a new service",
     "fetchFailed": "Failed to fetch data"
   },
@@ -152,7 +155,7 @@
     "fetchFailed": "Failed to fetch data"
   },
   "fleet": {
-    "title": "My Fleet",
+    "title": "Fleet",
     "searchPlaceholder" : "Search",
     "fetchError": "Error fetching vehicles",
     "addVehicle": "Add Vehicle",
@@ -297,6 +300,8 @@
     "serviceType": "Service",
     "Date": "Date",
     "chat": "Chat",
+    "accepted": "Accepted by {{user}} at {{date}}",
+    "refused": "Refused by {user} at {date}",
     "Status": "Status"
   },
   "recordingModal":{

@@ -247,7 +247,7 @@ const HomeScreen: React.FC = () => {
                 <Text style={styles.vehicleName}>{`${item.brand_name} ${item.model}`}</Text>
                 <Text style={styles.vehiclePlate}>{item.plate_number}</Text>
                 <Text style={styles.lastServiceDate}>
-                  {t('home.lastService')}: {item.last_service_date ? format(new Date(item.last_service_date), 'dd/MM/yyyy') : t('home.noService')}
+                  {t('home.last_service')}: {item.last_service_date ? format(new Date(item.last_service_date), 'dd/MM/yyyy') : t('home.no_service')}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={24} color="#028dd0" />

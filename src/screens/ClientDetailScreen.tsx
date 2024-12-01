@@ -150,6 +150,9 @@ const ClientDetailScreen: React.FC = () => {
   const handleResetPassword = () => {
     setShowPasswordModal(true);
   };
+  const handleCarList = () => {
+    navigation.navigate('AccountFleetScreen',{responsable : clientId});
+  };
 
   const changePassword = async () => {
     if (newPassword !== confirmPassword) {
@@ -242,7 +245,11 @@ const ClientDetailScreen: React.FC = () => {
         {
           client?.can_be_deleted==1 &&
           <>
-          
+          { client?.role=='responsable' &&
+          <TouchableOpacity onPress={handleCarList} style={styles.lockButton}>
+            <Ionicons name="car-outline" size={24} color="#01579B" />
+          </TouchableOpacity>
+          }
           <TouchableOpacity onPress={handleResetPassword} style={styles.lockButton}>
             <Ionicons name="lock-open-outline" size={24} color="#01579B" />
           </TouchableOpacity>

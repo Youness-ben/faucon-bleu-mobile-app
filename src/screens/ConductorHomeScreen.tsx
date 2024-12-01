@@ -607,7 +607,7 @@ marginTop: 20,
     width: 200,
     height: 200,
   },
-  noServicesText: {
+  vicesText: {
     fontSize: 16,
     color: '#8E8E93',
     textAlign: 'center',
