@@ -33,6 +33,14 @@ interface Vehicle {
   fuel_type: string;
   transmission: string;
   logo_url: string;
+  client_id: number | null;
+  conductor_name: string;
+}
+
+interface Client {
+  id: number;
+  first_name: string;
+  last_name: string;
 }
 
 interface ToastProps {
@@ -93,11 +101,24 @@ const VehicleDetailScreen: React.FC = () => {
   const [newPassword, setNewPassword] = useState('');
   const [toast, setToast] = useState<ToastProps>({ visible: false, message: '', type: 'success' });
   const [showPasswordReset, setShowPasswordReset] = useState(false);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
+  const [conductorName, setConductorName] = useState('');
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ visible: true, message, type });
     setTimeout(() => setToast({ visible: false, message: '', type: 'success' }), 3000);
   };
+
+  const fetchClients = useCallback(async () => {
+    try {
+      const response = await api.get<Client[]>('/client/responsable/list');
+      setClients(response.data);
+    } catch (error) {
+      console.error('Error fetching clients:', error);
+      showToast(t('vehicleDetail.clientFetchError'), 'error');
+    }
+  }, [t]);
 
   const fetchVehicleDetails = useCallback(async () => {
     setIsLoading(true);
@@ -106,6 +127,8 @@ const VehicleDetailScreen: React.FC = () => {
       const response = await api.get<Vehicle>(`/client/vehicles/${vehicleId}`);
       setVehicle(response.data);
       setEditedVehicle(response.data);
+      setSelectedClientId(response.data.client_id);
+      setConductorName(response.data.conductor_name);
     } catch (err) {
       console.error('Error fetching vehicle details:', err);
       setError(t('vehicleDetail.fetchError'));
@@ -116,7 +139,8 @@ const VehicleDetailScreen: React.FC = () => {
 
   useEffect(() => {
     fetchVehicleDetails();
-  }, [fetchVehicleDetails]);
+    fetchClients();
+  }, [fetchVehicleDetails, fetchClients]);
 
   const handleEdit = () => {
     setIsEditing(true);
@@ -127,7 +151,12 @@ const VehicleDetailScreen: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const response = await api.put(`/client/vehicles/${vehicleId}`, editedVehicle);
+      const updatedVehicle = {
+        ...editedVehicle,
+        client_id: selectedClientId,
+        conductor_name: conductorName,
+      };
+      const response = await api.put(`/client/vehicles/${vehicleId}`, updatedVehicle);
       if (response.status === 200) {
         setVehicle(response.data);
         setIsEditing(false);
@@ -193,6 +222,8 @@ const VehicleDetailScreen: React.FC = () => {
   const handleCancel = () => {
     setIsEditing(false);
     setEditedVehicle(vehicle);
+    setSelectedClientId(vehicle?.client_id || null);
+    setConductorName(vehicle?.conductor_name || '');
   };
 
   if (isLoading) {
@@ -271,50 +302,76 @@ const VehicleDetailScreen: React.FC = () => {
             </View>
           </View>
           <View style={styles.detailsGrid}>
-            <DetailItem icon="calendar-outline" label={t('vehicleDetail.year')} value={vehicle.year.toString()} />
-            <DetailItem icon="car-outline" label={t('vehicleDetail.make')} value={vehicle.brand_name} />
-            <DetailItem icon="options-outline" label={t('vehicleDetail.model')} value={vehicle.model} />
             {isEditing ? (
-              <EditableDetailItem
-                label={t('vehicleDetail.kilometers')}
-                value={editedVehicle?.kilometers.toString() || ''}
-                onChangeText={(text) => setEditedVehicle(prev => prev ? {...prev, kilometers: parseInt(text)} : null)}
-                keyboardType="numeric"
-              />
+              <>
+                <View style={styles.pickerContainer}>
+                  <Text style={styles.detailLabel}>{t('vehicleDetail.client')}</Text>
+                  <Picker
+                    selectedValue={selectedClientId}
+                    onValueChange={(itemValue) => setSelectedClientId(itemValue)}
+                    style={styles.picker}
+                  >
+                    <Picker.Item label={t('vehicleDetail.selectClient')} value={null} />
+                    {clients.map((client) => (
+                      <Picker.Item key={client.id} label={`${client.first_name} ${client.last_name}`} value={client.id} />
+                    ))}
+                  </Picker>
+                </View>
+                <EditableDetailItem
+                  label={t('vehicleDetail.conductorName')}
+                  value={conductorName}
+                  onChangeText={setConductorName}
+                />
+                <EditableDetailItem
+                  label={t('vehicleDetail.kilometers')}
+                  value={editedVehicle?.kilometers.toString() || ''}
+                  onChangeText={(text) => setEditedVehicle(prev => prev ? {...prev, kilometers: parseInt(text)} : null)}
+                  keyboardType="numeric"
+                />
+                <View style={styles.pickerContainer}>
+                  <Text style={styles.detailLabel}>{t('vehicleDetail.fuelType')}</Text>
+                  <Picker
+                    selectedValue={editedVehicle?.fuel_type}
+                    onValueChange={(itemValue) => setEditedVehicle(prev => prev ? {...prev, fuel_type: itemValue} : null)}
+                    style={styles.picker}
+                  >
+                    {fuelTypes.map((type) => (
+                      <Picker.Item key={type} label={t(`vehicleDetail.fuelTypes.${type}`)} value={type} />
+                    ))}
+                  </Picker>
+                </View>
+                <View style={styles.pickerContainer}>
+                  <Text style={styles.detailLabel}>{t('vehicleDetail.transmission')}</Text>
+                  <Picker
+                    selectedValue={editedVehicle?.transmission}
+                    onValueChange={(itemValue) => setEditedVehicle(prev => prev ? {...prev, transmission: itemValue} : null)}
+                    style={styles.picker}
+                  >
+                    {transmissionTypes.map((type) => (
+                      <Picker.Item key={type} label={t(`vehicleDetail.transmissionTypes.${type}`)} value={type} />
+                    ))}
+                  </Picker>
+                </View>
+              </>
             ) : (
-              <DetailItem icon="speedometer-outline" label={t('vehicleDetail.kilometers')} value={`${vehicle.kilometers} km`} />
-            )}
-            {isEditing ? (
-              <View style={styles.pickerContainer}>
-                <Text style={styles.detailLabel}>{t('vehicleDetail.fuelType')}</Text>
-                <Picker
-                  selectedValue={editedVehicle?.fuel_type}
-                  onValueChange={(itemValue) => setEditedVehicle(prev => prev ? {...prev, fuel_type: itemValue} : null)}
-                  style={styles.picker}
-                >
-                  {fuelTypes.map((type) => (
-                    <Picker.Item key={type} label={t(`vehicleDetail.fuelTypes.${type}`)} value={type} />
-                  ))}
-                </Picker>
-              </View>
-            ) : (
-              <DetailItem icon="water-outline" label={t('vehicleDetail.fuelType')} value={t(`vehicleDetail.fuelTypes.${vehicle.fuel_type}`)} />
-            )}
-            {isEditing ? (
-              <View style={styles.pickerContainer}>
-                <Text style={styles.detailLabel}>{t('vehicleDetail.transmission')}</Text>
-                <Picker
-                  selectedValue={editedVehicle?.transmission}
-                  onValueChange={(itemValue) => setEditedVehicle(prev => prev ? {...prev, transmission: itemValue} : null)}
-                  style={styles.picker}
-                >
-                  {transmissionTypes.map((type) => (
-                    <Picker.Item key={type} label={t(`vehicleDetail.transmissionTypes.${type}`)} value={type} />
-                  ))}
-                </Picker>
-              </View>
-            ) : (
-              <DetailItem icon="cog-outline" label={t('vehicleDetail.transmission')} value={t(`vehicleDetail.transmissionTypes.${vehicle.transmission}`)} />
+              <>
+                <DetailItem
+                  icon="person-outline"
+                  label={t('vehicleDetail.client')}
+                  value={clients.find(c => c.id === selectedClientId)?.first_name + ' ' + clients.find(c => c.id === selectedClientId)?.last_name || t('vehicleDetail.noClientSelected')}
+                />
+                <DetailItem
+                  icon="person-circle-outline"
+                  label={t('vehicleDetail.conductorName')}
+                  value={conductorName || t('vehicleDetail.noConductorName')}
+                />
+                <DetailItem icon="calendar-outline" label={t('vehicleDetail.year')} value={vehicle.year.toString()} />
+                <DetailItem icon="car-outline" label={t('vehicleDetail.make')} value={vehicle.brand_name} />
+                <DetailItem icon="options-outline" label={t('vehicleDetail.model')} value={vehicle.model} />
+                <DetailItem icon="speedometer-outline" label={t('vehicleDetail.kilometers')} value={`${vehicle.kilometers} km`} />
+                <DetailItem icon="water-outline" label={t('vehicleDetail.fuelType')} value={t(`vehicleDetail.fuelTypes.${vehicle.fuel_type}`)} />
+                <DetailItem icon="cog-outline" label={t('vehicleDetail.transmission')} value={t(`vehicleDetail.transmissionTypes.${vehicle.transmission}`)} />
+              </>
             )}
           </View>
           <TouchableOpacity onPress={() => setShowFullVin(!showFullVin)} style={styles.vinContainer}>
