@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, TextInput, Alert, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, TextInput, Alert, Animated, Modal } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -9,6 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { theme } from '../styles/theme';
 import api from '../api';
 import { STORAGE_URL } from '../../config';
+import { useUser } from '../UserContext';
 
 type RootStackParamList = {
   VehicleDetail: { vehicleId: number };
@@ -35,6 +36,7 @@ interface Vehicle {
   logo_url: string;
   client_id: number | null;
   conductor_name: string;
+  responsable_name?: string; // Added responsable_name
 }
 
 interface Client {
@@ -91,7 +93,7 @@ const VehicleDetailScreen: React.FC = () => {
   const navigation = useNavigation<VehicleDetailScreenNavigationProp>();
   const route = useRoute<VehicleDetailScreenRouteProp>();
   const { vehicleId } = route.params;
-
+  const { user } = useUser();
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -143,6 +145,9 @@ const VehicleDetailScreen: React.FC = () => {
   }, [fetchVehicleDetails, fetchClients]);
 
   const handleEdit = () => {
+    setEditedVehicle(vehicle);
+    setSelectedClientId(vehicle?.client_id || null);
+    setConductorName(vehicle?.conductor_name || '');
     setIsEditing(true);
   };
 
@@ -151,9 +156,12 @@ const VehicleDetailScreen: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const updatedVehicle = {
+      const updatedVehicle = selectedClientId ? {
         ...editedVehicle,
         client_id: selectedClientId,
+        conductor_name: conductorName,
+      } : {
+        ...editedVehicle,
         conductor_name: conductorName,
       };
       const response = await api.put(`/client/vehicles/${vehicleId}`, updatedVehicle);
@@ -302,77 +310,22 @@ const VehicleDetailScreen: React.FC = () => {
             </View>
           </View>
           <View style={styles.detailsGrid}>
-            {isEditing ? (
-              <>
-                <View style={styles.pickerContainer}>
-                  <Text style={styles.detailLabel}>{t('vehicleDetail.client')}</Text>
-                  <Picker
-                    selectedValue={selectedClientId}
-                    onValueChange={(itemValue) => setSelectedClientId(itemValue)}
-                    style={styles.picker}
-                  >
-                    <Picker.Item label={t('vehicleDetail.selectClient')} value={null} />
-                    {clients.map((client) => (
-                      <Picker.Item key={client.id} label={`${client.first_name} ${client.last_name}`} value={client.id} />
-                    ))}
-                  </Picker>
-                </View>
-                <EditableDetailItem
-                  label={t('vehicleDetail.conductorName')}
-                  value={conductorName}
-                  onChangeText={setConductorName}
-                />
-                <EditableDetailItem
-                  label={t('vehicleDetail.kilometers')}
-                  value={editedVehicle?.kilometers.toString() || ''}
-                  onChangeText={(text) => setEditedVehicle(prev => prev ? {...prev, kilometers: parseInt(text)} : null)}
-                  keyboardType="numeric"
-                />
-                <View style={styles.pickerContainer}>
-                  <Text style={styles.detailLabel}>{t('vehicleDetail.fuelType')}</Text>
-                  <Picker
-                    selectedValue={editedVehicle?.fuel_type}
-                    onValueChange={(itemValue) => setEditedVehicle(prev => prev ? {...prev, fuel_type: itemValue} : null)}
-                    style={styles.picker}
-                  >
-                    {fuelTypes.map((type) => (
-                      <Picker.Item key={type} label={t(`vehicleDetail.fuelTypes.${type}`)} value={type} />
-                    ))}
-                  </Picker>
-                </View>
-                <View style={styles.pickerContainer}>
-                  <Text style={styles.detailLabel}>{t('vehicleDetail.transmission')}</Text>
-                  <Picker
-                    selectedValue={editedVehicle?.transmission}
-                    onValueChange={(itemValue) => setEditedVehicle(prev => prev ? {...prev, transmission: itemValue} : null)}
-                    style={styles.picker}
-                  >
-                    {transmissionTypes.map((type) => (
-                      <Picker.Item key={type} label={t(`vehicleDetail.transmissionTypes.${type}`)} value={type} />
-                    ))}
-                  </Picker>
-                </View>
-              </>
-            ) : (
-              <>
-                <DetailItem
-                  icon="person-outline"
-                  label={t('vehicleDetail.client')}
-                  value={clients.find(c => c.id === selectedClientId)?.first_name + ' ' + clients.find(c => c.id === selectedClientId)?.last_name || t('vehicleDetail.noClientSelected')}
-                />
-                <DetailItem
-                  icon="person-circle-outline"
-                  label={t('vehicleDetail.conductorName')}
-                  value={conductorName || t('vehicleDetail.noConductorName')}
-                />
-                <DetailItem icon="calendar-outline" label={t('vehicleDetail.year')} value={vehicle.year.toString()} />
-                <DetailItem icon="car-outline" label={t('vehicleDetail.make')} value={vehicle.brand_name} />
-                <DetailItem icon="options-outline" label={t('vehicleDetail.model')} value={vehicle.model} />
-                <DetailItem icon="speedometer-outline" label={t('vehicleDetail.kilometers')} value={`${vehicle.kilometers} km`} />
-                <DetailItem icon="water-outline" label={t('vehicleDetail.fuelType')} value={t(`vehicleDetail.fuelTypes.${vehicle.fuel_type}`)} />
-                <DetailItem icon="cog-outline" label={t('vehicleDetail.transmission')} value={t(`vehicleDetail.transmissionTypes.${vehicle.transmission}`)} />
-              </>
-            )}
+            <DetailItem
+              icon="person-outline"
+              label={t('vehicleDetail.responsable')}
+              value={vehicle.responsable_name ? vehicle.responsable_name : t('vehicleDetail.noResponsable')}
+            />
+            <DetailItem
+              icon="person-circle-outline"
+              label={t('vehicleDetail.conductorName')}
+              value={vehicle.conductor_name || t('vehicleDetail.noConductorName')}
+            />
+            <DetailItem icon="calendar-outline" label={t('vehicleDetail.year')} value={vehicle.year.toString()} />
+            <DetailItem icon="car-outline" label={t('vehicleDetail.make')} value={vehicle.brand_name} />
+            <DetailItem icon="options-outline" label={t('vehicleDetail.model')} value={vehicle.model} />
+            <DetailItem icon="speedometer-outline" label={t('vehicleDetail.kilometers')} value={`${vehicle.kilometers} km`} />
+            <DetailItem icon="water-outline" label={t('vehicleDetail.fuelType')} value={t(`vehicleDetail.fuelTypes.${vehicle.fuel_type}`)} />
+            <DetailItem icon="cog-outline" label={t('vehicleDetail.transmission')} value={t(`vehicleDetail.transmissionTypes.${vehicle.transmission}`)} />
           </View>
           <TouchableOpacity onPress={() => setShowFullVin(!showFullVin)} style={styles.vinContainer}>
             <Ionicons name="barcode-outline" size={24} color={theme.colors.primary} style={styles.vinIcon} />
@@ -391,32 +344,85 @@ const VehicleDetailScreen: React.FC = () => {
         </View>
 
         {isEditing && (
-          <View style={styles.editButtonsContainer}>
-            <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={handleSave}>
-              <Ionicons name="save-outline" size={24} color="white" />
-              <Text style={styles.buttonText}>{t('vehicleDetail.save')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={handleCancel}>
-              <Ionicons name="close-outline" size={24} color={theme.colors.primary} />
-              <Text style={[styles.buttonText, styles.cancelButtonText]}>{t('common.cancel')}</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={isEditing}
+            onRequestClose={handleCancel}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.modalContent}>
+                <ScrollView>
+                  <Text style={styles.modalTitle}>{t('vehicleDetail.edit')}</Text>
+                  {user?.role === 'management' && (
+                    <View style={styles.pickerContainer}>
+                      <Text style={styles.detailLabel}>{t('vehicleDetail.responsable')}</Text>
+                      <Picker
+                        selectedValue={selectedClientId}
+                        onValueChange={(itemValue) => setSelectedClientId(itemValue)}
+                        style={styles.picker}
+                      >
+                        <Picker.Item label={t('vehicleDetail.noResponsable')} value={null} />
+                        {clients.map((client) => (
+                          <Picker.Item key={client.id} label={`${client.first_name} ${client.last_name}`} value={client.id} />
+                        ))}
+                      </Picker>
+                    </View>
+                  )}
 
-        <TouchableOpacity 
-          style={styles.accordionHeader} 
-          onPress={() => setShowPasswordReset(!showPasswordReset)}
-        >
-          <Text style={styles.accordionTitle}>{t('vehicleDetail.resetConductorPassword')}</Text>
-          <Ionicons 
-            name={showPasswordReset ? 'chevron-up-outline' : 'chevron-down-outline'} 
-            size={24} 
-            color={theme.colors.primary} 
-          />
-        </TouchableOpacity>
-        
-        {showPasswordReset && (
+                  <EditableDetailItem
+                    label={t('vehicleDetail.conductorName')}
+                    
+                    value={conductorName}
+                    onChangeText={setConductorName}
+                  />
+                  <EditableDetailItem
+                    label={t('vehicleDetail.kilometers')}
+                    value={editedVehicle?.kilometers.toString() || ''}
+                    onChangeText={(text) => setEditedVehicle(prev => prev ? {...prev, kilometers: parseInt(text)} : null)}
+                    keyboardType="numeric"
+                    
+                  />
+                  <View style={styles.pickerContainer}>
+                    <Text style={styles.detailLabel}>{t('vehicleDetail.fuelType')}</Text>
+                    <Picker
+                      selectedValue={editedVehicle?.fuel_type}
+                      onValueChange={(itemValue) => setEditedVehicle(prev => prev ? {...prev, fuel_type: itemValue} : null)}
+                      style={styles.picker}
+                    >
+                      {fuelTypes.map((type) => (
+                        <Picker.Item key={type} label={t(`vehicleDetail.fuelTypes.${type}`)} value={type} />
+                      ))}
+                    </Picker>
+                  </View>
+                  <View style={styles.pickerContainer}>
+                    <Text style={styles.detailLabel}>{t('vehicleDetail.transmission')}</Text>
+                    <Picker
+                      selectedValue={editedVehicle?.transmission}
+                      onValueChange={(itemValue) => setEditedVehicle(prev => prev ? {...prev, transmission: itemValue} : null)}
+                      style={styles.picker}
+                    >
+                      {transmissionTypes.map((type) => (
+                        <Picker.Item key={type} label={t(`vehicleDetail.transmissionTypes.${type}`)} value={type} />
+                      ))}
+                    </Picker>
+                  </View>
+                </ScrollView>
+                <View style={styles.modalButtonsContainer}>
+                  <TouchableOpacity style={[styles.modalButton, styles.cancelButton]} onPress={handleCancel}>
+                    <Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.modalButton, styles.saveButton]} onPress={handleSave}>
+                    <Text style={styles.saveButtonText}>{t('vehicleDetail.save')}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
+        )}
+  
           <View style={styles.passwordResetContainer}>
+          <Text style={styles.accordionTitle}>{t('vehicleDetail.resetConductorPassword')}</Text>
             <TextInput
               style={styles.input}
               value={newPassword}
@@ -429,7 +435,7 @@ const VehicleDetailScreen: React.FC = () => {
               <Text style={styles.buttonText}>{t('vehicleDetail.resetPassword')}</Text>
             </TouchableOpacity>
           </View>
-        )}
+        
       </ScrollView>
       <Toast visible={toast.visible} message={toast.message} type={toast.type} />
     </View>
@@ -447,9 +453,9 @@ const DetailItem: React.FC<{ icon: string; label: string; value: string }> = ({ 
 );
 
 const EditableDetailItem: React.FC<{ label: string; value: string; onChangeText: (text: string) => void; keyboardType?: 'default' | 'numeric' }> = ({ label, value, onChangeText, keyboardType = 'default' }) => (
-  <View style={styles.detailItem}>
+  <View style={[styles.detailItem,{minWidth:'100%',}]}>
     <View>
-      <Text style={styles.detailLabel}>{label}</Text>
+      <Text style={[styles.detailLabel]}>{label}</Text>
       <TextInput
         style={styles.editableDetailValue}
         value={value}
@@ -588,6 +594,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: 10,
     margin: 15,
+    marginBottom:0,
+    paddingBottom:0,
     padding: 20,
     ...theme.elevation.medium,
   },
@@ -629,6 +637,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1C1C1E',
     fontWeight: '500',
+    minWidth:'100%',
     borderBottomWidth: 1,
     borderBottomColor: '#028dd0',
   },
@@ -663,7 +672,8 @@ const styles = StyleSheet.create({
   passwordResetContainer: {
     backgroundColor: 'white',
     borderRadius: 10,
-    margin: 15,
+    margin: 5,
+    paddingTop:0,
     padding: 20,
     ...theme.elevation.medium,
   },
@@ -675,7 +685,6 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   pickerContainer: {
-    width: '48%',
     marginBottom: 15,
   },
   picker: {
@@ -746,8 +755,58 @@ const styles = StyleSheet.create({
   },
   accordionTitle: {
     fontSize: 16,
+    marginStart:15,
+    paddingVertical:15,
     fontWeight: '600',
     color: '#1C1C1E',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 20,
+    width: '90%',
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  modalButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+  },
+  modalButton: {
+    flex: 1,
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  saveButton: {
+    backgroundColor: theme.colors.primary,
+    marginLeft: 10,
+  },
+  cancelButton: {
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    marginRight: 10,
+  },
+  saveButtonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  cancelButtonText: {
+    color: theme.colors.primary,
+    fontWeight: '600',
   },
 });
 

@@ -28,6 +28,12 @@ interface Model {
   annees: string[];
 }
 
+interface Client {
+  id: number;
+  first_name: string;
+  last_name: string;
+}
+
 const AddVehicleScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<AddVehicleScreenNavigationProp>();
@@ -45,6 +51,9 @@ const AddVehicleScreen: React.FC = () => {
   const [isFetchingBrands, setIsFetchingBrands] = useState(true);
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const [conductorPassword, setConductorPassword] = useState('');
+  const [conductorName, setConductorName] = useState('');
+  const [clients, setClients] = useState<Client[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchBrands = async () => {
@@ -63,7 +72,22 @@ const AddVehicleScreen: React.FC = () => {
       }
     };
 
+    const fetchClients = async () => {
+      try {
+        const response = await api.get<Client[]>('/client/responsable/list');
+        setClients(response.data);
+      } catch (error) {
+        console.error('Error fetching clients:', error);
+        Toast.show({
+          type: 'error',
+          text1: t('addVehicle.clientsFetchFailed'),
+          text2: t('addVehicle.tryAgainLater'),
+        });
+      }
+    };
+
     fetchBrands();
+    fetchClients();
   }, [t]);
 
   useEffect(() => {
@@ -72,9 +96,6 @@ const AddVehicleScreen: React.FC = () => {
         setIsFetchingModels(true);
         try {
           const response = await api.get(`/client/brands/${brandId}/models`);
-          console.log('Raw data:', response.data);
-          
-          // Process the data
           const processedModels = response.data.reduce((acc, item) => {
             if (!acc[item.modele]) {
               acc[item.modele] = {
@@ -90,8 +111,6 @@ const AddVehicleScreen: React.FC = () => {
           }, {});
 
           const modelArray = Object.values(processedModels);
-          console.log('Processed models:', modelArray);
-
           setModels(modelArray);
         } catch (error) {
           console.error('Error fetching models:', error);
@@ -112,7 +131,7 @@ const AddVehicleScreen: React.FC = () => {
   }, [brandId, t]);
 
   const handleSubmit = async () => {
-    if (!brandId || !selectedModel || !selectedYear || !plateNumber || !vin_number || !kilometers || !fuelType || !transmission || !conductorPassword) {
+    if (!brandId || !selectedModel || !selectedYear || !plateNumber || !vin_number || !kilometers || !fuelType || !transmission || !conductorPassword || !conductorName) {
       Toast.show({
         type: 'error',
         text1: t('addVehicle.fillAllFields'),
@@ -133,6 +152,8 @@ const AddVehicleScreen: React.FC = () => {
         fuel_type: fuelType,
         transmission,
         conductor_password: conductorPassword,
+        conductor_name: conductorName,
+        client_id: selectedClientId,
       });
 
       if (response.status === 201) {
@@ -163,7 +184,7 @@ const AddVehicleScreen: React.FC = () => {
   if (isFetchingBrands) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <ActivityIndicator size="large" color="#028dd0" />
       </View>
     );
   }
@@ -182,135 +203,167 @@ const AddVehicleScreen: React.FC = () => {
           <Text style={styles.title}>{t('addVehicle.title')}</Text>
         </LinearGradient>
         <ScrollView style={styles.content} contentContainerStyle={styles.scrollViewContent}>
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>{t('addVehicle.brand')}</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={brandId}
-                onValueChange={(itemValue) => {
-                  setBrandId(itemValue);
-                  setSelectedModel(null);
-                  setSelectedYear(null);
-                }}
-                style={styles.picker}
-              >
-                <Picker.Item label={t('addVehicle.selectBrand')} value={null} />
-                {brands.map((brand) => (
-                  <Picker.Item key={brand.id} label={brand.name} value={brand.id} />
-                ))}
-              </Picker>
-            </View>
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>{t('addVehicle.modelAndYear')}</Text>
-            <View style={styles.rowContainer}>
-              <View style={[styles.pickerContainer, styles.halfWidth]}>
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>{t('addVehicle.vehicleInfo')}</Text>
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>{t('addVehicle.brand')}</Text>
+              <View style={styles.pickerContainer}>
                 <Picker
-                  selectedValue={selectedModel?.id}
+                  selectedValue={brandId}
                   onValueChange={(itemValue) => {
-                    const model = models.find(m => m.id === itemValue) || null;
-                    setSelectedModel(model);
+                    setBrandId(itemValue);
+                    setSelectedModel(null);
                     setSelectedYear(null);
                   }}
                   style={styles.picker}
-                  enabled={!isFetchingModels}
                 >
-                  <Picker.Item label={t('addVehicle.selectModel')} value={null} />
-                  {models.map((model) => (
-                    <Picker.Item key={model.id} label={model.modele} value={model.id} />
+                  <Picker.Item label={t('addVehicle.selectBrand')} value={null} />
+                  {brands.map((brand) => (
+                    <Picker.Item key={brand.id} label={brand.name} value={brand.id} />
                   ))}
                 </Picker>
               </View>
-              <View style={[styles.pickerContainer, styles.halfWidth]}>
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>{t('addVehicle.modelAndYear')}</Text>
+              <View style={styles.rowContainer}>
+                <View style={[styles.pickerContainer, styles.halfWidth]}>
+                  <Picker
+                    selectedValue={selectedModel?.id}
+                    onValueChange={(itemValue) => {
+                      const model = models.find(m => m.id === itemValue) || null;
+                      setSelectedModel(model);
+                      setSelectedYear(null);
+                    }}
+                    style={styles.picker}
+                    enabled={!isFetchingModels}
+                  >
+                    <Picker.Item label={t('addVehicle.selectModel')} value={null} />
+                    {models.map((model) => (
+                      <Picker.Item key={model.id} label={model.modele} value={model.id} />
+                    ))}
+                  </Picker>
+                </View>
+                <View style={[styles.pickerContainer, styles.halfWidth]}>
+                  <Picker
+                    selectedValue={selectedYear}
+                    onValueChange={(itemValue) => setSelectedYear(itemValue)}
+                    style={styles.picker}
+                    enabled={!!selectedModel}
+                  >
+                    <Picker.Item label={t('addVehicle.selectYear')} value={null} />
+                    {selectedModel?.annees.map((year) => (
+                      <Picker.Item key={year} label={year} value={year} />
+                    ))}
+                  </Picker>
+                </View>
+              </View>
+              {isFetchingModels && <ActivityIndicator style={styles.loader} size="small" color="#028dd0" />}
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>{t('addVehicle.plateNumber')}</Text>
+              <TextInput
+                style={styles.input}
+                value={plateNumber}
+                onChangeText={setPlateNumber}
+                placeholder={t('addVehicle.enterPlateNumber')}
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>{t('addVehicle.vin')}</Text>
+              <TextInput
+                style={styles.input}
+                value={vin_number}
+                onChangeText={setVin}
+                placeholder={t('addVehicle.enterVin')}
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>{t('addVehicle.mileage')}</Text>
+              <TextInput
+                style={styles.input}
+                value={kilometers}
+                onChangeText={setMileage}
+                placeholder={t('addVehicle.enterMileage')}
+                keyboardType="numeric"
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>{t('addVehicle.fuelType')}</Text>
+              <View style={styles.pickerContainer}>
                 <Picker
-                  selectedValue={selectedYear}
-                  onValueChange={(itemValue) => setSelectedYear(itemValue)}
+                  selectedValue={fuelType}
+                  onValueChange={(itemValue) => setFuelType(itemValue)}
                   style={styles.picker}
-                  enabled={!!selectedModel}
                 >
-                  <Picker.Item label={t('addVehicle.selectYear')} value={null} />
-                  {selectedModel?.annees.map((year) => (
-                    <Picker.Item key={year} label={year} value={year} />
+                  <Picker.Item label={t('addVehicle.selectFuelType')} value="" />
+                  <Picker.Item label={t('addVehicle.gasoline')} value="gasoline" />
+                  <Picker.Item label={t('addVehicle.diesel')} value="diesel" />
+                  <Picker.Item label={t('addVehicle.electric')} value="electric" />
+                  <Picker.Item label={t('addVehicle.hybrid')} value="hybrid" />
+                </Picker>
+              </View>
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>{t('addVehicle.transmission')}</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={transmission}
+                  onValueChange={(itemValue) => setTransmission(itemValue)}
+                  style={styles.picker}
+                >
+                  <Picker.Item label={t('addVehicle.selectTransmission')} value="" />
+                  <Picker.Item label={t('addVehicle.manual')} value="manual" />
+                  <Picker.Item label={t('addVehicle.automatic')} value="automatic" />
+                </Picker>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>{t('addVehicle.conductorInfo')}</Text>
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>{t('addVehicle.conductorName')}</Text>
+              <TextInput
+                style={styles.input}
+                value={conductorName}
+                onChangeText={setConductorName}
+                placeholder={t('addVehicle.enterConductorName')}
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>{t('addVehicle.client')}</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={selectedClientId}
+                  onValueChange={(itemValue) => setSelectedClientId(itemValue)}
+                  style={styles.picker}
+                >
+                  <Picker.Item label={t('addVehicle.selectClient')} value={null} />
+                  {clients.map((client) => (
+                    <Picker.Item key={client.id} label={`${client.first_name} ${client.last_name}`} value={client.id} />
                   ))}
                 </Picker>
               </View>
             </View>
-            {isFetchingModels && <ActivityIndicator size="small" color={theme.colors.primary} />}
-          </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>{t('addVehicle.plateNumber')}</Text>
-            <TextInput
-              style={styles.input}
-              value={plateNumber}
-              onChangeText={setPlateNumber}
-              placeholder={t('addVehicle.enterPlateNumber')}
-            />
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>{t('addVehicle.vin')}</Text>
-            <TextInput
-              style={styles.input}
-              value={vin_number}
-              onChangeText={setVin}
-              placeholder={t('addVehicle.enterVin')}
-            />
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>{t('addVehicle.mileage')}</Text>
-            <TextInput
-              style={styles.input}
-              value={kilometers}
-              onChangeText={setMileage}
-              placeholder={t('addVehicle.enterMileage')}
-              keyboardType="numeric"
-            />
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>{t('addVehicle.fuelType')}</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={fuelType}
-                onValueChange={(itemValue) => setFuelType(itemValue)}
-                style={styles.picker}
-              >
-                <Picker.Item label={t('addVehicle.selectFuelType')} value="" />
-                <Picker.Item label={t('addVehicle.gasoline')} value="gasoline" />
-                <Picker.Item label={t('addVehicle.diesel')} value="diesel" />
-                <Picker.Item label={t('addVehicle.electric')} value="electric" />
-                <Picker.Item label={t('addVehicle.hybrid')} value="hybrid" />
-              </Picker>
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>{t('addVehicle.conductorPassword')}</Text>
+              <TextInput
+                style={styles.input}
+                value={conductorPassword}
+                onChangeText={setConductorPassword}
+                placeholder={t('addVehicle.enterConductorPassword')}
+                secureTextEntry
+              />
             </View>
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>{t('addVehicle.transmission')}</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={transmission}
-                onValueChange={(itemValue) => setTransmission(itemValue)}
-                style={styles.picker}
-              >
-                <Picker.Item label={t('addVehicle.selectTransmission')} value="" />
-                <Picker.Item label={t('addVehicle.manual')} value="manual" />
-                <Picker.Item label={t('addVehicle.automatic')} value="automatic" />
-              </Picker>
-            </View>
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>{t('addVehicle.conductorPassword')}</Text>
-            <TextInput
-              style={styles.input}
-              value={conductorPassword}
-              onChangeText={setConductorPassword}
-              placeholder={t('addVehicle.enterConductorPassword')}
-              secureTextEntry
-            />
           </View>
         </ScrollView>
         <View style={styles.buttonContainer}>
@@ -353,7 +406,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    
   },
   content: {
     flex: 1,
@@ -367,38 +419,69 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
   },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 20,
+    marginBottom: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#028dd0',
+    marginBottom: 15,
+  },
   formGroup: {
     marginBottom: 20,
   },
   label: {
     fontSize: 16,
     marginBottom: 5,
-    color: theme.colors.text,
-    
+    color: '#333',
   },
   input: {
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: '#E5E5EA',
     borderRadius: 10,
     padding: 10,
     fontSize: 16,
-    
   },
   pickerContainer: {
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: '#E5E5EA',
     borderRadius: 10,
     overflow: 'hidden',
   },
   picker: {
     height: 50,
   },
+  rowContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  halfWidth: {
+    width: '48%',
+  },
+  loader: {
+    marginTop: 10,
+  },
   buttonContainer: {
     padding: 20,
     backgroundColor: '#FFFFFF',
   },
   submitButton: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: '#028dd0',
     padding: 15,
     borderRadius: 10,
     alignItems: 'center',
@@ -410,14 +493,6 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
-    
-  },
-  rowContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  halfWidth: {
-    width: '48%', 
   },
 });
 
