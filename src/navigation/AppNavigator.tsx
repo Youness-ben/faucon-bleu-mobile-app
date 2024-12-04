@@ -36,6 +36,7 @@ import ClientAccountsScreen from '../screens/ClientAccountsScreen';
 import AddClientScreen from '../screens/AddClientScreen';
 import ClientDetailScreen from '../screens/ClientDetailScreen';
 import AccountFleetScreen from '../screens/AccountFleetScreen';
+import AccountCreationConfirmation from '../screens/AccountCreationConfirmation';
 
 type RootStackParamList = {
   Splash: undefined;
@@ -59,6 +60,7 @@ type RootStackParamList = {
   AddClient : undefined;
   AccountFleetScreen : undefined;
   ClientDetail : undefined;
+  AccountCreationConfirmation :  undefined;
 };
 
 type MainTabParamList = {
@@ -183,6 +185,7 @@ const AppNavigator: React.FC = () => {
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="Support" component={SupportScreen} />
       <Stack.Screen name="AccountDeletionConfirmation" component={AccountDeletionConfirmation} />
+      <Stack.Screen name="AccountCreationConfirmation" component={AccountCreationConfirmation} />
       <Stack.Screen name="TicketScreen" component={TicketScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen}  />
        <Stack.Screen name="ClientAccounts" component={ClientAccountsScreen} />

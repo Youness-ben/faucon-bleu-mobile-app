@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Dimensions,
+  Modal,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
@@ -20,6 +21,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api';
 import { useUser } from '../UserContext';
 import Toast from 'react-native-toast-message';
+import { useFloatingButton } from '../useFloatingButton';
 
 type RootStackParamList = {
   Home: undefined;
@@ -38,6 +40,10 @@ const LoginScreen: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useUser();
+  const [showModal, setShowModal] = useState(false);
+  const [companyName, setCompanyName] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [contactInfo, setContactInfo] = useState('');
   
   const handleLogin = async () => {
     if (!email || !password) {
@@ -74,6 +80,36 @@ const LoginScreen: React.FC = () => {
 
   const navigateToConductorLogin = () => {
     navigation.navigate('ConductorLogin');
+  };
+
+  const { toggleVisibility } = useFloatingButton();
+  useEffect(() => {
+    toggleVisibility(false);
+  }, []);
+
+  const handleAccountInquiry = async () => {
+    if (!companyName || !fullName || !contactInfo) {
+      Toast.show({
+        type: 'error',
+        text1: t('auth.error'),
+        text2: t('auth.allFieldsRequired'),
+      });
+      return;
+    }
+
+    try {
+      await api.post('/account-inquiry', { company_name : companyName, full_name : fullName, phone :contactInfo });
+
+      setShowModal(false);
+                  navigation.navigate("AccountCreationConfirmation");
+    } catch (error) {
+      console.error('Error sending inquiry:', error);
+      Toast.show({
+        type: 'error',
+        text1: t('auth.error'),
+        text2: t('auth.inquiryFailed'),
+      });
+    }
   };
 
   return (
@@ -139,8 +175,63 @@ const LoginScreen: React.FC = () => {
           >
             <Text style={styles.conductorButtonText}>{t('auth.conductorLogin')}</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.inquiryButton} 
+            onPress={() => setShowModal(true)}
+          >
+            <Text style={styles.inquiryButtonText}>{t('auth.createAccount')}</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showModal}
+        onRequestClose={() => setShowModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{t('auth.accountInquiry')}</Text>
+            
+            <TextInput
+              style={styles.modalInput}
+              placeholder={t('auth.companyName')}
+              value={companyName}
+              onChangeText={setCompanyName}
+            />
+            
+            <TextInput
+              style={styles.modalInput}
+              placeholder={t('auth.fullName')}
+              value={fullName}
+              onChangeText={setFullName}
+            />
+            
+            <TextInput
+              style={styles.modalInput}
+              placeholder={t('auth.contactInfo')}
+              value={contactInfo}
+              onChangeText={setContactInfo}
+            />
+            
+            <TouchableOpacity 
+              style={styles.modalButton}
+              onPress={handleAccountInquiry}
+            >
+              <Text style={styles.modalButtonText}>{t('auth.sendInquiry')}</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.modalButton, styles.modalCancelButton]}
+              onPress={() => setShowModal(false)}
+            >
+              <Text style={styles.modalCancelButtonText}>{t('common.cancel')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };
@@ -182,14 +273,12 @@ const styles = StyleSheet.create({
     color: '#028dd0',
     marginBottom: height * 0.01,
     textAlign: 'center',
-    
   },
   subtitle: {
     fontSize: width * 0.04,
     color: '#666666',
     marginBottom: height * 0.03,
     textAlign: 'center',
-    
   },
   inputContainer: {
     flexDirection: 'row',
@@ -207,7 +296,6 @@ const styles = StyleSheet.create({
     padding: width * 0.03,
     fontSize: width * 0.04,
     color: '#333333',
-    
   },
   eyeIcon: {
     padding: width * 0.02,
@@ -226,7 +314,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: width * 0.045,
     fontWeight: '600',
-    
   },
   conductorButton: {
     marginTop: height * 0.02,
@@ -241,7 +328,67 @@ const styles = StyleSheet.create({
     color: '#028dd0',
     fontSize: width * 0.04,
     fontWeight: '600',
-    
+  },
+  inquiryButton: {
+    marginTop: height * 0.02,
+    backgroundColor: 'transparent',
+    borderRadius: 10,
+    padding: height * 0.02,
+    alignItems: 'center',
+  },
+  inquiryButtonText: {
+    color: '#028dd0',
+    fontSize: width * 0.04,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: width * 0.05,
+    width: width * 0.9,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: width * 0.06,
+    fontWeight: '700',
+    color: '#028dd0',
+    marginBottom: height * 0.02,
+  },
+  modalInput: {
+    width: '100%',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 10,
+    padding: width * 0.03,
+    fontSize: width * 0.04,
+    marginBottom: height * 0.02,
+  },
+  modalButton: {
+    backgroundColor: '#028dd0',
+    borderRadius: 10,
+    padding: height * 0.02,
+    alignItems: 'center',
+    width: '100%',
+    marginTop: height * 0.02,
+  },
+  modalButtonText: {
+    color: '#FFFFFF',
+    fontSize: width * 0.045,
+    fontWeight: '600',
+  },
+  modalCancelButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#028dd0',
+  },
+  modalCancelButtonText: {
+    color: '#028dd0',
   },
 });
 

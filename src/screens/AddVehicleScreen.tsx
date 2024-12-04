@@ -294,34 +294,33 @@ const AddVehicleScreen: React.FC = () => {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>{t('addVehicle.fuelType')}</Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={fuelType}
-                  onValueChange={(itemValue) => setFuelType(itemValue)}
-                  style={styles.picker}
-                >
-                  <Picker.Item label={t('addVehicle.selectFuelType')} value="" />
-                  <Picker.Item label={t('addVehicle.gasoline')} value="gasoline" />
-                  <Picker.Item label={t('addVehicle.diesel')} value="diesel" />
-                  <Picker.Item label={t('addVehicle.electric')} value="electric" />
-                  <Picker.Item label={t('addVehicle.hybrid')} value="hybrid" />
-                </Picker>
-              </View>
-            </View>
+                  <Text style={styles.label}>{t('addVehicle.fuelTypeAndTransmission')}</Text>
+              <View style={styles.rowContainer}>
+                <View style={[styles.pickerContainer, styles.halfWidth]}>
+                    <Picker
+                      selectedValue={fuelType}
+                      onValueChange={(itemValue) => setFuelType(itemValue)}
+                      style={styles.picker}
+                    >
+                      <Picker.Item label={t('addVehicle.fuelType')} value="" />
+                      <Picker.Item label={t('addVehicle.gasoline')} value="gasoline" />
+                      <Picker.Item label={t('addVehicle.diesel')} value="diesel" />
+                      <Picker.Item label={t('addVehicle.electric')} value="electric" />
+                      <Picker.Item label={t('addVehicle.hybrid')} value="hybrid" />
+                    </Picker>
+                  </View>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>{t('addVehicle.transmission')}</Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={transmission}
-                  onValueChange={(itemValue) => setTransmission(itemValue)}
-                  style={styles.picker}
-                >
-                  <Picker.Item label={t('addVehicle.selectTransmission')} value="" />
-                  <Picker.Item label={t('addVehicle.manual')} value="manual" />
-                  <Picker.Item label={t('addVehicle.automatic')} value="automatic" />
-                </Picker>
+                <View style={[styles.pickerContainer, styles.halfWidth]}>
+                    <Picker
+                      selectedValue={transmission}
+                      onValueChange={(itemValue) => setTransmission(itemValue)}
+                      style={styles.picker}
+                    >
+                      <Picker.Item label={t('addVehicle.transmission')} value="" />
+                      <Picker.Item label={t('addVehicle.manual')} value="manual" />
+                      <Picker.Item label={t('addVehicle.automatic')} value="automatic" />
+                    </Picker>
+                  </View>
               </View>
             </View>
           </View>
@@ -339,14 +338,14 @@ const AddVehicleScreen: React.FC = () => {
             </View>
 
             <View style={styles.formGroup}>
-              <Text style={styles.label}>{t('addVehicle.client')}</Text>
+              <Text style={styles.label}>{t('addVehicle.responsable')}</Text>
               <View style={styles.pickerContainer}>
                 <Picker
                   selectedValue={selectedClientId}
                   onValueChange={(itemValue) => setSelectedClientId(itemValue)}
                   style={styles.picker}
                 >
-                  <Picker.Item label={t('addVehicle.selectClient')} value={null} />
+                  <Picker.Item label={t('addVehicle.selectResposanble')} value={null} />
                   {clients.map((client) => (
                     <Picker.Item key={client.id} label={`${client.first_name} ${client.last_name}`} value={client.id} />
                   ))}

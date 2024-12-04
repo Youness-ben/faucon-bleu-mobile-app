@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../api';
 import { useUser } from '../UserContext';
 import Toast from 'react-native-toast-message';
+import { useFloatingButton } from '../useFloatingButton';
 
 type RootStackParamList = {
   ConductorHome: undefined;
@@ -48,6 +49,10 @@ const ConductorLoginScreen: React.FC = () => {
       return;
     }
 
+  const { toggleVisibility } = useFloatingButton();
+  useEffect(()=>{
+    toggleVisibility(false);
+  });
     setIsLoading(true);
     try {
       const response = await api.post('login/vehicle', { license_plate: plateNumber, password });
