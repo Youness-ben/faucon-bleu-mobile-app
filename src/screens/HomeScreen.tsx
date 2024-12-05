@@ -370,10 +370,10 @@ const HomeScreen: React.FC = () => {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.headerButton}
-            onPress={() => navigation.navigate('Services')}
+            onPress={() => navigation.navigate('Support')}
           >
-            <Ionicons name="construct-outline" size={24} color="#028dd0" />
-            <Text style={styles.headerButtonText}>{t('home.quickService')}</Text>
+            <Ionicons name="people-circle-outline" size={24} color="#028dd0" />
+            <Text style={styles.headerButtonText}>{t('home.callSupport')}</Text>
           </TouchableOpacity>
            <TouchableOpacity
             style={styles.headerButton}

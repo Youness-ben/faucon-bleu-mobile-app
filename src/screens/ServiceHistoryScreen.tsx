@@ -65,6 +65,11 @@ const ServiceHistoryScreen: React.FC = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
+  const openStatisticsScreen = () => {
+   navigation.navigate("statistics");
+  };
+
+
   const fetchServiceHistory = useCallback(async (pageNumber: number, refresh = false) => {
     if (pageNumber === 1) {
       setIsLoading(true);
@@ -295,6 +300,9 @@ const ServiceHistoryScreen: React.FC = () => {
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
         <Text style={styles.title}>{t('serviceHistory.title')}</Text>
+                  <TouchableOpacity onPress={openStatisticsScreen} style={styles.statsButton}>
+            <Ionicons name="stats-chart" size={24} color="#028dd0" />
+          </TouchableOpacity>
       </View>
       <View style={styles.filterContainer}>
         <TouchableOpacity
@@ -566,6 +574,11 @@ errorContainer: {
   sortDirectionContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+    statsButton: {
+    marginLeft: 'auto',
+    backgroundColor:'white',
+    padding:5,borderRadius:5
   },
 });
 

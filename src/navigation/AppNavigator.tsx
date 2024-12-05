@@ -37,6 +37,7 @@ import AddClientScreen from '../screens/AddClientScreen';
 import ClientDetailScreen from '../screens/ClientDetailScreen';
 import AccountFleetScreen from '../screens/AccountFleetScreen';
 import AccountCreationConfirmation from '../screens/AccountCreationConfirmation';
+import StatisticsScreen from '../screens/StatisticsScreen';
 
 type RootStackParamList = {
   Splash: undefined;
@@ -61,6 +62,7 @@ type RootStackParamList = {
   AccountFleetScreen : undefined;
   ClientDetail : undefined;
   AccountCreationConfirmation :  undefined;
+  statistics : undefined;
 };
 
 type MainTabParamList = {
@@ -192,6 +194,7 @@ const AppNavigator: React.FC = () => {
         <Stack.Screen name="AddClient" component={AddClientScreen} />
         <Stack.Screen name="ClientDetail" component={ClientDetailScreen} />
         <Stack.Screen name="AccountFleetScreen" component={AccountFleetScreen} />
+        <Stack.Screen name="statistics" component={StatisticsScreen} />
        
     </Stack.Navigator>
   );
