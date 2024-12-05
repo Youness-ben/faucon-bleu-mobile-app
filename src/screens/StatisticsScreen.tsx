@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -7,7 +7,7 @@ import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import api from '../api';
 
-const StatisticsScreen = () => {
+const StatisticsScreen = ({ navigation }) => {
   const { t } = useTranslation();
   const [startDate, setStartDate] = useState(new Date(new Date().setMonth(new Date().getMonth() - 1)));
   const [endDate, setEndDate] = useState(new Date());
@@ -31,10 +31,19 @@ const StatisticsScreen = () => {
           end_date: endDate.toISOString().split('T')[0],
         },
       });
-      setStatistics(response.data);
+      if (response.data) {
+        setStatistics(response.data);
+      } else {
+        throw new Error('No data received from the server');
+      }
     } catch (err) {
       console.error('Error fetching statistics:', err);
       setError(t('statistics.fetchError'));
+      Alert.alert(
+        t('common.error'),
+        t('statistics.fetchErrorMessage'),
+        [{ text: t('common.ok') }]
+      );
     } finally {
       setIsLoading(false);
     }
@@ -64,24 +73,91 @@ const StatisticsScreen = () => {
     </View>
   );
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#028dd0" />
-      </View>
-    );
-  }
+  const renderContent = () => {
+    if (!statistics) return null;
 
-  if (error) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={fetchStatistics}>
-          <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
-        </TouchableOpacity>
-      </View>
+      <>
+        <View style={styles.statsCardContainer}>
+          <View style={styles.statsCard}>
+            <Text style={styles.statsCardTitle}>{t('statistics.totalServices')}</Text>
+            <Text style={styles.statsCardValue}>{statistics.totalServices || 0}</Text>
+          </View>
+          <View style={styles.statsCard}>
+            <Text style={styles.statsCardTitle}>{t('statistics.completedServices')}</Text>
+            <Text style={styles.statsCardValue}>{statistics.completedServices || 0}</Text>
+          </View>
+          <View style={styles.statsCard}>
+            <Text style={styles.statsCardTitle}>{t('statistics.pendingServices')}</Text>
+            <Text style={styles.statsCardValue}>{statistics.pendingServices || 0}</Text>
+          </View>
+          <View style={styles.statsCard}>
+            <Text style={styles.statsCardTitle}>{t('statistics.cancelledServices')}</Text>
+            <Text style={styles.statsCardValue}>{statistics.cancelledServices || 0}</Text>
+          </View>
+        </View>
+
+        {statistics.servicesByMonth && statistics.servicesByMonth.length > 0 && (
+          <View style={styles.chartContainer}>
+            <Text style={styles.chartTitle}>{t('statistics.servicesByMonth')}</Text>
+            <LineChart
+              data={{
+                labels: statistics.servicesByMonth.map(item => item.month.toString()),
+                datasets: [{ data: statistics.servicesByMonth.map(item => item.count) }]
+              }}
+              width={styles.chart.width}
+              height={220}
+              chartConfig={chartConfig}
+              bezier
+            />
+          </View>
+        )}
+
+        {statistics.revenueByMonth && statistics.revenueByMonth.length > 0 && (
+          <View style={styles.chartContainer}>
+            <Text style={styles.chartTitle}>{t('statistics.revenueByMonth')}</Text>
+            <BarChart
+              data={{
+                labels: statistics.revenueByMonth.map(item => item.month.toString()),
+                datasets: [{ data: statistics.revenueByMonth.map(item => item.revenue) }]
+              }}
+              width={styles.chart.width}
+              height={220}
+              chartConfig={chartConfig}
+            />
+          </View>
+        )}
+
+        {statistics.popularServices && statistics.popularServices.length > 0 && (
+          <View style={styles.chartContainer}>
+            <Text style={styles.chartTitle}>{t('statistics.popularServices')}</Text>
+            <PieChart
+              data={statistics.popularServices.map((service, index) => ({
+                name: service.name,
+                count: service.count,
+                color: `rgba(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255}, 1)`,
+                legendFontColor: '#7F7F7F',
+                legendFontSize: 12
+              }))}
+              width={styles.chart.width}
+              height={220}
+              chartConfig={chartConfig}
+              accessor="count"
+              backgroundColor="transparent"
+              paddingLeft="15"
+            />
+          </View>
+        )}
+
+        <View style={styles.statsCardContainer}>
+          <View style={styles.statsCard}>
+            <Text style={styles.statsCardTitle}>{t('statistics.totalRevenue')}</Text>
+            <Text style={styles.statsCardValue}>{(statistics.totalRevenue || 0).toLocaleString()} MAD</Text>
+          </View>
+        </View>
+      </>
     );
-  }
+  };
 
   return (
     <View style={styles.container}>
@@ -99,77 +175,20 @@ const StatisticsScreen = () => {
           {renderDatePicker(endDate, setEndDate, showEndPicker, setShowEndPicker, t('statistics.endDate'))}
         </View>
 
-        <View style={styles.statsCardContainer}>
-          <View style={styles.statsCard}>
-            <Text style={styles.statsCardTitle}>{t('statistics.totalServices')}</Text>
-            <Text style={styles.statsCardValue}>{statistics.totalServices}</Text>
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#028dd0" />
           </View>
-          <View style={styles.statsCard}>
-            <Text style={styles.statsCardTitle}>{t('statistics.completedServices')}</Text>
-            <Text style={styles.statsCardValue}>{statistics.completedServices}</Text>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={fetchStatistics}>
+              <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
+            </TouchableOpacity>
           </View>
-          <View style={styles.statsCard}>
-            <Text style={styles.statsCardTitle}>{t('statistics.pendingServices')}</Text>
-            <Text style={styles.statsCardValue}>{statistics.pendingServices}</Text>
-          </View>
-          <View style={styles.statsCard}>
-            <Text style={styles.statsCardTitle}>{t('statistics.cancelledServices')}</Text>
-            <Text style={styles.statsCardValue}>{statistics.cancelledServices}</Text>
-          </View>
-        </View>
-
-        <View style={styles.chartContainer}>
-          <Text style={styles.chartTitle}>{t('statistics.servicesByMonth')}</Text>
-          <LineChart
-            data={{
-              labels: statistics.servicesByMonth.map(item => item.month.toString()),
-              datasets: [{ data: statistics.servicesByMonth.map(item => item.count) }]
-            }}
-            width={styles.chart.width}
-            height={220}
-            chartConfig={chartConfig}
-            bezier
-          />
-        </View>
-
-        <View style={styles.chartContainer}>
-          <Text style={styles.chartTitle}>{t('statistics.revenueByMonth')}</Text>
-          <BarChart
-            data={{
-              labels: statistics.revenueByMonth.map(item => item.month.toString()),
-              datasets: [{ data: statistics.revenueByMonth.map(item => item.revenue) }]
-            }}
-            width={styles.chart.width}
-            height={220}
-            chartConfig={chartConfig}
-          />
-        </View>
-
-        <View style={styles.chartContainer}>
-          <Text style={styles.chartTitle}>{t('statistics.popularServices')}</Text>
-          <PieChart
-            data={statistics.popularServices.map((service, index) => ({
-              name: service.name,
-              count: service.count,
-              color: `rgba(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255}, 1)`,
-              legendFontColor: '#7F7F7F',
-              legendFontSize: 12
-            }))}
-            width={styles.chart.width}
-            height={220}
-            chartConfig={chartConfig}
-            accessor="count"
-            backgroundColor="transparent"
-            paddingLeft="15"
-          />
-        </View>
-
-        <View style={styles.statsCardContainer}>
-          <View style={styles.statsCard}>
-            <Text style={styles.statsCardTitle}>{t('statistics.totalRevenue')}</Text>
-            <Text style={styles.statsCardValue}>{statistics.totalRevenue.toLocaleString()} MAD</Text>
-          </View>
-        </View>
+        ) : (
+          renderContent()
+        )}
       </ScrollView>
     </View>
   );
@@ -284,16 +303,19 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    minHeight: 200,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    minHeight: 200,
   },
   errorText: {
     fontSize: 18,
     color: 'red',
     marginBottom: 10,
+    textAlign: 'center',
   },
   retryButton: {
     backgroundColor: '#028dd0',
