@@ -11,12 +11,12 @@ export default function AccountCreationConfirmation() {
 
  
 
-  const handleLogin = () => {
+  const handleLogin = ()=> {
       navigation.navigate("Splash");
   };
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} >
       <Image
         source={require("../../assets/account_creation_pending.png")}
         style={{ width: screenDimensions.width * 0.8, height: undefined, aspectRatio: 1 }}
