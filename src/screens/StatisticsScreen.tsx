@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import api from '../api';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const StatisticsScreen = ({ navigation }) => {
   const { t } = useTranslation();
@@ -16,6 +18,9 @@ const StatisticsScreen = ({ navigation }) => {
   const [statistics, setStatistics] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [panOffset, setPanOffset] = useState(0);
 
   useEffect(() => {
     fetchStatistics();
@@ -31,21 +36,42 @@ const StatisticsScreen = ({ navigation }) => {
           end_date: endDate.toISOString().split('T')[0],
         },
       });
-      if (response.data) {
-        setStatistics(response.data);
-      } else {
-        throw new Error('No data received from the server');
-      }
+      setStatistics(response.data);
     } catch (err) {
       console.error('Error fetching statistics:', err);
       setError(t('statistics.fetchError'));
-      Alert.alert(
-        t('common.error'),
-        t('statistics.fetchErrorMessage'),
-        [{ text: t('common.ok') }]
-      );
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    fetchStatistics().then(() => setRefreshing(false));
+  }, []);
+
+  const handleStartDateChange = (event, selectedDate) => {
+    setShowStartPicker(false);
+    if (selectedDate) {
+      setStartDate(selectedDate);
+      if (selectedDate > endDate) {
+        const newEndDate = new Date(selectedDate);
+        newEndDate.setDate(newEndDate.getDate() + 1);
+        setEndDate(newEndDate);
+      }
+    }
+  };
+
+  const handleEndDateChange = (event, selectedDate) => {
+    setShowEndPicker(false);
+    if (selectedDate) {
+      if (selectedDate > startDate) {
+        setEndDate(selectedDate);
+      } else {
+        const newEndDate = new Date(startDate);
+        newEndDate.setDate(newEndDate.getDate() + 1);
+        setEndDate(newEndDate);
+      }
     }
   };
 
@@ -62,102 +88,52 @@ const StatisticsScreen = ({ navigation }) => {
           value={date}
           mode="date"
           display="default"
-          onChange={(event, selectedDate) => {
-            setShow(false);
-            if (selectedDate) {
-              onChange(selectedDate);
-            }
-          }}
+          onChange={onChange}
         />
       )}
     </View>
   );
 
-  const renderContent = () => {
-    if (!statistics) return null;
-
-    return (
-      <>
-        <View style={styles.statsCardContainer}>
-          <View style={styles.statsCard}>
-            <Text style={styles.statsCardTitle}>{t('statistics.totalServices')}</Text>
-            <Text style={styles.statsCardValue}>{statistics.totalServices || 0}</Text>
-          </View>
-          <View style={styles.statsCard}>
-            <Text style={styles.statsCardTitle}>{t('statistics.completedServices')}</Text>
-            <Text style={styles.statsCardValue}>{statistics.completedServices || 0}</Text>
-          </View>
-          <View style={styles.statsCard}>
-            <Text style={styles.statsCardTitle}>{t('statistics.pendingServices')}</Text>
-            <Text style={styles.statsCardValue}>{statistics.pendingServices || 0}</Text>
-          </View>
-          <View style={styles.statsCard}>
-            <Text style={styles.statsCardTitle}>{t('statistics.cancelledServices')}</Text>
-            <Text style={styles.statsCardValue}>{statistics.cancelledServices || 0}</Text>
-          </View>
-        </View>
-
-        {statistics.servicesByMonth && statistics.servicesByMonth.length > 0 && (
-          <View style={styles.chartContainer}>
-            <Text style={styles.chartTitle}>{t('statistics.servicesByMonth')}</Text>
-            <LineChart
-              data={{
-                labels: statistics.servicesByMonth.map(item => item.month.toString()),
-                datasets: [{ data: statistics.servicesByMonth.map(item => item.count) }]
-              }}
-              width={styles.chart.width}
-              height={220}
-              chartConfig={chartConfig}
-              bezier
-            />
-          </View>
-        )}
-
-        {statistics.revenueByMonth && statistics.revenueByMonth.length > 0 && (
-          <View style={styles.chartContainer}>
-            <Text style={styles.chartTitle}>{t('statistics.revenueByMonth')}</Text>
-            <BarChart
-              data={{
-                labels: statistics.revenueByMonth.map(item => item.month.toString()),
-                datasets: [{ data: statistics.revenueByMonth.map(item => item.revenue) }]
-              }}
-              width={styles.chart.width}
-              height={220}
-              chartConfig={chartConfig}
-            />
-          </View>
-        )}
-
-        {statistics.popularServices && statistics.popularServices.length > 0 && (
-          <View style={styles.chartContainer}>
-            <Text style={styles.chartTitle}>{t('statistics.popularServices')}</Text>
-            <PieChart
-              data={statistics.popularServices.map((service, index) => ({
-                name: service.name,
-                count: service.count,
-                color: `rgba(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255}, 1)`,
-                legendFontColor: '#7F7F7F',
-                legendFontSize: 12
-              }))}
-              width={styles.chart.width}
-              height={220}
-              chartConfig={chartConfig}
-              accessor="count"
-              backgroundColor="transparent"
-              paddingLeft="15"
-            />
-          </View>
-        )}
-
-        <View style={styles.statsCardContainer}>
-          <View style={styles.statsCard}>
-            <Text style={styles.statsCardTitle}>{t('statistics.totalRevenue')}</Text>
-            <Text style={styles.statsCardValue}>{(statistics.totalRevenue || 0).toLocaleString()} MAD</Text>
-          </View>
-        </View>
-      </>
-    );
+  const handleZoomIn = () => {
+    setZoomLevel(prev => Math.min(prev * 1.5, 4));
   };
+
+  const handleZoomOut = () => {
+    setZoomLevel(prev => Math.max(prev / 1.5, 1));
+  };
+
+  const handlePanLeft = () => {
+    setPanOffset(prev => Math.max(prev - 1, 0));
+  };
+
+  const handlePanRight = () => {
+    setPanOffset(prev => Math.min(prev + 1, Math.floor(statistics.servicesOverTime.length * (1 - 1/zoomLevel))));
+  };
+
+  const getVisibleData = () => {
+    if (!statistics || !statistics.servicesOverTime) return [];
+    const visibleDataCount = Math.floor(statistics.servicesOverTime.length / zoomLevel);
+    return statistics.servicesOverTime.slice(panOffset, panOffset + visibleDataCount);
+  };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#028dd0" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchStatistics}>
+          <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -169,26 +145,138 @@ const StatisticsScreen = ({ navigation }) => {
           <Text style={styles.title}>{t('statistics.title')}</Text>
         </View>
       </LinearGradient>
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#028dd0']} />
+        }
+      >
         <View style={styles.dateRangeContainer}>
-          {renderDatePicker(startDate, setStartDate, showStartPicker, setShowStartPicker, t('statistics.startDate'))}
-          {renderDatePicker(endDate, setEndDate, showEndPicker, setShowEndPicker, t('statistics.endDate'))}
+          {renderDatePicker(startDate, handleStartDateChange, showStartPicker, setShowStartPicker, t('statistics.startDate'))}
+          {renderDatePicker(endDate, handleEndDateChange, showEndPicker, setShowEndPicker, t('statistics.endDate'))}
         </View>
 
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#028dd0" />
+        <View style={styles.statsCardContainer}>
+          <View style={styles.statsCard}>
+            <Text style={styles.statsCardTitle}>{t('statistics.totalServices')}</Text>
+            <Text style={styles.statsCardValue}>{statistics.totalServices}</Text>
           </View>
-        ) : error ? (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={fetchStatistics}>
-              <Text style={styles.retryButtonText}>{t('common.retry')}</Text>
+          <View style={styles.statsCard}>
+            <Text style={styles.statsCardTitle}>{t('statistics.completedServices')}</Text>
+            <Text style={styles.statsCardValue}>{statistics.completedServices}</Text>
+          </View>
+          <View style={styles.statsCard}>
+            <Text style={styles.statsCardTitle}>{t('statistics.pendingServices')}</Text>
+            <Text style={styles.statsCardValue}>{statistics.pendingServices}</Text>
+          </View>
+          <View style={styles.statsCard}>
+            <Text style={styles.statsCardTitle}>{t('statistics.inProgressServices')}</Text>
+            <Text style={styles.statsCardValue}>{statistics.inProgressServices}</Text>
+          </View>
+          <View style={styles.statsCard}>
+            <Text style={styles.statsCardTitle}>{t('statistics.cancelledServices')}</Text>
+            <Text style={styles.statsCardValue}>{statistics.cancelledServices}</Text>
+          </View>
+          <View style={styles.statsCard}>
+            <Text style={styles.statsCardTitle}>{t('statistics.averageServiceDuration')}</Text>
+            <Text style={styles.statsCardValue}>{statistics.averageServiceDuration} min</Text>
+          </View>
+        </View>
+
+        <View style={styles.chartContainer}>
+          <Text style={styles.chartTitle}>{t('statistics.serviceStatus')}</Text>
+          <PieChart
+            data={[
+              { name: 'Completed', count: statistics.completedServices, color: '#4CAF50' },
+              { name: 'Pending', count: statistics.pendingServices, color: '#FFC107' },
+              { name: 'Cancelled', count: statistics.cancelledServices, color: '#F44336' },
+              { name: 'In Progress', count: statistics.inProgressServices, color: '#2196F3' },
+            ]}
+            width={SCREEN_WIDTH - 40}
+            height={220}
+            chartConfig={chartConfig}
+            accessor="count"
+            backgroundColor="transparent"
+            paddingLeft="15"
+          />
+        </View>
+
+        <View style={styles.chartContainer}>
+          <Text style={styles.chartTitle}>{t('statistics.servicesByType')}</Text>
+          <BarChart
+            data={{
+              labels: statistics.servicesByType.map(item => item.name),
+              datasets: [{ data: statistics.servicesByType.map(item => item.count) }]
+            }}
+            width={SCREEN_WIDTH - 40}
+            height={300}
+            chartConfig={{
+              ...chartConfig,
+              formatYLabel: (label) => label.length > 10 ? label.slice(0, 10) + '...' : label,
+            }}
+            verticalLabelRotation={0}
+            horizontalLabelRotation={0}
+            showValuesOnTopOfBars
+            fromZero
+            withInnerLines={false}
+            showBarTops={false}
+            horizontal
+          />
+        </View>
+
+        <View style={styles.chartContainer}>
+          <Text style={styles.chartTitle}>{t('statistics.vehiclesByBrand')}</Text>
+          <PieChart
+            data={statistics.vehiclesByBrand.map((brand, index) => ({
+              name: brand.name,
+              count: brand.count,
+              color: `rgba(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255}, 1)`,
+              legendFontColor: '#7F7F7F',
+              legendFontSize: 12
+            }))}
+            width={SCREEN_WIDTH - 40}
+            height={220}
+            chartConfig={chartConfig}
+            accessor="count"
+            backgroundColor="transparent"
+            paddingLeft="15"
+          />
+        </View>
+
+        <View style={styles.statsCardContainer}>
+          <View style={styles.statsCard}>
+            <Text style={styles.statsCardTitle}>{t('statistics.averageVehicleAge')}</Text>
+            <Text style={styles.statsCardValue}>{statistics.averageVehicleAge} {t('statistics.years')}</Text>
+          </View>
+        </View>
+
+        <View style={styles.chartContainer}>
+          <Text style={styles.chartTitle}>{t('statistics.servicesOverTime')}</Text>
+          <LineChart
+            data={{
+              labels: getVisibleData().map(item => new Date(item.date).toLocaleDateString()),
+              datasets: [{ data: getVisibleData().map(item => item.count) }]
+            }}
+            width={SCREEN_WIDTH - 40}
+            height={220}
+            chartConfig={chartConfig}
+            bezier
+          />
+          <View style={styles.chartControls}>
+            <TouchableOpacity style={styles.controlButton} onPress={handleZoomIn}>
+              <Ionicons name="add" size={24} color="#028dd0" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.controlButton} onPress={handleZoomOut}>
+              <Ionicons name="remove" size={24} color="#028dd0" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.controlButton} onPress={handlePanLeft}>
+              <Ionicons name="arrow-back" size={24} color="#028dd0" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.controlButton} onPress={handlePanRight}>
+              <Ionicons name="arrow-forward" size={24} color="#028dd0" />
             </TouchableOpacity>
           </View>
-        ) : (
-          renderContent()
-        )}
+        </View>
       </ScrollView>
     </View>
   );
@@ -288,6 +376,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.23,
     shadowRadius: 2.62,
     elevation: 4,
+    height: 350, // Increased height for the horizontal bar chart
   },
   chartTitle: {
     fontSize: 18,
@@ -295,27 +384,31 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 10,
   },
-  chart: {
-    width: 300,
-    height: 220,
+  chartControls: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  controlButton: {
+    padding: 10,
+    marginHorizontal: 5,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 5,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    minHeight: 200,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    minHeight: 200,
   },
   errorText: {
     fontSize: 18,
     color: 'red',
     marginBottom: 10,
-    textAlign: 'center',
   },
   retryButton: {
     backgroundColor: '#028dd0',
