@@ -66,7 +66,7 @@ const ServiceHistoryScreen: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
 
   const openStatisticsScreen = () => {
-   navigation.navigate("statistics");
+  // navigation.navigate("statistics");
   };
 
 
@@ -300,9 +300,9 @@ const ServiceHistoryScreen: React.FC = () => {
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
         <Text style={styles.title}>{t('serviceHistory.title')}</Text>
-                  <TouchableOpacity onPress={openStatisticsScreen} style={styles.statsButton}>
+          { false && <TouchableOpacity onPress={openStatisticsScreen} style={styles.statsButton}>
             <Ionicons name="stats-chart" size={24} color="#028dd0" />
-          </TouchableOpacity>
+          </TouchableOpacity>}
       </View>
       <View style={styles.filterContainer}>
         <TouchableOpacity

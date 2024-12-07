@@ -12,6 +12,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { PanGestureHandler } from 'react-native-gesture-handler';
 import { useFloatingButton } from '../useFloatingButton';
+import LottieView from 'lottie-react-native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -19,7 +20,7 @@ interface FloatingAudioButtonProps {
   onSendAudio: (audioUri: string) => void;
 }
 
-const FloatingAudioButton: React.FC<FloatingAudioButtonProps> = ({ onSendAudio }) => {
+const FloatingAudioButton: React.FC<FloatingAudioButtonProps> = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const { isVisible } = useFloatingButton();
 
@@ -30,13 +31,13 @@ const FloatingAudioButton: React.FC<FloatingAudioButtonProps> = ({ onSendAudio }
 
   useEffect(() => {
     scale.value = withRepeat(
-      withTiming(1.1, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+      withTiming(1.1, { duration: 300, easing: Easing.inOut(Easing.ease) }),
       -1,
       true
     );
 
     waveOpacity.value = withRepeat(
-      withTiming(0.8, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+      withTiming(0.8, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
       -1,
       true
     );
@@ -81,10 +82,6 @@ const FloatingAudioButton: React.FC<FloatingAudioButtonProps> = ({ onSendAudio }
     setIsModalVisible(false);
   };
 
-  const handleSendAudio = (audioUri: string) => {
-    onSendAudio(audioUri);
-    setIsModalVisible(false);
-  };
 
   if (!isVisible) {
     return null;
@@ -94,23 +91,28 @@ const FloatingAudioButton: React.FC<FloatingAudioButtonProps> = ({ onSendAudio }
     <View style={styles.container} pointerEvents="box-none">
       <PanGestureHandler onGestureEvent={gestureHandler}>
         <Animated.View style={[styles.buttonContainer, animatedStyles]}>
-          <Animated.View style={[styles.wave, waveStyles]} />
+          {
+          //<Animated.View style={[styles.wave, waveStyles]} />
+          }
           <TouchableOpacity
             onPress={handlePress}
             style={styles.button}
             activeOpacity={0.7}
           >
-            <Image
-              source={require('../../assets/AI_ICON.png')}
-              style={styles.buttonImage}
-            />
+             <LottieView
+                source={require('../../assets/sending.json')}
+                autoPlay
+                loop
+                speed={2}
+                style={{height:200,width:200,position:'absolute'}}
+              />
+
           </TouchableOpacity>
         </Animated.View>
       </PanGestureHandler>
       <RecordingModal
         isVisible={isModalVisible}
         onClose={handleCloseModal}
-        onSendAudio={handleSendAudio}
       />
     </View>
   );
@@ -141,10 +143,11 @@ const styles = StyleSheet.create({
   },
   wave: {
     position: 'absolute',
-    width: 70,
-    height: 70,
+    width: 90,
+    height: 90,
+    top:-10,
     borderRadius: 40,
-    backgroundColor: 'rgba(2, 141, 208, 0.2)',
+    backgroundColor: 'rgba(181, 180, 177, 0.5)',
   },
 });
 

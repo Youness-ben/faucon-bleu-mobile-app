@@ -2,25 +2,46 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Modal, TouchableOpacity, Text, StyleSheet, Dimensions } from 'react-native';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming, Easing } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+  withSequence,
+  Easing,
+} from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
+import { LinearGradient } from 'expo-linear-gradient';
+import LottieView from 'lottie-react-native';
 
 const { width } = Dimensions.get('window');
 
 interface RecordingModalProps {
   isVisible: boolean;
   onClose: () => void;
-  onSendAudio: (audioUri: string) => void;
+  onSendAudio: (audioUri: string) => Promise<boolean>;
 }
 
-const RecordingModal: React.FC<RecordingModalProps> = ({ isVisible, onClose, onSendAudio }) => {
+const RecordingModal: React.FC<RecordingModalProps> = ({ isVisible, onClose }) => {
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [audioUri, setAudioUri] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [sendStatus, setSendStatus] = useState<'success' | 'error' | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
-  const {t} = useTranslation();
+  const { t } = useTranslation();
   const waveAnimation = useSharedValue(0);
+  const buttonScale = useSharedValue(1);
+
+const handleSendAudio = async (audioUri: string) => {
+  console.log('Audio recorded:', audioUri);
+  // Simulate sending process
+  await new Promise(resolve => setTimeout(resolve, 5000));
+  // Simulate success or error randomly
+  const isSuccess = Math.random() > 0.5;
+  return isSuccess;
+};
 
   useEffect(() => {
     if (isRecording) {
@@ -34,12 +55,14 @@ const RecordingModal: React.FC<RecordingModalProps> = ({ isVisible, onClose, onS
     }
   }, [isRecording]);
 
-  const waveStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: 1 + waveAnimation.value * 0.2 }],
-      opacity: 1 - waveAnimation.value * 0.5,
-    };
-  });
+  const waveStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 + waveAnimation.value * 0.2 }],
+    opacity: 1 - waveAnimation.value * 0.5,
+  }));
+
+  const buttonStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: buttonScale.value }],
+  }));
 
   const startRecording = async () => {
     try {
@@ -96,23 +119,42 @@ const RecordingModal: React.FC<RecordingModalProps> = ({ isVisible, onClose, onS
     }
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (audioUri) {
-      onSendAudio(audioUri);
-      onClose();
+      setIsSending(true);
+      setSendStatus(null);
+      try {
+        const result = await handleSendAudio(audioUri);
+        setSendStatus(result ? 'success' : 'error');
+      } catch (error) {
+        console.error('Error sending audio:', error);
+        setSendStatus('error');
+      } finally {
+        console.log('here');
+        setIsSending(false);
+      }
     }
   };
 
   const handleCancel = () => {
     setAudioUri(null);
+    setSendStatus(null);
     onClose();
   };
 
   const handlePressIn = () => {
+    buttonScale.value = withSequence(
+      withTiming(0.9, { duration: 100 }),
+      withTiming(1, { duration: 100 })
+    );
     startRecording();
   };
 
   const handlePressOut = () => {
+    buttonScale.value = withSequence(
+      withTiming(1.1, { duration: 100 }),
+      withTiming(1, { duration: 100 })
+    );
     stopRecording();
   };
 
@@ -124,62 +166,96 @@ const RecordingModal: React.FC<RecordingModalProps> = ({ isVisible, onClose, onS
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
+        <LinearGradient
+          colors={['#028dd0', '#01579B']}
+          style={styles.modalContent}
+        >
           <TouchableOpacity style={styles.closeButton} onPress={handleCancel}>
-            <Ionicons name="close" size={24} color="#028dd0" />
+            <Ionicons name="close" size={24} color="white" />
           </TouchableOpacity>
           <Text style={styles.title}>{t('recordingModal.title')}</Text>
           <View style={styles.recordingContainer}>
-            <Animated.View style={!audioUri ? [styles.waveAnimation, waveStyle] : [] } />
+            <Animated.View style={!audioUri ? [styles.waveAnimation, waveStyle] : []} />
             {!audioUri ? (
-              <TouchableOpacity
-                style={styles.recordButton}
-                onPressIn={handlePressIn}
-                onPressOut={handlePressOut}
-              >
-                <Ionicons
-                  name={isRecording ? "mic" : "mic-outline"}
-                  size={36}
-                  color="white"
-                />
-              </TouchableOpacity>
+              <Animated.View style={buttonStyle}>
+                <TouchableOpacity
+                  style={styles.recordButton}
+                  onPressIn={handlePressIn}
+                  onPressOut={handlePressOut}
+                >
+                  <Ionicons
+                    name={isRecording ? "mic" : "mic-outline"}
+                    size={36}
+                    color="#028dd0"
+                  />
+                </TouchableOpacity>
+              </Animated.View>
+            ) : isSending ? (
+              <>
+                  <LottieView
+                source={require('../../assets/waves.json')}
+                autoPlay
+                loop
+                speed={2}
+                style={{height:60,width:200}}
+              />
+              </>
+            ) : sendStatus === 'success' ? (
+              <LottieView
+                source={require('../../assets/success.json')}
+                autoPlay
+                loop={false}
+                style={styles.lottieAnimation}
+              />
+            ) : sendStatus === 'error' ? (
+              <LottieView
+                source={require('../../assets/error.json')}
+                autoPlay
+                loop={true}
+                
+                style={styles.lottieAnimation}
+              />
             ) : (
-           <View style={styles.trafficLightContainer}>
-                <View style={styles.controlsContainer}>
-                  <TouchableOpacity
-                    style={[styles.controlButton, styles.cancelButton]}
-                    onPress={handleCancel}
-                  >
-                    <Ionicons name="trash" size={24} color="white" />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.controlButton, styles.playButton]}
-                    onPress={isPlaying ? stopPlayback : playRecording}
-                  >
-                    <Ionicons
-                      name={isPlaying ? "pause-circle-outline" : "play-circle-outline"}
-                      size={32}
-                      color="white"
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.controlButton, styles.sendButton]}
-                    onPress={handleSend}
-                  >
-                    <Ionicons name="send" size={24} color="white" />
-                  </TouchableOpacity>
-                </View>
+              <View style={styles.controlsContainer}>
+                <TouchableOpacity
+                  style={[styles.controlButton, styles.cancelButton]}
+                  onPress={handleCancel}
+                >
+                  <Ionicons name="trash-outline" size={24} color="white" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.controlButton, styles.playButton]}
+                  onPress={isPlaying ? stopPlayback : playRecording}
+                >
+                  <Ionicons
+                    name={isPlaying ? "pause" : "play"}
+                    size={32}
+                    color="white"
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.controlButton, styles.sendButton]}
+                  onPress={handleSend}
+                >
+                  <Ionicons name="send" size={24} color="white" />
+                </TouchableOpacity>
               </View>
             )}
             <Text style={styles.instructions}>
-              {audioUri
+              {isSending
+                ? t('recordingModal.sending')
+                : sendStatus === 'success'
+                ? t('recordingModal.sendSuccess')
+                : sendStatus === 'error'
+                ? t('recordingModal.sendError')
+                : audioUri
                 ? t('recordingModal.playback')
                 : isRecording
                 ? t('recordingModal.recording')
                 : t('recordingModal.pressRecord')}
             </Text>
           </View>
-        </View>
+        </LinearGradient>
       </View>
     </Modal>
   );
@@ -193,11 +269,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: 'white',
     borderRadius: 20,
     padding: 20,
-    width: width * 0.8,
+    width: width * 0.9,
     alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   closeButton: {
     position: 'absolute',
@@ -205,74 +285,73 @@ const styles = StyleSheet.create({
     right: 10,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 60,
-    color: '#028dd0',
+    marginBottom: 40,
+    color: 'white',
+    fontFamily: 'Roboto',
   },
   recordingContainer: {
     alignItems: 'center',
   },
   waveAnimation: {
     position: 'absolute',
-    top:-20,
+    bottom:40,
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: 'rgba(2, 141, 208, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   recordButton: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#028dd0',
+    backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  trafficLightContainer: {
-    backgroundColor: '#333',
-    borderRadius: 30,
-    padding: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 70,
-    height: 190,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   controlsContainer: {
-    flexDirection: 'column',
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 10,
+    gap: 20,
   },
   controlButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 3,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
   cancelButton: {
-    backgroundColor: '#FF3B30', // Traffic light red
+    backgroundColor: '#FF3B30',
   },
   playButton: {
-    backgroundColor: '#dec443', // Traffic light yellow
+    backgroundColor: '#dec443',
   },
   sendButton: {
-    backgroundColor: '#34C759', // Traffic light green
+    backgroundColor: '#34C759',
   },
   instructions: {
-    marginTop: 60,
-    fontSize: 16,
-    color: '#666',
+    marginTop: 40,
+    fontSize: 18,
+    color: 'white',
     textAlign: 'center',
+    fontFamily: 'Roboto',
+  },
+  lottieAnimation: {
+    width: 300,
+    height: 250,
   },
 });
 

@@ -69,6 +69,7 @@ type MainTabParamList = {
   Home: undefined;
   Fleet: undefined;
   Services: undefined;
+  Stats: undefined;
   Profile: undefined;
 };
 
@@ -99,6 +100,8 @@ const MainTabs: React.FC = () => {
             iconName = focused ? 'car' : 'car-outline';
           } else if (route.name === 'Services') {
             iconName = focused ? 'construct' : 'construct-outline';
+          } else if (route.name === 'Stats') {
+            iconName = focused ? 'stats-chart' : 'stats-chart-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
           } else {
@@ -121,6 +124,7 @@ const MainTabs: React.FC = () => {
       <MainTab.Screen name="Home" component={HomeScreen} options={{ title: t('navigation.home') }} />
       <MainTab.Screen name="Fleet" component={FleetScreen} options={{ title: t('navigation.fleet') }} />
       <MainTab.Screen name="Services" component={ServicesScreen} options={{ title: t('navigation.services') }} />
+      <MainTab.Screen name="Stats" component={StatisticsScreen} options={{ title: t('navigation.stats') }} />
       <MainTab.Screen name="Profile" component={ProfileScreen} options={{ title: t('navigation.profile') }} />
     </MainTab.Navigator>
   );

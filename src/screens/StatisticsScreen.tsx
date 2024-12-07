@@ -36,6 +36,7 @@ const StatisticsScreen = ({ navigation }) => {
           end_date: endDate.toISOString().split('T')[0],
         },
       });
+      console.log(response.data);
       setStatistics(response.data);
     } catch (err) {
       console.error('Error fetching statistics:', err);
@@ -139,9 +140,10 @@ const StatisticsScreen = ({ navigation }) => {
     <View style={styles.container}>
       <LinearGradient colors={['#028dd0', '#01579B']} style={styles.header}>
         <View style={styles.headerContent}>
+          { false &&
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="white" />
-          </TouchableOpacity>
+          </TouchableOpacity>}
           <Text style={styles.title}>{t('statistics.title')}</Text>
         </View>
       </LinearGradient>
@@ -243,12 +245,6 @@ const StatisticsScreen = ({ navigation }) => {
           />
         </View>
 
-        <View style={styles.statsCardContainer}>
-          <View style={styles.statsCard}>
-            <Text style={styles.statsCardTitle}>{t('statistics.averageVehicleAge')}</Text>
-            <Text style={styles.statsCardValue}>{statistics.averageVehicleAge} {t('statistics.years')}</Text>
-          </View>
-        </View>
 
         <View style={styles.chartContainer}>
           <Text style={styles.chartTitle}>{t('statistics.servicesOverTime')}</Text>

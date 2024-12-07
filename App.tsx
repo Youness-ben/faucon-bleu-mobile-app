@@ -35,9 +35,6 @@ export default function App() {
   const notificationListener = useRef();
   const responseListener = useRef();
 
-  const handleSendAudio = (audioUri: string) => {
-    console.log('Audio recorded:', audioUri);
-  };
   
   useEffect(() => {
     async function prepare() {
@@ -125,7 +122,7 @@ export default function App() {
               <NotificationProvider>
 
                 <FloatingButtonProvider>
-                <FloatingAudioButton onSendAudio={handleSendAudio} />
+                <FloatingAudioButton />
                 <AppNavigator />
                 </FloatingButtonProvider>
               </NotificationProvider>
