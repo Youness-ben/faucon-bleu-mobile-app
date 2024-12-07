@@ -253,29 +253,17 @@ const StatisticsScreen = ({ navigation }) => {
         <View style={styles.chartContainer}>
           <Text style={styles.chartTitle}>{t('statistics.servicesOverTime')}</Text>
           <LineChart
+          verticalLabelRotation={90}
             data={{
               labels: getVisibleData().map(item => new Date(item.date).toLocaleDateString()),
               datasets: [{ data: getVisibleData().map(item => item.count) }]
             }}
             width={SCREEN_WIDTH - 40}
-            height={220}
+            height={300}
             chartConfig={chartConfig}
             bezier
           />
-          <View style={styles.chartControls}>
-            <TouchableOpacity style={styles.controlButton} onPress={handleZoomIn}>
-              <Ionicons name="add" size={24} color="#028dd0" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.controlButton} onPress={handleZoomOut}>
-              <Ionicons name="remove" size={24} color="#028dd0" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.controlButton} onPress={handlePanLeft}>
-              <Ionicons name="arrow-back" size={24} color="#028dd0" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.controlButton} onPress={handlePanRight}>
-              <Ionicons name="arrow-forward" size={24} color="#028dd0" />
-            </TouchableOpacity>
-          </View>
+        
         </View>
       </ScrollView>
     </View>
@@ -376,7 +364,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.23,
     shadowRadius: 2.62,
     elevation: 4,
-    height: 350, // Increased height for the horizontal bar chart
+    height: 500, // Increased height for the horizontal bar chart
   },
   chartTitle: {
     fontSize: 18,
@@ -425,6 +413,7 @@ const chartConfig = {
   backgroundGradientFrom: '#FFFFFF',
   backgroundGradientTo: '#FFFFFF',
   color: (opacity = 1) => `rgba(2, 141, 208, ${opacity})`,
+
   strokeWidth: 2,
   barPercentage: 0.5,
   useShadowColorFromDataset: false,
