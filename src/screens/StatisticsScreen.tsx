@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import api from '../api';
-
+import { VictoryPie, VictoryBar, VictoryChart, VictoryAxis, VictoryTheme, VictoryLabel } from 'victory-native';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const StatisticsScreen = ({ navigation }) => {
@@ -118,8 +118,24 @@ const StatisticsScreen = ({ navigation }) => {
           {renderDatePicker(endDate, handleEndDateChange, showEndPicker, setShowEndPicker, t('statistics.endDate'))}
         </View>
 
+
         {statistics && (
           <>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{t('statistics.financialMetrics')}</Text>
+              <View style={styles.statsCardContainer}>
+                <View style={styles.statsCard}>
+                  <Text style={styles.statsCardTitle}>{t('statistics.totalRevenue')}</Text>
+                  <Text style={styles.statsCardValueMoney}>{parseFloat(statistics.financial.total_service_revenue).toFixed(2)} MAD</Text>
+                </View>
+                <View style={styles.statsCard}>
+                  <Text style={styles.statsCardTitle}>{t('statistics.averageServicePrice')}</Text>
+                  <Text style={styles.statsCardValueMoney}>{parseFloat(statistics.financial.average_service_price).toFixed(2)} MAD</Text>
+                </View>
+              </View>
+            </View>
+            
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>{t('statistics.serviceOrders')}</Text>
               <View style={styles.statsCardContainer}>
@@ -133,70 +149,73 @@ const StatisticsScreen = ({ navigation }) => {
                     <Text style={styles.statsCardValue}>{status.count}</Text>
                   </View>
                 ))}
-              </View>
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>{t('statistics.vehicles')}</Text>
-              <View style={styles.statsCard}>
+                              <View style={styles.statsCard}>
                 <Text style={styles.statsCardTitle}>{t('statistics.totalVehicles')}</Text>
                 <Text style={styles.statsCardValue}>{statistics.vehicles.total_vehicles}</Text>
               </View>
-              <PieChart
-                data={statistics.vehicles.vehicles_by_brand.map((brand, index) => ({
-                  name: brand.name,
-                  population: brand.count,
-                  color: `rgba(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255}, 1)`,
-                  legendFontColor: '#7F7F7F',
-                  legendFontSize: 12
-                }))}
-                width={SCREEN_WIDTH - 40}
-                height={220}
-                chartConfig={chartConfig}
-                accessor="population"
-                backgroundColor="transparent"
-                paddingLeft="15"
-                absolute
-              />
+              </View>
             </View>
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>{t('statistics.mostRequestedServices')}</Text>
-             
-             <ScrollView horizontal>
-  <View style={{ transform: [{ rotate: '-90deg' }], width: 300, height: SCREEN_WIDTH - 40 }}>
-    <BarChart
-      data={{
-        labels: statistics.services.most_requested_services.map((service) => service.name),
-        datasets: [
-          {
-            data: statistics.services.most_requested_services.map((service) => service.count),
-          },
-        ],
-      }}
-      width={300} // Height and width are swapped due to rotation
-      height={SCREEN_WIDTH - 40}
-      chartConfig={chartConfig}
-      fromZero
-    />
-  </View>
+              <VictoryChart
+                theme={VictoryTheme.material}
+                domainPadding={{ y: 20 }}
+                width={SCREEN_WIDTH - 40}
+                height={200}
+                padding={{ top: 10, bottom: 30, left: 90, right: 30 }}
+              >
+              
+                <VictoryAxis
+                   tickFormat={(tick) => {
+                    if(tick===null || !tick || tick.length<=0 || tick === undefined)
+                        return tick;
+                    const maxLength = 1; 
+                    const words = tick.split(' '); 
+                    let lines = [];
+                    let currentLine = '';
 
-</ScrollView>
+                    words.forEach((word) => {
+                      if ((currentLine + ' ' + word).trim().split(' ').length > maxLength) {
+                        lines.push(currentLine.trim());
+                        currentLine = word;
+                      } else {
+                        currentLine += ' ' + word;
+                      }
+                    });
+
+                    if (currentLine.trim()) {
+                      lines.push(currentLine.trim());
+                    }
+
+                    return lines.join('\n'); 
+                  }}
+                  style={{
+                    tickLabels: { fontSize: 10, fill: '#666'},
+                    axisLabel: { fontSize: 10 },
+                  }}
+                />
+                <VictoryBar
+                  horizontal
+                  data={statistics.services.most_requested_services.map(service => ({
+                    x: service.name,
+                    y: service.count,
+                  }))}
+                  style={{
+                    data: { fill: '#028dd0', height: 20,padding:5 },
+                  }}
+                  labels={({ datum }) => `${datum.y}`}
+                  labelComponent={
+                    <VictoryLabel 
+                      dx={-5} 
+                      textAnchor="middle" 
+                      style={{ fill: '#fff', fontSize: 12, margin:2 }}
+                    />
+                  }
+                />
+              </VictoryChart>
             </View>
 
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>{t('statistics.financialMetrics')}</Text>
-              <View style={styles.statsCardContainer}>
-                <View style={styles.statsCard}>
-                  <Text style={styles.statsCardTitle}>{t('statistics.totalRevenue')}</Text>
-                  <Text style={styles.statsCardValue}>{parseFloat(statistics.financial.total_service_revenue).toFixed(2)} MAD</Text>
-                </View>
-                <View style={styles.statsCard}>
-                  <Text style={styles.statsCardTitle}>{t('statistics.averageServicePrice')}</Text>
-                  <Text style={styles.statsCardValue}>{parseFloat(statistics.financial.average_service_price).toFixed(2)} MAD</Text>
-                </View>
-              </View>
-            </View>
           </>
         )}
       </ScrollView>
@@ -302,6 +321,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#028dd0',
   },
+  statsCardValueMoney: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#028dd0',
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -334,8 +358,8 @@ const chartConfig = {
   color: (opacity = 1) => `rgba(2, 141, 208, ${opacity})`,
   strokeWidth: 2,
   barPercentage: 0.5,
-  
   useShadowColorFromDataset: false,
 };
 
 export default StatisticsScreen;
+

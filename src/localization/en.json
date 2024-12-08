@@ -412,5 +412,23 @@
     "password_changed_message": "The client's password has been successfully reset.",
     "password_change_error": "Error Changing Password",
     "password_change_error_message": "An error occurred while resetting the password. Please try again."
+  },
+  "statistics": {
+    "title": "Statistics",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "fetchError": "Error fetching statistics",
+    "serviceOrders": "General",
+    "totalOrders": "Total Orders",
+    "vehicles": "Vehicles",
+    "totalVehicles": "Total Vehicles",
+    "mostRequestedServices": "Most Requested Services",
+    "financialMetrics": "Cost",
+    "totalRevenue": "Invoiced",
+    "averageServicePrice": "Pending",
+    "pending": "Pending",
+    "in_progress": "In Progress",
+    "completed": "Completed",
+    "cancelled": "Cancelled"
   }
 }
