@@ -79,7 +79,7 @@ const ConductorOrderServiceScreen: React.FC = () => {
     try {
       const orderData = {
         service_id: service.id,
-        scheduled_at: `${selectedDate.getFullYear()}-${selectedDate.getMonth() + 1}-${selectedDate.getDate()} 00:00:00`,
+        scheduled_at: selectedDate.toISOString().split('T')[0]//`${selectedDate.getFullYear()}-${selectedDate.getMonth() + 1}-${selectedDate.getDate()} 00:00:00`,
       };
       const resp = await api.post('/vehicle/confirm-service', orderData);
       navigation.navigate('TicketScreen', { serviceId: resp.data.id, service: resp.data });

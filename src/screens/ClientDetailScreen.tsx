@@ -24,6 +24,7 @@ import { Picker } from '@react-native-picker/picker';
 import Toast from 'react-native-toast-message';
 import * as ImagePicker from 'expo-image-picker';
 import { STORAGE_URL } from '../../config';
+import LottieView from 'lottie-react-native';
 
 type RootStackParamList = {
   ClientAccounts: undefined;
@@ -221,7 +222,12 @@ const ClientDetailScreen: React.FC = () => {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#028dd0" />
+        <LottieView
+          source={require('../../assets/loading-animation.json')}
+          autoPlay
+          loop
+          style={{ width: 200, height: 200 }}
+        />
       </View>
     );
   }

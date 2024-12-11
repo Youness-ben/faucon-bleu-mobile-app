@@ -10,6 +10,7 @@ import { theme } from '../styles/theme';
 import api from '../api';
 import { STORAGE_URL } from '../../config';
 import { useUser } from '../UserContext';
+import LottieView from 'lottie-react-native';
 
 type RootStackParamList = {
   VehicleDetail: { vehicleId: number };
@@ -234,14 +235,18 @@ const VehicleDetailScreen: React.FC = () => {
     setConductorName(vehicle?.conductor_name || '');
   };
 
-  if (isLoading) {
+   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FFFFFF" />
+        <LottieView
+          source={require('../../assets/loading-animation.json')}
+          autoPlay
+          loop
+          style={{ width: 200, height: 200 }}
+        />
       </View>
     );
   }
-
   if (error || !vehicle) {
     return (
       <View style={styles.errorContainer}>
@@ -475,7 +480,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#028dd0',
+    backgroundColor: '#FFFFFF',
   },
   errorContainer: {
     flex: 1,

@@ -426,6 +426,8 @@
     "financialMetrics": "Cost",
     "totalRevenue": "Invoiced",
     "averageServicePrice": "Pending",
+    "allVehicles": "All Vehicles",
+    "allConductors": "All drivers",
     "pending": "Pending",
     "in_progress": "In Progress",
     "completed": "Completed",
