@@ -247,6 +247,8 @@ const handleDownloadPDF = async () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#028dd0']} />
         }
       >
+
+           <View style={styles.section}>
         <View style={styles.pickerContainer}>
           <Picker
             selectedValue={selectedVehicle}
@@ -269,27 +271,14 @@ const handleDownloadPDF = async () => {
             ))}
           </Picker>
         </View>
-        <View style={styles.dateRangeContainer}>
+        <View style={styles.dateRangeContainer }>
           {renderDatePicker(startDate, handleStartDateChange, showStartPicker, setShowStartPicker, t('statistics.startDate'))}
           {renderDatePicker(endDate, handleEndDateChange, showEndPicker, setShowEndPicker, t('statistics.endDate'))}
+        </View>
         </View>
 
         {statistics && (
           <>
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>{t('statistics.financialMetrics')}</Text>
-              <View style={styles.statsCardContainer}>
-                <View style={styles.statsCard}>
-                  <Text style={styles.statsCardTitle}>{t('statistics.totalRevenue')}</Text>
-                  <Text style={styles.statsCardValueMoney}>{parseFloat(statistics.financial.total_service_revenue).toFixed(2)} MAD</Text>
-                </View>
-                <View style={styles.statsCard}>
-                  <Text style={styles.statsCardTitle}>{t('statistics.averageServicePrice')}</Text>
-                  <Text style={styles.statsCardValueMoney}>{parseFloat(statistics.financial.average_service_price).toFixed(2)} MAD</Text>
-                </View>
-              </View>
-            </View>
-            
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>{t('statistics.serviceOrders')}</Text>
               <View style={styles.statsCardContainer}>
@@ -303,6 +292,20 @@ const handleDownloadPDF = async () => {
                     <Text style={styles.statsCardValue}>{status.count}</Text>
                   </View>
                 ))}
+              </View>
+            </View>
+
+           <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{t('statistics.financialMetrics')}</Text>
+              <View style={styles.statsCardContainer}>
+                <View style={styles.statsCard}>
+                  <Text style={styles.statsCardTitle}>{t('statistics.totalRevenue')}</Text>
+                  <Text style={styles.statsCardValueMoney}>{parseFloat(statistics.financial.total_service_revenue).toFixed(2)} MAD</Text>
+                </View>
+                <View style={styles.statsCard}>
+                  <Text style={styles.statsCardTitle}>{t('statistics.averageServicePrice')}</Text>
+                  <Text style={styles.statsCardValueMoney}>{parseFloat(statistics.financial.average_service_price).toFixed(2)} MAD</Text>
+                </View>
               </View>
             </View>
 
@@ -349,6 +352,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 5,
     marginBottom: 10,
+    elevation:5
   },
   dateRangeContainer: {
     flexDirection: 'row',
@@ -369,6 +373,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     padding: 10,
     alignItems: 'center',
+    elevation:5
   },
   datePickerButtonText: {
     color: '#028dd0',

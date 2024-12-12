@@ -1,25 +1,30 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Modal, TouchableOpacity, Text, StyleSheet, Dimensions } from 'react-native';
+import {
+  View,
+  Modal,
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  Dimensions,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  Animated,
+  Easing,
+} from 'react-native';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-  withSequence,
-  Easing,
-} from 'react-native-reanimated';
 import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import LottieView from 'lottie-react-native';
+import * as Haptics from 'expo-haptics';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 interface RecordingModalProps {
   isVisible: boolean;
   onClose: () => void;
-  onSendAudio: (audioUri: string) => Promise<boolean>;
+
 }
 
 const RecordingModal: React.FC<RecordingModalProps> = ({ isVisible, onClose }) => {
@@ -29,13 +34,23 @@ const RecordingModal: React.FC<RecordingModalProps> = ({ isVisible, onClose }) =
   const [isPlaying, setIsPlaying] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [sendStatus, setSendStatus] = useState<'success' | 'error' | null>(null);
+  const [textPrompt, setTextPrompt] = useState('');
+  const [recordingDuration, setRecordingDuration] = useState(0);
   const soundRef = useRef<Audio.Sound | null>(null);
   const { t } = useTranslation();
-  const waveAnimation = useSharedValue(0);
-  const buttonScale = useSharedValue(1);
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
-const handleSendAudio = async (audioUri: string) => {
+const onSendAudio = async (audioUri: string) => {
   console.log('Audio recorded:', audioUri);
+  // Simulate sending process
+  await new Promise(resolve => setTimeout(resolve, 5000));
+  // Simulate success or error randomly
+  const isSuccess = Math.random() > 0.5;
+  return isSuccess;
+};
+const onSendText = async (prompt: string) => {
+  console.log('Text sent:', prompt);
   // Simulate sending process
   await new Promise(resolve => setTimeout(resolve, 5000));
   // Simulate success or error randomly
@@ -45,24 +60,45 @@ const handleSendAudio = async (audioUri: string) => {
 
   useEffect(() => {
     if (isRecording) {
-      waveAnimation.value = withRepeat(
-        withTiming(1, { duration: 1000, easing: Easing.linear }),
-        -1,
-        true
-      );
+      const interval = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+      return () => clearInterval(interval);
     } else {
-      waveAnimation.value = 0;
+      setRecordingDuration(0);
     }
   }, [isRecording]);
 
-  const waveStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 + waveAnimation.value * 0.2 }],
-    opacity: 1 - waveAnimation.value * 0.5,
-  }));
+  const animateButton = () => {
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 0.8,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
 
-  const buttonStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: buttonScale.value }],
-  }));
+  const fadeIn = () => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const fadeOut = () => {
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
 
   const startRecording = async () => {
     try {
@@ -76,6 +112,8 @@ const handleSendAudio = async (audioUri: string) => {
       );
       setRecording(recording);
       setIsRecording(true);
+      fadeIn();
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch (err) {
       console.error('Failed to start recording', err);
     }
@@ -88,9 +126,11 @@ const handleSendAudio = async (audioUri: string) => {
     await recording.stopAndUnloadAsync();
     const uri = recording.getURI();
     setRecording(null);
+    fadeOut();
 
     if (uri) {
       setAudioUri(uri);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
   };
 
@@ -119,43 +159,57 @@ const handleSendAudio = async (audioUri: string) => {
     }
   };
 
-  const handleSend = async () => {
+  const handleSendAudio = async () => {
     if (audioUri) {
       setIsSending(true);
       setSendStatus(null);
       try {
-        const result = await handleSendAudio(audioUri);
+        const result = await onSendAudio(audioUri);
         setSendStatus(result ? 'success' : 'error');
+        Haptics.notificationAsync(
+          result ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Error
+        );
       } catch (error) {
         console.error('Error sending audio:', error);
         setSendStatus('error');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       } finally {
-        console.log('here');
         setIsSending(false);
       }
     }
   };
 
+  const handleSendText = async () => {
+        if (textPrompt.trim()) {
+      setIsSending(true);
+      setSendStatus(null);
+      try {
+        const result = await onSendText(textPrompt);
+        setSendStatus(result ? 'success' : 'error');
+        Haptics.notificationAsync(
+          result ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Error
+        );
+      } catch (error) {
+        console.error('Error sending audio:', error);
+        setSendStatus('error');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      } finally {
+        setIsSending(false);
+      }
+    }
+ 
+  };
+
   const handleCancel = () => {
     setAudioUri(null);
+    setTextPrompt('');
     setSendStatus(null);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }; 
+
+  const handleClose = () => {
+    handleCancel();
     onClose();
-  };
-
-  const handlePressIn = () => {
-    buttonScale.value = withSequence(
-      withTiming(0.9, { duration: 100 }),
-      withTiming(1, { duration: 100 })
-    );
-    startRecording();
-  };
-
-  const handlePressOut = () => {
-    buttonScale.value = withSequence(
-      withTiming(1.1, { duration: 100 }),
-      withTiming(1, { duration: 100 })
-    );
-    stopRecording();
   };
 
   return (
@@ -165,23 +219,48 @@ const handleSendAudio = async (audioUri: string) => {
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.modalOverlay}
+      >
         <LinearGradient
           colors={['#028dd0', '#01579B']}
           style={styles.modalContent}
         >
-          <TouchableOpacity style={styles.closeButton} onPress={handleCancel}>
+          <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
             <Ionicons name="close" size={24} color="white" />
           </TouchableOpacity>
           <Text style={styles.title}>{t('recordingModal.title')}</Text>
+          
+          <View style={styles.promptContainer}>
+            <TextInput
+              style={styles.textInput}
+              placeholder={t('recordingModal.textPrompt')}
+              placeholderTextColor="#A0A0A0"
+              value={textPrompt}
+              onChangeText={setTextPrompt}
+              multiline
+            />
+            <TouchableOpacity
+              style={[styles.sendButton, !textPrompt.trim() && styles.sendButtonDisabled]}
+              onPress={handleSendText}
+              disabled={!textPrompt.trim() || isSending}
+            >
+              <Ionicons name="send" size={24} color="white" />
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.recordingContainer}>
-            <Animated.View style={!audioUri ? [styles.waveAnimation, waveStyle] : []} />
+            <Animated.View style={[styles.waveAnimation, { opacity: fadeAnim }]} />
             {!audioUri ? (
-              <Animated.View style={buttonStyle}>
+              <Animated.View style={[styles.recordButtonContainer, { transform: [{ scale: scaleAnim }] }]}>
                 <TouchableOpacity
                   style={styles.recordButton}
-                  onPressIn={handlePressIn}
-                  onPressOut={handlePressOut}
+                  onPressIn={() => {
+                    animateButton();
+                    startRecording();
+                  }}
+                  onPressOut={stopRecording}
                 >
                   <Ionicons
                     name={isRecording ? "mic" : "mic-outline"}
@@ -191,15 +270,13 @@ const handleSendAudio = async (audioUri: string) => {
                 </TouchableOpacity>
               </Animated.View>
             ) : isSending ? (
-              <>
-                  <LottieView
+              <LottieView
                 source={require('../../assets/waves.json')}
                 autoPlay
                 loop
                 speed={2}
-                style={{height:60,width:200}}
+                style={styles.lottieAnimation}
               />
-              </>
             ) : sendStatus === 'success' ? (
               <LottieView
                 source={require('../../assets/success.json')}
@@ -212,7 +289,6 @@ const handleSendAudio = async (audioUri: string) => {
                 source={require('../../assets/error.json')}
                 autoPlay
                 loop={true}
-                
                 style={styles.lottieAnimation}
               />
             ) : (
@@ -235,7 +311,7 @@ const handleSendAudio = async (audioUri: string) => {
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.controlButton, styles.sendButton]}
-                  onPress={handleSend}
+                  onPress={handleSendAudio}
                 >
                   <Ionicons name="send" size={24} color="white" />
                 </TouchableOpacity>
@@ -251,12 +327,12 @@ const handleSendAudio = async (audioUri: string) => {
                 : audioUri
                 ? t('recordingModal.playback')
                 : isRecording
-                ? t('recordingModal.recording')
+                ? `${t('recordingModal.recording')} (${recordingDuration}s)`
                 : t('recordingModal.pressRecord')}
             </Text>
           </View>
         </LinearGradient>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
@@ -272,6 +348,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 20,
     width: width * 0.9,
+    maxHeight: height * 0.8,
     alignItems: 'center',
     elevation: 5,
     shadowColor: '#000',
@@ -283,24 +360,65 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 10,
     right: 10,
+    zIndex: 1,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 40,
+    marginBottom: 20,
     color: 'white',
-    fontFamily: 'Roboto',
+    fontFamily: 'Roboto-Bold',
+  },
+  promptContainer: {
+    width: '100%',
+    marginBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  textInput: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    padding: 15,
+  
+    color: 'black',
+    fontFamily: 'Roboto-Regular',
+    fontSize: 16,
+    minHeight: 100,
+    maxHeight: 150,
+    textAlignVertical: 'top',
+  },
+  sendButton: {
+    backgroundColor: '#34C759',
+    borderRadius: 25,
+    width: 50,
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginVertical:'auto',
+    marginLeft: 10,
+  },
+  sendButtonDisabled: {
+    backgroundColor: 'rgba(52, 199, 89, 0.5)',
   },
   recordingContainer: {
     alignItems: 'center',
+    justifyContent: 'center',
+    height: 200,
   },
   waveAnimation: {
     position: 'absolute',
-    bottom:40,
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 150,
+    height: 150,
+    top:5,
+    borderRadius: 75,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  recordButtonContainer: {
+    width: 80,
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   recordButton: {
     width: 80,
@@ -339,21 +457,17 @@ const styles = StyleSheet.create({
   playButton: {
     backgroundColor: '#dec443',
   },
-  sendButton: {
-    backgroundColor: '#34C759',
-  },
   instructions: {
-    marginTop: 40,
-    fontSize: 18,
+    marginTop: 20,
+    fontSize: 16,
     color: 'white',
     textAlign: 'center',
-    fontFamily: 'Roboto',
+    fontFamily: 'Roboto-Regular',
   },
   lottieAnimation: {
-    width: 300,
-    height: 250,
+    width: 150,
+    height: 150,
   },
 });
 
 export default RecordingModal;
-

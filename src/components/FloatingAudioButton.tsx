@@ -99,14 +99,17 @@ const FloatingAudioButton: React.FC<FloatingAudioButtonProps> = () => {
             style={styles.button}
             activeOpacity={0.7}
           >
-             <LottieView
+            {/*  <LottieView
                 source={require('../../assets/sending.json')}
                 autoPlay
                 loop
                 speed={2}
                 style={{height:200,width:200,position:'absolute'}}
+              /> */}
+              <Image
+                source={require('../../assets/tech.png')}
+                style={{height:100,width:100,position:'absolute'}}
               />
-
           </TouchableOpacity>
         </Animated.View>
       </PanGestureHandler>
