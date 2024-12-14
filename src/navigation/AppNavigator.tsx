@@ -38,6 +38,7 @@ import ClientDetailScreen from '../screens/ClientDetailScreen';
 import AccountFleetScreen from '../screens/AccountFleetScreen';
 import AccountCreationConfirmation from '../screens/AccountCreationConfirmation';
 import StatisticsScreen from '../screens/StatisticsScreen';
+import UserTypeScreen from '../screens/UserTypeScreen';
 
 type RootStackParamList = {
   Splash: undefined;
@@ -63,6 +64,7 @@ type RootStackParamList = {
   ClientDetail : undefined;
   AccountCreationConfirmation :  undefined;
   statistics : undefined;
+  UserType: undefined;
 };
 
 type MainTabParamList = {
@@ -177,6 +179,7 @@ const AppNavigator: React.FC = () => {
   return (
     <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Splash" component={SplashScreen} />
+      <Stack.Screen name="UserType" component={UserTypeScreen} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="ConductorLogin" component={ConductorLoginScreen} />
       <Stack.Screen name="Main" component={MainTabs} />

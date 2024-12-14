@@ -1,6 +1,6 @@
 {
   "auth": {
-    "conductorLogin": "Driver Login",
+    "conductorLogin": "Driver",
     "enterVehicleDetails": "Enter your vehicle details",
     "plateNumber": "Plate Number",
     "password": "Password",
@@ -12,7 +12,7 @@
     "loginToContinue": "Login to continue",
     "email": "Email",
     "rememberMe": "Remember Me",
-    "clientLogin" : "Go back",
+    "clientLogin" : "Management",
     "createAccount" : "Create an account",
     "accountInquiry" : "Create an account",
     "companyName" : "Company name",
@@ -336,7 +336,8 @@
    "playback" :  "Playback, send, or cancel your recording",
    "recording" :  "Recording... Release to stop",
    "pressRecord" :  "Press and hold to record",
-   "title" :  "Record Audio"
+   "textPrompt" :  "Tell us how can we help you",
+   "title" :  "Faucon AI"
   },  "notifications": {
     "title": "Notifications",
     "noNotifications": "You have no notifications",

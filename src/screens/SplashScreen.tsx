@@ -32,15 +32,15 @@ export default function Component() {
             } else if (userType === 'vehicle') {
               navigation.replace('ConductorMain');
             } else {
-              navigation.replace('Login');
+              navigation.replace('UserType');
             }
           } else {
             // Token is invalid, clear storage and redirect to login
             await AsyncStorage.multiRemove(['userToken', 'userType']);
-            navigation.replace('Login');
+            navigation.replace('UserType');
           }
         } else {
-          navigation.replace('Login');
+          navigation.replace('UserType');
         }
       } catch (e) {
         console.warn(e);

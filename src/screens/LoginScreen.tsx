@@ -117,6 +117,13 @@ const LoginScreen: React.FC = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
+
+        <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => navigation.navigate('UserType')}
+      >
+        <Ionicons name="arrow-back" size={24} color="#028dd0" />
+      </TouchableOpacity>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.logoContainer}>
           <Image
@@ -389,6 +396,12 @@ const styles = StyleSheet.create({
   },
   modalCancelButtonText: {
     color: '#028dd0',
+  },
+  backButton: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    zIndex: 1,
   },
 });
 
