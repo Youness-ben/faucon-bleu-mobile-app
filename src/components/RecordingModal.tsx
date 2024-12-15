@@ -16,7 +16,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-
+import Toast from 'react-native-toast-message';
+import LottieView from 'lottie-react-native';
+import api from '../api';
+import * as FileSystem from 'expo-file-system';
 const { width, height } = Dimensions.get('window');
 
 interface RecordingModalProps {
@@ -37,6 +40,7 @@ const RecordingModal: React.FC<RecordingModalProps> = ({ isVisible, onClose, onS
   const soundRef = useRef<Audio.Sound | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const recordingInterval = useRef<NodeJS.Timeout | null>(null);
+  const [isLoading, setIsLoading] = useState(false); // Added loading state
 
   useEffect(() => {
     return () => {
@@ -143,14 +147,49 @@ const RecordingModal: React.FC<RecordingModalProps> = ({ isVisible, onClose, onS
     }
   };
 
-  const handleSendAudio = async () => {
+ const handleSendAudio = async () => {
     if (audioUri) {
-      await onSendAudio(audioUri);
-      setAudioUri(null);
-      setRecordingDuration(0);
-      setIsRecording(false); // Added to reset isRecording state
+      try {
+        setIsLoading(true);
+  
+        const base64Audio = await FileSystem.readAsStringAsync(audioUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+
+
+        const response = await api.post('/vehicle/ai/request', {
+          file: `data:audio/m4a;base64,${base64Audio}`,
+        });
+        console.log("WE GOT THIS RESPONSE",response.data);
+        if (response.data.status === 'success') {
+          const serviceName = response.data.data.service;
+          Toast.show({
+            type: 'success',
+            text1: 'Service Identified',
+            text2: `The identified service is: ${serviceName}`,
+          });
+        } else {
+
+          throw new Error(response.data || 'Failed to process audio');
+        }
+      } catch (error) {
+        console.error('Error sending audio:', error);
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Failed to process audio. Please try again.',
+        });
+      } finally {
+        setIsLoading(false);
+        setAudioUri(null);
+        setRecordingDuration(0);
+        setIsRecording(false);
+        onClose();
+      }
     }
   };
+  
+
 
   const handleSendText = async () => {
     if (textPrompt.trim()) {
@@ -292,6 +331,11 @@ const RecordingModal: React.FC<RecordingModalProps> = ({ isVisible, onClose, onS
               </TouchableOpacity>
             </View>
           )}
+          {isLoading && ( 
+              <View style={styles.loadingContainer}>
+              <LottieView source={require('../../assets/waves.json')} loop={true} autoPlay={true} style={{width:((width*0.9)-20),height:100}} />
+            </View>
+          )}
         </LinearGradient>
       </KeyboardAvoidingView>
     </Modal>
@@ -420,6 +464,23 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+    loadingContainer: { 
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  loadingText: {
+    color: '#FFFFFF',
+    marginTop: 10,
+    fontSize: 16,
   },
 });
 

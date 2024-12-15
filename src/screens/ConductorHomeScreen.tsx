@@ -26,6 +26,7 @@ import { format } from 'date-fns';
 import LottieView from "lottie-react-native";
 import Toast from 'react-native-toast-message';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useFloatingButton } from '../useFloatingButton';
 
 type RootStackParamList = {
   OrderService: { serviceId: number };
@@ -80,6 +81,7 @@ const ConductorHomeScreen: React.FC = () => {
   const bannerRef = useRef<FlatList>(null);
   const bannerInterval = useRef<NodeJS.Timeout | null>(null);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+  const { toggleVisibility } = useFloatingButton();
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -120,6 +122,7 @@ const ConductorHomeScreen: React.FC = () => {
   );
 
   useEffect(() => {
+    toggleVisibility(true);
     registerForPushNotificationsAsync();
   }, []);
 

@@ -49,10 +49,6 @@ const ConductorLoginScreen: React.FC = () => {
       return;
     }
 
-  const { toggleVisibility } = useFloatingButton();
-  useEffect(()=>{
-    toggleVisibility(false);
-  });
     setIsLoading(true);
     try {
       const response = await api.post('login/vehicle', { license_plate: plateNumber, password });
