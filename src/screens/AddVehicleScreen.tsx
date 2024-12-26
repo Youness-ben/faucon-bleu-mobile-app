@@ -54,9 +54,7 @@ const AddVehicleScreen: React.FC = () => {
   const [conductorName, setConductorName] = useState('');
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
-
-  useEffect(() => {
-    const fetchBrands = async () => {
+   const fetchBrands = async () => {
       try {
         const response = await api.get('/client/brands');
         setBrands(response.data);
@@ -76,6 +74,7 @@ const AddVehicleScreen: React.FC = () => {
       try {
         const response = await api.get<Client[]>('/client/responsable/list');
         setClients(response.data);
+
       } catch (error) {
         console.error('Error fetching clients:', error);
         Toast.show({
@@ -86,9 +85,10 @@ const AddVehicleScreen: React.FC = () => {
       }
     };
 
+  useEffect(() => {
     fetchBrands();
     fetchClients();
-  }, [t]);
+  }, []);
 
   useEffect(() => {
     const fetchModels = async () => {
@@ -153,7 +153,7 @@ const AddVehicleScreen: React.FC = () => {
         transmission,
         conductor_password: conductorPassword,
         conductor_name: conductorName,
-        client_id: selectedClientId,
+        client_id: selectedClientId || null,
       });
 
       if (response.status === 201) {
