@@ -84,7 +84,6 @@ const HomeScreen: React.FC = () => {
   const bannerRef = useRef<FlatList>(null);
   const bannerInterval = useRef<NodeJS.Timeout | null>(null);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
-  const { toggleVisibility } = useFloatingButton();
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -125,7 +124,6 @@ const HomeScreen: React.FC = () => {
   );
 
   useEffect(() => {
-    toggleVisibility(true);
     registerForPushNotificationsAsync();
   }, []);
 
