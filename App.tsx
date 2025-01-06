@@ -116,7 +116,7 @@ export default function App() {
           paddingTop: Platform.OS === 'android' ? 0 : 0,
           backgroundColor:'transparent'
         }} onLayout={onLayoutRootView}>
-          <StatusBar barStyle="light-content" backgroundColor={"#028dd0"} />
+          <StatusBar barStyle="dark-content" backgroundColor={"#028dd0"} />
           <NavigationContainer ref={navigationRef}>
             <UserProvider>
               <NotificationProvider>

@@ -255,7 +255,16 @@ const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: 
   };
 
 const sendMessage = async (messageType: string, content?: string, file?: any, location?: { latitude: number; longitude: number }) => {
-        const tempMessageId = Date.now().toString();
+        
+    if (!isServiceActive()) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: t('ticket.cant_send_msg_finished'),
+      });
+      return;
+    }
+  const tempMessageId = Date.now().toString();
   
   try {
       const formData = new FormData();
@@ -596,6 +605,15 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
       useNativeDriver: false,
     }).start();
   };
+  const goBack = ()=>{
+    //@ts-ignore
+        navigation.navigate(user?.type=='client' ? 'ServiceHistory' : 'ConductorServiceHistory' );
+  };
+
+  const isServiceActive = () => {
+    return curservice?.status !== 'cancelled' && curservice?.status !== 'completed';
+  };
+
 
   const getStatusColor = (status?: string) => {
     switch (status) {
@@ -620,10 +638,15 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
       colors={['#028dd0', '#01579B']} 
       style={styles.header}
     >
-      <StatusBar barStyle="light-content" backgroundColor="#028dd0" />
-        <View style={styles.headerTopRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          <StatusBar 
+        barStyle="light-content" 
+        backgroundColor="#028dd0"
+        translucent={Platform.OS === 'ios'}
+      />
+
+      <View style={styles.headerTopRow}>
+          <TouchableOpacity onPress={goBack} style={styles.backButton}>
+            <Ionicons name="list-outline" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <TouchableOpacity onPress={toggleHeader} style={styles.headerContent}>
             <Text style={styles.headerTitle}>{t('ticket.chat')}</Text>
@@ -890,31 +913,7 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
 
 const renderInputArea = () => (
   <View style={styles.inputContainer}>
-    {isRecordingUIVisible ? (
-      <View style={styles.recordingContainer}>
-        {isRecording ? (
-          <>
-            <Text style={styles.recordingDuration}>{formatDuration(recordingDuration * 1000)}</Text>
-            <TouchableOpacity onPress={stopRecording} style={styles.stopRecordingButton}>
-              <Ionicons name="stop" size={24} color="#FF3B30" />
-            </TouchableOpacity>
-          </>
-        ) : (
-          <>
-            <TouchableOpacity onPress={() => playAudio(audioUri!, 'preview')} style={styles.playButton}>
-              <Ionicons name={isPlaying ? "pause" : "play"} size={24} color="#028dd0" />
-            </TouchableOpacity>
-            <Text style={styles.recordingDuration}>{formatDuration(recordingDuration * 1000)}</Text>
-            <TouchableOpacity onPress={sendRecordedAudio} style={styles.sendRecordingButton}>
-              <Ionicons name="send" size={24} color="#028dd0" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={cancelRecording} style={styles.cancelRecordingButton}>
-              <Ionicons name="close" size={24} color="#FF3B30" />
-            </TouchableOpacity>
-          </>
-        )}
-      </View>
-    ) : (
+    {isServiceActive() ? (
       <View style={styles.inputWrapper}>
         <TouchableOpacity style={styles.attachButton} onPress={() => setIsFabOpen(!isFabOpen)}>
           <Ionicons name="add-circle-outline" size={24} color="#028dd0" />
@@ -925,6 +924,7 @@ const renderInputArea = () => (
           onChangeText={setInputText}
           placeholder={t('ticket.inputPlaceholder')}
           placeholderTextColor="#A0A0A0"
+          editable={isServiceActive()}
         />
         {inputText.trim() ? (
           <TouchableOpacity onPress={sendTextMessage} style={styles.sendButton}>
@@ -936,6 +936,10 @@ const renderInputArea = () => (
           </TouchableOpacity>
         )}
       </View>
+    ) : (
+      <Text style={styles.inactiveServiceText}>
+        {t('ticket.cannotSendMessage')}
+      </Text>
     )}
   </View>
 );
@@ -1253,10 +1257,11 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor:"#028dd0",
   },
   container: {
     flex: 1,
+    backgroundColor:"#828282"
   },
   
   headerContainer: {
@@ -1271,7 +1276,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
   },
   headerContent: {
     flex: 1,
@@ -1306,6 +1310,8 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 
+  header: {
+  },
 
   messageList: {
     padding: theme.spacing.md,
@@ -1809,5 +1815,10 @@ locationPickerContainer: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  inactiveServiceText: {
+    textAlign: 'center',
+    color: theme.colors.error,
+    padding: 16,
   },
 });
