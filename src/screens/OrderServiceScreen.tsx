@@ -191,7 +191,7 @@ const OrderServiceScreen: React.FC = () => {
       {renderHeader()}
       <ScrollView style={styles.container}>
         <View style={styles.section}>
-          <Text style={styles.serviceName}>{service.name}</Text>
+          <Text style={styles.serviceName}>{service?.name}</Text>
           <Text style={styles.serviceDescription}>{service.description}</Text>
           <View style={styles.detailRow}>
             <Ionicons name="time-outline" size={20} color={theme.colors.primary} />
@@ -203,7 +203,7 @@ const OrderServiceScreen: React.FC = () => {
             <View style={styles.detailRow}>
               <Ionicons name="pricetag-outline" size={20} color={theme.colors.primary} />
               <Text style={styles.servicePrice}>
-                {t('services.servicePrice')} {servicePrice} MAD
+                {t('services.servicePrice')}  {servicePrice >0 ? servicePrice+" MAD" : t('services.quote') } 
               </Text>
             </View>
           )}
@@ -226,7 +226,7 @@ const OrderServiceScreen: React.FC = () => {
           )}
         </View>
 
-        <View style={styles.section}>
+      {/*   <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('orderService.serviceDate')}</Text>
           <TouchableOpacity style={styles.dateTimeButton} onPress={() => setShowDatePicker(true)}>
             <Text style={styles.dateTimeButtonText}>
@@ -243,7 +243,7 @@ const OrderServiceScreen: React.FC = () => {
               minimumDate={new Date()}
             />
           )}
-        </View>
+        </View> */}
 
         <TouchableOpacity
           style={styles.confirmButton}

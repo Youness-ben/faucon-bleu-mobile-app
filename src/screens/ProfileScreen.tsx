@@ -149,7 +149,6 @@ export default function ProfileScreen() {
       setNewPassword('');
       setConfirmPassword('');
     } catch (error) {
-      console.log(error);
       Alert.alert(t('profile.password_change_error'), t('profile.password_change_error_message'));
     }
   };

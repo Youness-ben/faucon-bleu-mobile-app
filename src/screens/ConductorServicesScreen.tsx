@@ -102,7 +102,7 @@ export default function ConductorServicesScreen() {
     }
   };
 
-  const categories = Array.from(new Set(services.map(service => service.category || t('services.uncategorized'))));
+  const categories = Array.from(new Set(services.map(service => service?.category || t('services.uncategorized'))));
 
   const renderServiceItem = ({ item }: { item: Service }) => (
     <TouchableOpacity
@@ -138,7 +138,7 @@ export default function ConductorServicesScreen() {
         {category ? t(`services.categories.${category.toLowerCase()}`, category) : t('services.uncategorized')}
       </Text>
       <FlatList
-        data={services.filter(service => (service.category || t('services.uncategorized')) === category)}
+        data={services.filter(service => (service?.category || t('services.uncategorized')) === category)}
         renderItem={renderServiceItem}
         keyExtractor={(item) => item.id.toString()}
         scrollEnabled={false}

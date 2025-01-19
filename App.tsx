@@ -62,7 +62,6 @@ export default function App() {
     });
 
     responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log('Notification response received:', response);
       handleNotificationResponse(response);
     });
 

@@ -106,7 +106,7 @@ const ServicesScreen: React.FC = () => {
     }
   };
 
-  const categories = Array.from(new Set(services.map(service => service.category || t('services.uncategorized'))));
+  const categories = Array.from(new Set(services.map(service => service?.category || t('services.uncategorized'))));
 
   const renderServiceItem = ({ item }: { item: Service }) => (
     <TouchableOpacity

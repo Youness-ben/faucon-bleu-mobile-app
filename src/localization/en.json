@@ -69,10 +69,12 @@
     "fetchError": "Error fetching services",
     "noServicesAvailable": "No services available",
     "price": "Price: {{price}}",
+    "quote":"On Quote",
     "uncategorized": "Uncategorized",
     "categories": {
-      "maintenance": "Maintenance",
-      "repair": "Repair",
+      "maintenance": "Preventative maintenance",
+      "repair": "Electronic and mechanical diagnostics",
+      "carossrie": "Bodywork and renovation",
       "diagnostics": "Diagnostics",
       "comfort": "Comfort"
     },
@@ -161,6 +163,7 @@
     "fetchFailed": "Failed to fetch data"
   },
   "error": {
+    "deleted": "-Deleted-",
     "title": "Error",
     "fetchFailed": "Failed to fetch data"
   },

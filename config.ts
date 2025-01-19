@@ -1,5 +1,5 @@
 export const MAIN_PROTOCOL = "https://";
-export const MAIN_SERVER = "api.fauconbleu.icamob.ma";
+export const MAIN_SERVER = "test.fauconbleu.icamob.ma";
 export const STORAGE_URL= MAIN_PROTOCOL+MAIN_SERVER+"/storage";
 export const MAIN_URL= MAIN_PROTOCOL+MAIN_SERVER+"/api";
 export const MAPBOX_TOKEN="pk.eyJ1IjoidW5lcyIsImEiOiJjbG9yaTV2ZWEwdXZrMmtwZXpzdXp3dzlhIn0.imF08_9HcyjSAgFaeY6A6w";

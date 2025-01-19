@@ -174,12 +174,10 @@ const handleDownloadPDF = async () => {
         },
         (downloadProgress) => {
           const progress = downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite;
-          console.log(`Download progress: ${progress * 100}%`);
         }
       );
 
       const { uri } = await downloadResumable.downloadAsync();
-      console.log('File downloaded to:', uri);
 
       await Sharing.shareAsync(uri);
     

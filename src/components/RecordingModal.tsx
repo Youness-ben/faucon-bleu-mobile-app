@@ -12,12 +12,13 @@ import {
   Animated,
 } from 'react-native';
 import { Audio } from 'expo-av';
+import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import Toast from 'react-native-toast-message';
 import LottieView from 'lottie-react-native';
+import Toast from 'react-native-toast-message';
 import api from '../api';
 import * as FileSystem from 'expo-file-system';
 const { width, height } = Dimensions.get('window');
@@ -25,11 +26,9 @@ const { width, height } = Dimensions.get('window');
 interface RecordingModalProps {
   isVisible: boolean;
   onClose: () => void;
-  onSendAudio: (audioUri: string) => Promise<void>;
-  onSendText: (prompt: string) => Promise<void>;
 }
 
-const RecordingModal: React.FC<RecordingModalProps> = ({ isVisible, onClose, onSendAudio, onSendText }) => {
+const RecordingModal: React.FC<RecordingModalProps> = ({ isVisible, onClose }) => {
   const { t } = useTranslation();
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -41,7 +40,7 @@ const RecordingModal: React.FC<RecordingModalProps> = ({ isVisible, onClose, onS
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const recordingInterval = useRef<NodeJS.Timeout | null>(null);
   const [isLoading, setIsLoading] = useState(false); // Added loading state
-
+  const navigation = useNavigation();
   useEffect(() => {
     return () => {
       if (recordingInterval.current) {
@@ -160,14 +159,10 @@ const RecordingModal: React.FC<RecordingModalProps> = ({ isVisible, onClose, onS
         const response = await api.post('/vehicle/ai/request', {
           file: `data:audio/m4a;base64,${base64Audio}`,
         });
-        console.log("WE GOT THIS RESPONSE",response.data);
         if (response.data.status === 'success') {
-          const serviceName = response.data.data.service;
-          Toast.show({
-            type: 'success',
-            text1: 'Service Identified',
-            text2: `The identified service is: ${serviceName}`,
-          });
+            const serviceID = response.data.data.service_id;
+            const service = response.data.data.service;
+           navigation.navigate('TicketScreen', { serviceId: serviceID, service: service });
         } else {
 
           throw new Error(response.data || 'Failed to process audio');
@@ -184,6 +179,39 @@ const RecordingModal: React.FC<RecordingModalProps> = ({ isVisible, onClose, onS
         setAudioUri(null);
         setRecordingDuration(0);
         setIsRecording(false);
+        onClose();
+      }
+    }
+  };
+  
+
+ const onSendText = async (textPrompt : string) => {
+    if (textPrompt) {
+      try {
+        setIsLoading(true);
+
+        const response = await api.post('/vehicle/ai/prompt', {
+          text: textPrompt,
+        });
+        if (response.data.status === 'success') {
+            const serviceID = response.data.data.service_id;
+            const service = response.data.data.service;
+           navigation.navigate('TicketScreen', { serviceId: serviceID, service: service });
+
+        } else {
+
+          throw new Error(response.data || 'Failed to process prompt');
+        }
+      } catch (error) {
+        console.error('Error sending prompt:', error.response.data);
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Failed to process prompt. Please try again.',
+        });
+      } finally {
+        setIsLoading(false);
+        setTextPrompt("");
         onClose();
       }
     }

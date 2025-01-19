@@ -65,7 +65,6 @@ const LoginScreen: React.FC = () => {
       await login(token, 'client');
       navigation.navigate('Main');
     } catch (error) {
-      console.log(error.status);
       Toast.show({
         type: 'error',
         text1: t('auth.error'),

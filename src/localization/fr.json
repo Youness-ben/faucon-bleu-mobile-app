@@ -69,10 +69,12 @@
     "fetchError": "Erreur lors de la récupération des services",
     "noServicesAvailable": "Aucun service disponible",
     "price": "Prix : {{price}}",
+    "quote":"Sur Devis",
     "uncategorized": "Non catégorisé",
     "categories": {
-      "maintenance": "Entretien",
-      "repair": "Réparation",
+      "maintenance": "Entretien préventif",
+      "repair": "Diagnostic électronique et mécanique",
+      "carossrie": "Carrosserie et rénovation",
       "diagnostics": "Diagnostics",
       "comfort": "Confort"
     },

@@ -272,13 +272,13 @@ const HomeScreen: React.FC = () => {
       <View style={styles.serviceItemContent}>
         <View style={styles.serviceIcon}>
           <Image 
-            source={{ uri: `${STORAGE_URL}/${item.service.icon}` }} 
+            source={{ uri: `${STORAGE_URL}/${item.service?.icon}` }} 
             style={styles.serviceIconImage} 
             defaultSource={require('../../assets/logo.png')}
           />
         </View>
         <View style={styles.serviceInfo}>
-          <Text style={styles.serviceType}>{item.service.name}</Text>
+          <Text style={styles.serviceType}>{item.service?.name || t("error.deleted")}</Text>
           <Text style={styles.serviceVehicle}>
             {item.vehicle ? `${item.vehicle.brand_name} ${item.vehicle.model}` : t('home.unknownVehicle')}
           </Text>

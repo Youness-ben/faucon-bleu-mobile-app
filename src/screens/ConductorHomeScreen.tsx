@@ -164,7 +164,6 @@ const ConductorHomeScreen: React.FC = () => {
       try {
       token = (await Notifications.getExpoPushTokenAsync({projectId :"770160a7-d515-4bb7-b29f-3131a5eccc75" })).data;
     } catch (error) {
-      console.log('ER1: '+ error);
     }
 
     if (Platform.OS === 'android') {
@@ -181,7 +180,6 @@ const ConductorHomeScreen: React.FC = () => {
       try {
         await api.post('/vehicle/update-push-token', { token });
       } catch (error) {
-      console.log('ER2: '+ error);
       }
     }
   };

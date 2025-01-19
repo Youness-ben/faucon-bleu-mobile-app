@@ -57,7 +57,6 @@ const ConductorLoginScreen: React.FC = () => {
       await login(token, 'vehicle');
       navigation.navigate('ConductorMain');
     } catch (error) {
-      console.log(error);
       Toast.show({
         type: 'error',
         text1: t('auth.error'),

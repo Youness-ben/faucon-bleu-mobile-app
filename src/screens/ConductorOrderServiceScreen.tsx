@@ -123,7 +123,7 @@ const ConductorOrderServiceScreen: React.FC = () => {
       <ScrollView style={styles.container}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('orderService.serviceDetails')}</Text>
-          <Text style={styles.serviceName}>{service.name}</Text>
+          <Text style={styles.serviceName}>{service?.name}</Text>
           <Text style={styles.serviceDescription}>{service.description}</Text>
           <View style={styles.detailRow}>
             <Ionicons name="time-outline" size={20} color={theme.colors.primary} />
@@ -133,7 +133,7 @@ const ConductorOrderServiceScreen: React.FC = () => {
           </View>
         </View>
 
-        <View style={styles.section}>
+   {/*      <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('orderService.serviceDate')}</Text>
           <TouchableOpacity style={styles.dateTimeButton} onPress={() => setShowDatePicker(true)}>
             <Text style={styles.dateTimeButtonText}>
@@ -150,7 +150,7 @@ const ConductorOrderServiceScreen: React.FC = () => {
               minimumDate={new Date()}
             />
           )}
-        </View>
+        </View> */}
 
         <TouchableOpacity
           style={styles.confirmButton}
