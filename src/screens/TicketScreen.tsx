@@ -882,11 +882,14 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
 
            {(item.need_confirmation === 1) && (
             <View style={styles.confirmationContainer}>
-              {item.confirmed === 1 && (
+              {item.confirmed !== null ? (
                 <Text style={styles.confirmationText}>
                  {t(`ticket.${item.confirmed === 0 ? 'refused' : 'accepted'}`,{user : item.confirmed_name,date : format(new Date(item.confirmed_at), 'MM/dd/yyyy HH:mm')})}
                 </Text>
-              )}
+              ) : 
+              <Text style={styles.confirmationText}> {t(`ticket.waiting`)}  </Text>
+              
+              }
               {(item.confirmed === null  && user?.role=='management') && (
                 <View style={styles.confirmationButtons}>
                   <TouchableOpacity 

@@ -332,7 +332,8 @@
     "Date": "Date",
     "chat": "Chat",
     "accepted": "Accepted by {{user}} at {{date}}",
-    "refused": "Refused by {user} at {date}",
+    "refused": "Refused by {{user}} at {{date}}",
+    "waiting": "Awaiting you confirmation",
     "Status": "Status",
     "cant_send_msg_finished" : "Cannot send messages for cancelled or completed services.",
     "cannotSendMessage" : "You can not reply to this chat"

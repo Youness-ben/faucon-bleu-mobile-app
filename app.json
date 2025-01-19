@@ -43,7 +43,10 @@
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION"
       ],
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "dependencies": [
+        "com.github.Dimezis:BlurView:2.0.3"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"

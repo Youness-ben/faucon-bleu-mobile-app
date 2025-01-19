@@ -20,7 +20,6 @@ import InvoicesScreen from '../screens/InvoicesScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import SupportScreen from '../screens/SupportScreen';
-import ChatScreen from '../screens/ChatScreen';
 import TicketScreen from '../screens/TicketScreen';
 import ConductorHomeScreen from '../screens/ConductorHomeScreen';
 import ConductorOrderServiceScreen from '../screens/ConductorOrderServiceScreen';

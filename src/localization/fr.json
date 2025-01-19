@@ -331,6 +331,7 @@
     "chat": "Chat",
     "accepted": "Accepté par {{user}} le {{date}}",
     "refused": "Refusé par {{user}} le {{date}}",
+    "waiting": "En attente de votre confirmation",
     "Status": "Statut"
   },
   "recordingModal": {
