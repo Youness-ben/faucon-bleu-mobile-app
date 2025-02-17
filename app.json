@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Faucon bleu services",
+    "name": "Faucon bleu Business",
     "slug": "faucon-bleu-services",
-    "version": "1.0.0",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -35,6 +35,7 @@
         }
       },
       "package": "ma.fauconbleu.services",
+      "versionCode": "3",
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
