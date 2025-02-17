@@ -186,7 +186,7 @@ export default function ProfileScreen() {
             onPress={() => setShowLanguageModal(true)}
             rightElement={
               <Text style={styles.languageValue}>
-                {i18n.language === 'en' ? 'English' : i18n.language === 'fr' ? 'Français' : i18n.language === 'es' ? 'Español' : i18n.language === 'it' ? 'Italiano' : 'العربية'}
+                {i18n.language === 'en' ? 'English' : 'Français'/*  i18n.language === 'fr' ? 'Français' : i18n.language === 'es' ? 'Español' : i18n.language === 'it' ? 'Italiano' : 'العربية'*/}
               </Text>
             }
           />
@@ -225,7 +225,7 @@ export default function ProfileScreen() {
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>{t('profile.selectLanguage')}</Text>
-              {['en', 'ar', 'fr', 'it', 'es'].map((lang) => (
+              {['en', 'fr', /*'ar', 'it', 'es'*/].map((lang) => (
                 <TouchableOpacity
                   key={lang}
                   style={styles.languageOption}

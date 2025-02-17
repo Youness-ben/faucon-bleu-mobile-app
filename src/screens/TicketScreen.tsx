@@ -24,7 +24,6 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
 import { RouteProp, useNavigation } from '@react-navigation/native';
-import { BlurView } from 'expo-blur';
 import * as Location from 'expo-location';
 import * as FileSystem from 'expo-file-system';
 import { Audio } from 'expo-av';
@@ -46,7 +45,7 @@ import Toast from 'react-native-toast-message';
 
 
 type RootStackParamList = {
-  TicketScreen: { serviceId: string,service ?: any  };
+  TicketScreen: { serviceId: string,service ?: any ,isNotification ?:boolean  };
 };
 
 type TicketScreenRouteProp = RouteProp<RootStackParamList, 'TicketScreen'>;
@@ -77,7 +76,7 @@ interface AudioProgress {
 
 export default function Component({ route }: { route: TicketScreenRouteProp }) {
   const { t } = useTranslation();
-  const { serviceId ,service} = route.params;
+  const { serviceId ,service,isNotification} = route.params;
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [curservice, setCurService] = useState(service);
@@ -472,9 +471,11 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
     Linking.openURL(url);
   };
 
-  const downloadFile = async (uri: string, fileName: string) => {
-    
+  const downloadFile = async (uri: string) => {
+    try {
+      const fileName = uri.split('/').pop() || 'downloaded_file';
       const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+      console.log(fileUri);
       const downloadResumable = FileSystem.createDownloadResumable(
         STORAGE_URL+uri,
         fileUri,
@@ -484,23 +485,37 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
         }
       );
 
-       downloadResumable.downloadAsync() .then(({ uri }) => {
-        Alert.alert('Success', `File downloaded successfully`,
-          [  { text: 'Cancel', style: 'cancel' },
+      const { uri: downloadedUri } = await downloadResumable.downloadAsync();
+      
+      Alert.alert('Success', 'File downloaded successfully',
+        [
+          { text: 'Cancel', style: 'cancel' },
           {
             text: 'Open',
-            onPress: () => Linking.openURL(uri),
+            onPress: async () => {
+              try {
+                const UTI = await FileSystem.getContentUriAsync(downloadedUri);
+                await Linking.openURL(UTI);
+              } catch (error) {
+                console.error('Error opening file:', error);
+                Toast.show({
+                  type: 'error',
+                  text1: 'Error',
+                  text2: 'Failed to open file. Please try again.',
+                });
+              }
+            },
           },
-        ]);
-      }) .catch(error => {
-         console.error('Error downloading file:', error);
-        Toast.show({
-          type: 'error',
-          text1:'Error',
-          text2: 'Failed to download file. Please try again.',
-        });
+        ]
+      );
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to download file. Please try again.',
       });
-      
+    }
       
   };
 
@@ -606,8 +621,13 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
     }).start();
   };
   const goBack = ()=>{
-    //@ts-ignore
-        navigation.navigate(user?.type=='client' ? 'ServiceHistory' : 'ConductorServiceHistory' );
+    if(isNotification){
+      //@ts-ignore
+      navigation.navigate(user?.type=='client' ? 'Home' : 'ConductorHome' );
+    }else{
+      navigation.goBack();
+    }
+
   };
 
   const isServiceActive = () => {
@@ -819,7 +839,7 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
                 /*   if (fileExtension && viewableExtensions.includes(fileExtension)) {
                     setPreviewFile({ uri: `${STORAGE_URL}/${item.file_path}`, type: 'file' });
                   } else {*/
-                    item.file_path && downloadFile(item.file_path, item.content || 'file');
+                    item.file_path && downloadFile(item.file_path);
                 /* } */
                 }}>
                   <View style={styles.fileMessage}>
@@ -916,7 +936,35 @@ const sendMessage = async (messageType: string, content?: string, file?: any, lo
 
 const renderInputArea = () => (
   <View style={styles.inputContainer}>
-    {isServiceActive() ? (
+    {isServiceActive() ?
+    
+    (
+      <>
+      {isRecordingUIVisible ? (
+      <View style={styles.recordingContainer}>
+        {isRecording ? (
+          <>
+            <Text style={styles.recordingDuration}>{formatDuration(recordingDuration * 1000)}</Text>
+            <TouchableOpacity onPress={stopRecording} style={styles.stopRecordingButton}>
+              <Ionicons name="stop" size={24} color="#FF3B30" />
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <TouchableOpacity onPress={() => playAudio(audioUri!, 'preview')} style={styles.playButton}>
+              <Ionicons name={isPlaying ? "pause" : "play"} size={24} color="#028dd0" />
+            </TouchableOpacity>
+            <Text style={styles.recordingDuration}>{formatDuration(recordingDuration * 1000)}</Text>
+            <TouchableOpacity onPress={sendRecordedAudio} style={styles.sendRecordingButton}>
+              <Ionicons name="send" size={24} color="#028dd0" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={cancelRecording} style={styles.cancelRecordingButton}>
+              <Ionicons name="close" size={24} color="#FF3B30" />
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+    ) : (
       <View style={styles.inputWrapper}>
         <TouchableOpacity style={styles.attachButton} onPress={() => setIsFabOpen(!isFabOpen)}>
           <Ionicons name="add-circle-outline" size={24} color="#028dd0" />
@@ -938,8 +986,12 @@ const renderInputArea = () => (
             <Ionicons name="mic" size={24} color="#028dd0" />
           </TouchableOpacity>
         )}
-      </View>
-    ) : (
+      </View>)}
+      </>
+
+    ) 
+    
+    : (
       <Text style={styles.inactiveServiceText}>
         {t('ticket.cannotSendMessage')}
       </Text>
@@ -1050,7 +1102,7 @@ const renderPreview = () => {
             <TouchableOpacity onPress={() => setPreviewFile(null)} style={styles.closeButton}>
               <Ionicons name="close" size={28} color="#FFFFFF" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.downloadButton} onPress={() => downloadFile(previewFile.uri, 'file')}>
+            <TouchableOpacity style={styles.downloadButton} onPress={() => downloadFile(previewFile.uri)}>
               <Ionicons name="download-outline" size={24} color="#FFFFFF" />
             </TouchableOpacity>
           </View>

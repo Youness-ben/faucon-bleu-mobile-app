@@ -85,7 +85,7 @@ export default function App() {
     const data = response.notification.request.content.data;
     if (data.type === 'new_message' && data.serviceId && navigationRef.current) {
       // @ts-ignore
-      navigationRef.current.navigate('TicketScreen', { serviceId: data.serviceId });
+      navigationRef.current.navigate('TicketScreen', { serviceId: data.serviceId ,isNotification : True});
     } else if (data.type === 'redirect' && data.screen && navigationRef.current) {
       // @ts-ignore
       navigationRef.current.navigate(data.screen, data.params || {});
