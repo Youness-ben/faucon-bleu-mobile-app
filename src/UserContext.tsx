@@ -41,6 +41,7 @@ export const UserProvider: React.FC = ({ children }) => {
     try {
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       const response = await api.get('/user');
+      console.log(response.data);
       const userData = response.data;
 
       const newUser: User = {

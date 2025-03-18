@@ -24,7 +24,7 @@ const LANGUAGE_DETECTOR = {
       console.error('Error reading language from AsyncStorage:', error);
     }
     // If no language is set, use device locale
-    callback('en');
+    callback('fr');
   },
   init: () => {},
   cacheUserLanguage: () => {},
@@ -41,7 +41,7 @@ i18n
       fr: { translation: fr },
       es: { translation: es },
     },
-    fallbackLng: 'en',
+    fallbackLng: 'fr',
     compatibilityJSON: 'v3',
     interpolation: {
       escapeValue: false,

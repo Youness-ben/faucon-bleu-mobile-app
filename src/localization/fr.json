@@ -59,7 +59,7 @@
     "loginToContinue": "Connectez-vous pour continuer",
     "email": "E-mail",
     "rememberMe": "Souviens-toi de moi",
-    "clientLogin": "Gestion",
+    "clientLogin": "Gestionnaire de flotte",
     "createAccount": "Créer un compte",
     "accountInquiry": "Créer un compte",
     "companyName": "Nom de l'entreprise",
@@ -597,8 +597,8 @@
     "unknownVehicle": "Véhicule inconnu"
   },
   "navigation": {
-    "orderService": "Commander un service",
-    "serviceHistory": "Historique des services",
+    "orderService": "Commander",
+    "serviceHistory": "Historique",
     "services": "Services",
     "addVehicle": "Ajouter un véhicule",
     "vehicleDetails": "Détails du véhicule",

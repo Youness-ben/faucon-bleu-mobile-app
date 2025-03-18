@@ -37,7 +37,12 @@ const ConductorLoginScreen: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+    const { toggleVisibility } = useFloatingButton();
+  
   const { login } = useUser();
+   useEffect(() => {
+      toggleVisibility(false);
+    }, []);
   
   const handleLogin = async () => {
     if (!plateNumber || !password) {

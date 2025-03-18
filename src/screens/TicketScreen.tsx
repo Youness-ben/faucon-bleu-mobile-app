@@ -137,8 +137,8 @@ const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: 
     loadSound();
 
     return () => {
-      if(user?.type=='vehicle')
-        toggleVisibility(true);
+      //if(user?.type=='vehicle')
+        //toggleVisibility(true);
       
       if (notificationSound) {
         notificationSound.unloadAsync();
