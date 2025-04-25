@@ -175,11 +175,14 @@ export default function ProfileScreen() {
             text={t('profile.editProfile')}
             onPress={() => navigation.navigate('EditProfile')}
           />
-          <OptionItem
+    {/*      
+    THIS IS COMMENTED BECAUSE OF APPLE , 
+    THIS MIGHT CAUSE PROBLEMS IN THE FUTURE DUE TO THEM NOT WANTING ANYTHING RELATED TO MONEY
+    <OptionItem
             icon="document-text-outline"
             text={t('profile.invoices')}
             onPress={() => navigation.navigate('Invoices')}
-          />
+          /> */}
           <OptionItem
             icon="language-outline"
             text={t('profile.language')}
