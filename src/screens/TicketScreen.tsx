@@ -176,13 +176,19 @@ const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: 
   useEffect(() => {
     if (echo) {
 
-      const channelName = `chat.${serviceId}`;
+/*       const channelName = `chat.${serviceId}`;
        const sub = echo.private(channelName)
         .listen('NewMessageSent', async (event: any) => {
           playNotificationSound();
             await fetchMessages(false);
         }); 
-
+ */
+        const channelName = `Pchat.${serviceId}`;
+        const sub = echo.channel(channelName)  // Use channel() instead of private()
+          .listen('NewMessageSentPublic', async (event: any) => {
+            playNotificationSound();
+            await fetchMessages(false);
+          });
            setSubscription(sub);
 
     }

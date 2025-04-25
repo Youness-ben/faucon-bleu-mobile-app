@@ -264,13 +264,12 @@
     "automatic": "Automatique",
     "conductorPassword": "Mot de passe du pilote",
     "enterConductorPassword": "Entrez le mot de passe du pilote",
-    "enterConductorName": "Entrez le mot de passe du pilote",
     "addVehicle": "Ajouter un véhicule",
     "fillAllFields": "Veuillez remplir tous les champs",
     "vehicleAdded": "Véhicule ajouté avec succès",
     "addFailed": "Échec de l'ajout de véhicule",
     "conductorName": "Conducteur",
-    "enterconductorName": "Entrer le conducteur",
+    "enterconductorName": "Entrer le nom du conducteur",
     "responsable": "Directeur de la flotte",
     "selectResposanble": "Sélectionnez le gestionnaire",
     "noResponsable": "Pas de gestionnaire",
@@ -383,16 +382,18 @@
     "downloadInvoice": "Télécharger la facture"
   },
   "ticket": {
+    "cant_send_msg_finished": "Impossible d'envoyer des messages pour les services annulés ou terminés.",
     "inputPlaceholder": "Enregistrer votre message",
     "carInfo": "Véhicule",
     "serviceType": "Service",
     "Date": "Date",
+    "date": "Date",
     "chat": "Chat",
+    "Status": "Statut",
+    "status": "Statut",
     "accepted": "Accepté par {{user}} à {{date}}",
     "refused": "Refusé par {{user}} à {{date}}",
     "waiting": "En attente de confirmation",
-    "Status": "Statut",
-    "cant_send_msg_finished": "Impossible d'envoyer des messages pour les services annulés ou complétés.",
     "cannotSendMessage": "Vous ne pouvez pas répondre à ce chat"
   },
   "recordingModal": {
@@ -564,19 +565,6 @@
     "error": "Erreur",
     "errorMessage": "Échec de l'ajout du client",
     "permissionDenied": "Permission refusée"
-  },
-  "ticket": {
-    "carInfo": "Véhicule",
-    "Status": "Statut",
-    "serviceType": "Service",
-    "refused": "Refusé par {{user}} le {{date}}",
-    "cannotSendMessage": "Vous ne pouvez pas répondre à ce chat",
-    "waiting": "En attente de votre confirmation",
-    "accepted": "Accepté par {{user}} le {{date}}",
-    "Date": "Date",
-    "inputPlaceholder": "Tapez votre message",
-    "chat": "Chat",
-    "cant_send_msg_finished": "Impossible d'envoyer des messages pour les services annulés ou terminés."
   },
   "serviceHistory": {
     "cost": "Coût",
