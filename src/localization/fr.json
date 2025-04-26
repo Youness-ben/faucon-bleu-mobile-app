@@ -480,6 +480,7 @@
   },
   "statistics": {
     "totalOrders": "Total des commandes",
+    "serviceHistory": "Historique des services",
     "completed": "Terminé",
     "in_progress": "En cours",
     "pending": "En attente",

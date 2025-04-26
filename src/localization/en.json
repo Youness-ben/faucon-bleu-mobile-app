@@ -424,6 +424,7 @@
   "statistics": {
     "title": "Statistics",
     "startDate": "Start Date",
+    "serviceHistory": "Service History",
     "endDate": "End Date",
     "fetchError": "Error fetching statistics",
     "serviceOrders": "General",

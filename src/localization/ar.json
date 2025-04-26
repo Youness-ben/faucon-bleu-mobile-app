@@ -423,6 +423,7 @@
   },
   "statistics": {
     "title": "إحصائيات",
+    "serviceHistory": "تاريخ الخدمة",
     "startDate": "تاريخ البدء",
     "endDate": "تاريخ الانتهاء",
     "fetchError": "خطأ جلب الإحصائيات",
