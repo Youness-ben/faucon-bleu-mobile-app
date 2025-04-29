@@ -1,6 +1,6 @@
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js/react-native';
-import { PUSHER_APP_KEY, PUSHER_HOST, PUSHER_PORT } from '../config';
+import { MAIN_URL, PUSHER_APP_KEY, PUSHER_HOST, PUSHER_PORT } from '../config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import api from './api';
@@ -23,7 +23,8 @@ const getSanctumToken = async () => {
       return null; 
     }
 
-
+    Pusher.logToConsole = true;
+console.log(token);
     const echo = new Echo({
         broadcaster: 'reverb',
         Pusher,
@@ -33,8 +34,10 @@ const getSanctumToken = async () => {
         wssPort: PUSHER_PORT,
         forceTLS: true,
         disableStats: true,
+
         enabledTransports: ['ws', 'wss'],
       authorizer: (channel :any, options : any) => {
+        
             return {
               authorize: (socketId : any, callback : any ) => {
                 
@@ -46,6 +49,7 @@ const getSanctumToken = async () => {
                   callback(false, response.data);
                 })
                 .catch(error => {
+                  console.log("-*-",error);
                   callback(true, error);
                 });
               }
