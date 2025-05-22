@@ -9,6 +9,7 @@ import api from '../api';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Toast from 'react-native-toast-message';
+import { Dropdown } from 'react-native-element-dropdown';
 
 type RootStackParamList = {
   Fleet: undefined;
@@ -208,20 +209,22 @@ const AddVehicleScreen: React.FC = () => {
             <View style={styles.formGroup}>
               <Text style={styles.label}>{t('addVehicle.brand')}</Text>
               <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={brandId}
-                  onValueChange={(itemValue) => {
-                    setBrandId(itemValue);
+                <Dropdown
+                  data={brands.map(brand => ({label: brand.name, value: brand.id}))}
+                  labelField="label"
+                  valueField="value"
+                  placeholder={t('addVehicle.selectBrand')}
+                  value={brandId}
+                  onChange={(item) => {
+                    setBrandId(item.value);
                     setSelectedModel(null);
                     setSelectedYear(null);
                   }}
                   style={styles.picker}
                 >
-                  <Picker.Item label={t('addVehicle.selectBrand')} value={null} />
-                  {brands.map((brand) => (
-                    <Picker.Item key={brand.id} label={brand.name} value={brand.id} />
-                  ))}
-                </Picker>
+
+
+                </Dropdown>
               </View>
             </View>
 
