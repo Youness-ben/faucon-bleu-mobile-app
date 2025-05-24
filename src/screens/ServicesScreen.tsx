@@ -10,6 +10,7 @@ import {
   Image,
   Dimensions,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation, useFocusEffect, RouteProp, useRoute } from '@react-navigation/native';
@@ -261,10 +262,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    paddingBottom:50
+
   },
   header: {
-    paddingTop: 40,
+       paddingTop: Platform.OS=='ios' ? 70 : 60,
+   
     paddingBottom: 20,
     paddingHorizontal: 20,
   },

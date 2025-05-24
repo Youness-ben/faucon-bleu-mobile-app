@@ -20,7 +20,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { STORAGE_URL } from '../../config';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 const EditProfileScreen: React.FC = () => {
   const { t } = useTranslation();
@@ -117,7 +116,7 @@ const EditProfileScreen: React.FC = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#028dd0" />
       <LinearGradient colors={['#028dd0', '#01579B']} style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -181,7 +180,7 @@ const EditProfileScreen: React.FC = () => {
           <Text style={styles.saveButtonText}>{t('editProfile.save')}</Text>
         </TouchableOpacity>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -193,7 +192,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingTop: Platform.OS=='ios' ? 70 : 60,
     paddingBottom: 20,
     paddingHorizontal: 20,
   },

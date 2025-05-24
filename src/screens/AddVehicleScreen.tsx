@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, StatusBar, SafeAreaView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Picker } from '@react-native-picker/picker';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { theme } from '../styles/theme';
@@ -55,6 +54,20 @@ const AddVehicleScreen: React.FC = () => {
   const [conductorName, setConductorName] = useState('');
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
+
+  const fuelTypes = [
+    { label: t('addVehicle.fuelType'), value: '' },
+    { label: t('addVehicle.gasoline'), value: 'gasoline' },
+    { label: t('addVehicle.diesel'), value: 'diesel' },
+    { label: t('addVehicle.electric'), value: 'electric' },
+    { label: t('addVehicle.hybrid'), value: 'hybrid' },
+  ];
+  const transmissionTypes = [
+    { label: t('addVehicle.transmission'), value: '' },
+    { label: t('addVehicle.manual'), value: 'manual' },
+    { label: t('addVehicle.automatic'), value: 'automatic' },
+  ];
+
    const fetchBrands = async () => {
       try {
         const response = await api.get('/client/brands');
@@ -191,8 +204,8 @@ const AddVehicleScreen: React.FC = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#028dd0" />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#028dd0"  />
       <KeyboardAvoidingView 
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardAvoidingView}
@@ -221,10 +234,7 @@ const AddVehicleScreen: React.FC = () => {
                     setSelectedYear(null);
                   }}
                   style={styles.picker}
-                >
-
-
-                </Dropdown>
+                />
               </View>
             </View>
 
@@ -232,34 +242,36 @@ const AddVehicleScreen: React.FC = () => {
               <Text style={styles.label}>{t('addVehicle.modelAndYear')}</Text>
               <View style={styles.rowContainer}>
                 <View style={[styles.pickerContainer, styles.halfWidth]}>
-                  <Picker
-                    selectedValue={selectedModel?.id}
-                    onValueChange={(itemValue) => {
-                      const model = models.find(m => m.id === itemValue) || null;
-                      setSelectedModel(model);
-                      setSelectedYear(null);
-                    }}
-                    style={styles.picker}
-                    enabled={!isFetchingModels}
-                  >
-                    <Picker.Item label={t('addVehicle.selectModel')} value={null} />
-                    {models.map((model) => (
-                      <Picker.Item key={model.id} label={model.modele} value={model.id} />
-                    ))}
-                  </Picker>
+                  
+                <Dropdown
+                  data={models.map(model => ({label: model.modele, value: model.id}))}
+                  labelField="label"
+                  valueField="value"
+                  placeholder={t('addVehicle.selectModel')}
+                  value={selectedModel?.id}
+                  onChange={(item) => {
+                    const model = models.find(m => m.id === item.value) || null;
+                    setSelectedModel(model);
+                    setSelectedYear(null);
+                  }}
+                  style={styles.picker}
+                  disable={isFetchingModels}
+                />
+
                 </View>
                 <View style={[styles.pickerContainer, styles.halfWidth]}>
-                  <Picker
-                    selectedValue={selectedYear}
-                    onValueChange={(itemValue) => setSelectedYear(itemValue)}
-                    style={styles.picker}
-                    enabled={!!selectedModel}
-                  >
-                    <Picker.Item label={t('addVehicle.selectYear')} value={null} />
-                    {selectedModel?.annees.map((year) => (
-                      <Picker.Item key={year} label={year} value={year} />
-                    ))}
-                  </Picker>
+                <Dropdown
+                  data={(selectedModel?.annees || []).map(year => ({label: year, value: year}))}
+                  labelField="label"
+                  valueField="value"
+                  placeholder={t('addVehicle.selectYear')}
+                  value={selectedYear}
+                  onChange={(item) => {
+                    setSelectedYear(item.value)
+                  }}
+                  style={styles.picker}
+                  disable={!selectedModel}
+                />
                 </View>
               </View>
               {isFetchingModels && <ActivityIndicator style={styles.loader} size="small" color="#028dd0" />}
@@ -300,29 +312,33 @@ const AddVehicleScreen: React.FC = () => {
                   <Text style={styles.label}>{t('addVehicle.fuelTypeAndTransmission')}</Text>
               <View style={styles.rowContainer}>
                 <View style={[styles.pickerContainer, styles.halfWidth]}>
-                    <Picker
-                      selectedValue={fuelType}
-                      onValueChange={(itemValue) => setFuelType(itemValue)}
-                      style={styles.picker}
-                    >
-                      <Picker.Item label={t('addVehicle.fuelType')} value="" />
-                      <Picker.Item label={t('addVehicle.gasoline')} value="gasoline" />
-                      <Picker.Item label={t('addVehicle.diesel')} value="diesel" />
-                      <Picker.Item label={t('addVehicle.electric')} value="electric" />
-                      <Picker.Item label={t('addVehicle.hybrid')} value="hybrid" />
-                    </Picker>
+                                    
+                <Dropdown
+                  data={fuelTypes.map(fuel => ({label: fuel.label, value: fuel.value}))}
+                  labelField="label"
+                  valueField="value"
+                  placeholder={t('addVehicle.fuelType')}
+                  value={fuelType}
+                  onChange={(item) => { setFuelType(item.value);
+                  }}
+                  style={styles.picker}
+                />
+
                   </View>
 
                 <View style={[styles.pickerContainer, styles.halfWidth]}>
-                    <Picker
-                      selectedValue={transmission}
-                      onValueChange={(itemValue) => setTransmission(itemValue)}
-                      style={styles.picker}
-                    >
-                      <Picker.Item label={t('addVehicle.transmission')} value="" />
-                      <Picker.Item label={t('addVehicle.manual')} value="manual" />
-                      <Picker.Item label={t('addVehicle.automatic')} value="automatic" />
-                    </Picker>
+                <Dropdown
+                  data={transmissionTypes.map(item => ({label: item.label, value: item.value}))}
+                  labelField="label"
+                  valueField="value"
+                  placeholder={t('addVehicle.transmission')}
+                  value={transmission}
+                  onChange={(item) => { setTransmission(item.value);
+                  }}
+                  style={styles.picker}
+                />
+
+  
                   </View>
               </View>
             </View>
@@ -336,23 +352,27 @@ const AddVehicleScreen: React.FC = () => {
                 style={styles.input}
                 value={conductorName}
                 onChangeText={setConductorName}
-                placeholder={t('addVehicle.enterConductorName')}
+                placeholder={t('addVehicle.enterconductorName')}
               />
             </View>
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>{t('addVehicle.responsable')}</Text>
               <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={selectedClientId}
-                  onValueChange={(itemValue) => setSelectedClientId(itemValue)}
+
+              <Dropdown
+                  data={clients.map(client => ({label: `${client.first_name} ${client.last_name}`, value: client.id}))}
+                  labelField="label"
+                  valueField="value"
+                  placeholder={t('addVehicle.selectResposanble')}
+                  value={selectedClientId}
+                  onChange={(item) => {
+                    setSelectedClientId(item.value)
+                   }}
                   style={styles.picker}
-                >
-                  <Picker.Item label={t('addVehicle.selectResposanble')} value={null} />
-                  {clients.map((client) => (
-                    <Picker.Item key={client.id} label={`${client.first_name} ${client.last_name}`} value={client.id} />
-                  ))}
-                </Picker>
+                />
+
+
               </View>
             </View>
 
@@ -382,7 +402,7 @@ const AddVehicleScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -397,7 +417,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 40,
+    paddingTop: Platform.OS=='ios' ? 70 : 60,
     paddingBottom: 20,
     paddingHorizontal: 20,
   },
@@ -467,6 +487,7 @@ const styles = StyleSheet.create({
   },
   picker: {
     height: 50,
+    paddingLeft:10,
   },
   rowContainer: {
     flexDirection: 'row',

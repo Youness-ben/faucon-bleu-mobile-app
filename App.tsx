@@ -18,6 +18,7 @@ import Toast from 'react-native-toast-message';
 import { FloatingButtonProvider } from './src/FloatingButtonContext';
 import FloatingAudioButton from './src/components/FloatingAudioButton';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Text, TextInput } from 'react-native';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -35,7 +36,12 @@ export default function App() {
   const notificationListener = useRef();
   const responseListener = useRef();
 
-  
+  Text.defaultProps = Text.defaultProps || {};
+Text.defaultProps.allowFontScaling = false;
+
+TextInput.defaultProps = TextInput.defaultProps || {};
+TextInput.defaultProps.allowFontScaling = false;
+
   useEffect(() => {
     async function prepare() {
       try {
@@ -115,7 +121,7 @@ export default function App() {
           paddingTop: Platform.OS === 'android' ? 0 : 0,
           backgroundColor:'transparent'
         }} onLayout={onLayoutRootView}>
-          <StatusBar barStyle="dark-content" backgroundColor={"#028dd0"} />
+          <StatusBar barStyle="light-content" backgroundColor={"#028dd0"} />
           <NavigationContainer ref={navigationRef}>
             <UserProvider>
               <NotificationProvider>

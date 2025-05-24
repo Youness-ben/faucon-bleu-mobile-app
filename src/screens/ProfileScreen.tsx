@@ -154,7 +154,7 @@ export default function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#028dd0" />
       <LinearGradient colors={['#028dd0', '#01579B']} style={styles.header}>
         <View style={styles.profileInfo}>
@@ -298,18 +298,17 @@ export default function ProfileScreen() {
           </View>
         </Modal>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    paddingBottom:50
+    backgroundColor: '#FFFFFF'
   },
-  header: {
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+  header: {       
+    paddingTop: Platform.OS=='ios' ? 70 : 60,
     paddingBottom: 20,
     paddingHorizontal: 20,
   },

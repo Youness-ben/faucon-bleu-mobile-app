@@ -1,116 +1,87 @@
 import React, { useRef, useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, Dimensions, Animated, Text } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Dimensions, Animated, Text, Platform } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../styles/theme';
 
 const { width } = Dimensions.get('window');
 
 const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation }) => {
-  const animatedValues = useRef(state.routes.map(() => new Animated.Value(0))).current;
+  const insets = useSafeAreaInsets();
+  const animatedValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const focusedTab = state.index;
-    Animated.parallel(
-      animatedValues.map((anim, index) =>
-        Animated.spring(anim, {
-          toValue: index === focusedTab ? 1 : 0,
-          useNativeDriver: true,
-          friction: 4,
-          tension: 40,
-        })
-      )
-    ).start();
-  }, [state.index, animatedValues]);
+    Animated.spring(animatedValue, {
+      toValue: state.index,
+      useNativeDriver: true,
+      friction: 8,
+      tension: 100,
+    }).start();
+  }, [state.index]);
 
   return (
-    <View style={styles.container}>
-      <Svg height="100%" width="100%" style={StyleSheet.absoluteFill}>
-        <Defs>
-          <LinearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor="#028dd0" stopOpacity="1" />
-            <Stop offset="1" stopColor="#01579B" stopOpacity="1" />
-          </LinearGradient>
-        </Defs>
-        <Path
-          d={`M0 0L${width} 0L${width} 100L0 100L0 0Z`}
-          fill="url(#grad)"
-        />
-      </Svg>
-      {state.routes.map((route, index) => {
-        const { options } = descriptors[route.key];
-        const label = options.tabBarLabel !== undefined ? options.tabBarLabel : options.title !== undefined ? options.title : route.name;
+    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+      <View style={styles.tabContainer}>
+        {state.routes.map((route, index) => {
+          const { options } = descriptors[route.key];
+          const label = options.tabBarLabel !== undefined 
+            ? options.tabBarLabel 
+            : options.title !== undefined 
+            ? options.title 
+            : route.name;
 
-        const isFocused = state.index === index;
+          const isFocused = state.index === index;
 
-        const onPress = () => {
-          const event = navigation.emit({
-            type: 'tabPress',
-            target: route.key,
-            canPreventDefault: true,
+          const onPress = () => {
+            const event = navigation.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            });
+
+            if (!isFocused && !event.defaultPrevented) {
+              navigation.navigate(route.name);
+            }
+          };
+
+          const inputRange = state.routes.map((_, i) => i);
+          const scale = animatedValue.interpolate({
+            inputRange,
+            outputRange: inputRange.map(i => i === index ? 1.1 : 1),
           });
 
-          if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(route.name);
-          }
-        };
-
-        const animatedIconStyle = {
-          transform: [
-            {
-              scale: animatedValues[index].interpolate({
-                inputRange: [0, 1],
-                outputRange: [1, 1],
-              }),
-            },
-            {
-              translateY: animatedValues[index].interpolate({
-                inputRange: [0, 1],
-                outputRange: [10, 7],
-              }),
-            },
-          ],
-        };
-
-        const animatedTextStyle = {
-          opacity: animatedValues[index].interpolate({
-            inputRange: [0, 1],
-            outputRange: [0.7, 1],
-          }),
-          transform: [
-            {
-              translateY: animatedValues[index].interpolate({
-                inputRange: [1, 1],
-                outputRange: [6, 6],
-              }),
-            },
-          ],
-        };
-
-        return (
-          <TouchableOpacity
-            key={index}
-            accessibilityRole="button"
-            accessibilityState={isFocused ? { selected: true } : {}}
-            accessibilityLabel={options.tabBarAccessibilityLabel}
-            testID={options.tabBarTestID}
-            onPress={onPress}
-            style={styles.tabButton}
-          >
-            <Animated.View style={[styles.iconContainer, animatedIconStyle]}>
-              <Ionicons
-                name={options.tabBarIcon({ focused: isFocused, color: '', size: 24 }).props.name}
-                size={24}
-                color={isFocused ?'rgba(2, 141, 208, 1)' : 'rgba(2, 141, 208, 1)'}
-              />
-            </Animated.View>
-            <Animated.Text style={[styles.tabText, animatedTextStyle]}>
-              {label}
-            </Animated.Text>
-          </TouchableOpacity>
-        );
-      })}
+          return (
+            <TouchableOpacity
+              key={index}
+              accessibilityRole="button"
+              accessibilityState={isFocused ? { selected: true } : {}}
+              accessibilityLabel={options.tabBarAccessibilityLabel}
+              testID={options.tabBarTestID}
+              onPress={onPress}
+              style={styles.tabButton}
+            >
+              <Animated.View style={[
+                styles.iconContainer, 
+                isFocused && styles.activeIconContainer,
+                { transform: [{ scale }] }
+              ]}>
+                <Ionicons
+                  name={options.tabBarIcon({ focused: isFocused, color: '', size: 24 }).props.name}
+                  size={24}
+                  color={isFocused ? '#028dd0' : '#FFFFFF'}
+                />
+              </Animated.View>
+              <Text style={[
+                styles.tabText,
+                isFocused && styles.activeTabText
+              ]}>
+                {label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </View>
   );
 };
@@ -118,46 +89,56 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigat
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 0,         
+    bottom: 0,
     left: 0,
     right: 0,
+    backgroundColor: 'transparent',
+  },
+  tabContainer: {
     flexDirection: 'row',
-    backgroundColor:"#01579B",
+    backgroundColor: 'rgba(1, 87, 155, 0.95)', // Semi-transparent background
     height: 80,
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    borderBottomRightRadius: 0,
-    borderBottomLeftRadius: 0,
-    overflow: 'hidden',
+    marginHorizontal: 10,
+    marginBottom: 0,
+    borderRadius: 25,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
   tabButton: {
     flex: 1,
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: 10,
+    paddingTop: 8,
   },
   iconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(255, 255, 255, 1)',
-    marginBottom: 5,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginBottom: 4,
+  },
+  activeIconContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
   },
   tabText: {
-    fontSize: 12,
-    
-    marginTop: 2,
-    fontWeight:'bold',
-    color: 'white',
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontWeight: '500',
+  },
+  activeTabText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
   },
 });
-
 export default CustomTabBar;
 

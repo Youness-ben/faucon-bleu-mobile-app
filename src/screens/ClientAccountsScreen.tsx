@@ -11,7 +11,8 @@ import {
   Animated, 
   Dimensions,
   TextInput,
-  StatusBar
+  StatusBar,
+  Platform
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -292,9 +293,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   header: {
+    paddingTop: Platform.OS=='ios' ? 70 : 60,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 40,
     paddingBottom: 20,
     paddingHorizontal: 20,
   },

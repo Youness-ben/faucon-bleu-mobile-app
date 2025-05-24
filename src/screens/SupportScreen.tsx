@@ -1,11 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../styles/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useUser } from '../UserContext';
 import { FAUCON_ADDRESS, FAUCON_EMAIL, FAUCON_LOCATION, FAUCON_PHONE, FAUCON_WHATSAPP } from '../../config';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const SupportScreen: React.FC = () => {
   const { t } = useTranslation();
@@ -19,11 +20,16 @@ const SupportScreen: React.FC = () => {
   ];
   return (
     <>
-       <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-        <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
-      </TouchableOpacity>
-      
+
+      <LinearGradient colors={['#028dd0', '#01579B']} style={styles.headerTop}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+                        <Text style={styles.titleTop}>{t('profile.support')}</Text>
+            </LinearGradient>
+
     <ScrollView style={styles.container}>
+      
       <View style={styles.header}>
         <Ionicons name="help-buoy-outline" size={60} color={theme.colors.primary} />
         <Text style={styles.title}>{t('support.title')}</Text>
@@ -54,7 +60,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
+  headerTop: {       
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: Platform.OS=='ios' ? 70 : 60,
+
+    paddingHorizontal: 5,
+  },
+  titleTop: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
   header: {
+  paddingTop: Platform.OS=='ios' ? 70 : 60,
     alignItems: 'center',
     padding: theme.spacing.xl,
     borderBottomWidth: 1,

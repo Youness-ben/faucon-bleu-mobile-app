@@ -11,7 +11,8 @@ import {
   Animated, 
   Dimensions,
   TextInput,
-  StatusBar
+  StatusBar,
+  Platform
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -285,7 +286,7 @@ const styles = StyleSheet.create({
     paddingBottom:50
   },
   header: {
-    paddingTop: 40,
+    paddingTop: Platform.OS=='ios' ? 70 : 60,
     paddingBottom: 20,
     paddingHorizontal: 20,
   },
@@ -355,7 +356,7 @@ const styles = StyleSheet.create({
   addButton: {
     position: 'absolute',
     right: 20,
-    bottom: 100,
+    bottom: 150,
     backgroundColor: theme.colors.primary,
     width: 60,
     height: 60,

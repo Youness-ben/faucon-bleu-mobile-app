@@ -160,7 +160,7 @@ const ConductorTabs: React.FC = () => {
         tabBarInactiveTintColor: theme.colors.textSecondary,
         tabBarStyle: {
           backgroundColor: 'transparent',
-          borderTopWidth: 0,
+          borderTopWidth: 0, 
           elevation: 0,
           shadowOpacity: 0,
         },

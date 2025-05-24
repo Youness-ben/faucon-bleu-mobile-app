@@ -409,8 +409,9 @@ const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    
     backgroundColor: '#FFFFFF',
-    paddingBottom:50
+
   },
   loadingContainer: {
     flex: 1,
@@ -445,7 +446,7 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 15,
-    paddingTop: 40,
+    paddingTop: Platform.OS=='ios' ? 70 : 60,
     paddingBottom: 20,
   },
   headerTitle: {
